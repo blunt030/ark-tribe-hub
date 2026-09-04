@@ -60,9 +60,15 @@ export async function renderNewOrder(mount, ctx) {
   const { go } = ctx;
   const chosen = []; // { itemId, name, emoji, product_type, quantity }
   let priority = 'normal';
+  let activeCategoryId = null;
+  let renderToken = 0; // schützt vor überholten Antworten: Kategorie-Vorschau und Suche
+                        // laufen beide asynchron - ohne das hier könnte eine spät
+                        // eintreffende Kategorie-Antwort eine bereits aktuellere
+                        // Sucheingabe wieder überschreiben.
 
   const chosenBox = el('div.list');
   const resultsBox = el('div.picker-results');
+  const catChips = el('div.chips', { style: 'margin-top:10px' });
   const search = el('input', {
     type: 'search',
     placeholder: t('order.search_items'),
@@ -97,33 +103,80 @@ export async function renderNewOrder(mount, ctx) {
     submit.disabled = chosen.length === 0;
   }
 
+  function pickButton(it) {
+    return el('button.pick', {
+      type: 'button',
+      onclick: () => {
+        if (!chosen.some((c) => c.itemId === it.id)) {
+          chosen.push({ itemId: it.id, name: it.name, emoji: it.emoji, product_type: it.product_type, quantity: 1 });
+          drawChosen();
+        }
+        search.value = '';
+        search.focus();
+      },
+    },
+      it.image_path
+        ? el('img', { src: '/uploads/' + it.image_path, alt: '', style: 'width:28px;height:28px;object-fit:cover;border-radius:4px;flex:0 0 28px' })
+        : el('span', { style: 'width:28px;text-align:center;flex:0 0 28px', text: it.emoji || '•' }),
+      el('span.pt', { text: it.name }),
+      typeTag(it.product_type)
+    );
+  }
+
+  function renderResults(items, emptyText) {
+    resultsBox.replaceChildren(
+      ...(items.length
+        ? items.slice(0, 80).map(pickButton)
+        : [el('p.hint', { style: 'padding:8px 2px', text: emptyText })])
+    );
+    if (items.length > 80) {
+      resultsBox.append(el('p.hint', { style: 'padding:8px 2px', text: `80 / ${items.length} – ${t('common.search')} nutzen, um einzugrenzen.` }));
+    }
+  }
+
+  async function showCategory(catId) {
+    activeCategoryId = catId;
+    const myToken = ++renderToken;
+    [...catChips.children].forEach((b) => b.classList.toggle('primary', Number(b.dataset.catid) === catId));
+    resultsBox.replaceChildren(spinner());
+    try {
+      const { items } = await api.items({ categoryId: catId });
+      if (myToken !== renderToken) return; // eine neuere Anfrage (Suche o.ä.) lief inzwischen los
+      renderResults(items, t('order.no_items'));
+    } catch { /* Kategorie-Wechsel still scheitern lassen */ }
+  }
+
+  // Kategorien laden: eigene Tiere/Sättel/Eier lassen sich so direkt durchstöbern
+  // und antippen, nicht nur über die Suche finden (Feedback aus dem ersten Test).
+  api.categories().then(({ categories }) => {
+    catChips.replaceChildren(
+      ...categories.map((c) =>
+        el('button.btn.sm', {
+          text: c.name,
+          dataset: { catid: c.id },
+          onclick: () => showCategory(c.id),
+        })
+      )
+    );
+    if (categories.length) showCategory(categories[0].id);
+  }).catch(() => {});
+
   let searchTimer;
   search.addEventListener('input', () => {
     clearTimeout(searchTimer);
     const q = search.value.trim();
-    if (q.length < 2) { resultsBox.replaceChildren(); return; }
+    if (!q) {
+      // Suche geleert -> zurück zur zuletzt gewählten Kategorie.
+      if (activeCategoryId) showCategory(activeCategoryId);
+      return;
+    }
+    if (q.length < 2) return;
     searchTimer = setTimeout(async () => {
+      const myToken = ++renderToken;
       try {
         const { items } = await api.items({ search: q });
-        resultsBox.replaceChildren(
-          ...items.slice(0, 40).map((it) =>
-            el('button.pick', {
-              type: 'button',
-              onclick: () => {
-                if (!chosen.some((c) => c.itemId === it.id)) {
-                  chosen.push({ itemId: it.id, name: it.name, emoji: it.emoji, product_type: it.product_type, quantity: 1 });
-                  drawChosen();
-                }
-                search.value = '';
-                resultsBox.replaceChildren();
-                search.focus();
-              },
-            },
-              el('span.pt', { text: `${it.emoji ? it.emoji + ' ' : ''}${it.name}` }),
-              typeTag(it.product_type)
-            )
-          )
-        );
+        if (myToken !== renderToken) return; // Eingabe hat sich inzwischen weiterverändert
+        renderResults(items, t('order.no_items'));
       } catch { /* Suche still scheitern lassen, Eingabe bleibt nutzbar */ }
     }, 180);
   });
@@ -169,6 +222,7 @@ export async function renderNewOrder(mount, ctx) {
         el('label', { for: 'item-search', text: t('order.add_item') }),
         search
       ),
+      catChips,
       resultsBox
     ),
     el('div.section-title', {}, t('order.items')),

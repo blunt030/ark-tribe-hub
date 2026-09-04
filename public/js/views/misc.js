@@ -173,7 +173,7 @@ export async function renderProfile(mount, ctx) {
         el('div.chips', {},
           ...LANGS.map((l) =>
             el('button.btn.sm' + (getLang() === l.code ? '.primary' : ''), {
-              text: `${l.flag} ${l.label}`,
+              text: `${l.code.toUpperCase()} · ${l.label}`,
               onclick: () => { setLang(l.code); location.reload(); },
             })
           )

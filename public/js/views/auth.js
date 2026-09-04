@@ -48,7 +48,7 @@ export function renderAuth(root, { onSignedIn }) {
           el('div', { style: 'display:flex;justify-content:center;gap:6px;margin-top:16px' },
             ...LANGS.map((l) =>
               el('button.btn.sm.ghost' + (getLang() === l.code ? ' primary' : ''), {
-                text: l.flag,
+                text: l.code.toUpperCase(),
                 title: l.label,
                 'aria-label': l.label,
                 onclick: () => { setLang(l.code); draw(); },
