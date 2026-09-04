@@ -1,0 +1,17 @@
+{
+  "name": "ARK Tribe Hub",
+  "short_name": "Tribe Hub",
+  "description": "Organisationsplattform für ARK-Tribes: Bestellungen, Rollen, Zucht und Ausgabe an einem Ort.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0B0D10",
+  "theme_color": "#0B0D10",
+  "lang": "de",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,527 @@
+import { el, spinner, emptyState, toast, confirmDialog, fileToBase64 } from '../ui.js';
+import { t, timeAgo, LANGS, getLang, setLang } from '../i18n.js';
+import { api } from '../api.js';
+
+/* ========================================================================== */
+/* Mitteilungen                                                               */
+/* ========================================================================== */
+
+export async function renderNotifications(mount, ctx) {
+  const { go, refreshBadges } = ctx;
+  mount.append(spinner());
+
+  const [{ notifications }, { preferences }] = await Promise.all([
+    api.notifications(),
+    api.notifPrefs(),
+  ]);
+
+  mount.replaceChildren();
+  mount.append(
+    el('div.page-head', {},
+      el('div', {}, el('h1', { text: t('notif.title') })),
+      notifications.some((n) => !n.is_read)
+        ? el('button.btn', {
+            text: t('notif.read_all'),
+            onclick: async (e) => {
+              e.target.disabled = true;
+              await api.markAllRead();
+              await refreshBadges();
+              go('/notifications', true);
+            },
+          })
+        : null
+    )
+  );
+
+  mount.append(
+    notifications.length
+      ? el('div.list', {},
+          ...notifications.map((n) =>
+            el('div.notif' + (n.is_read ? '' : '.unread'), {},
+              el('div', { style: 'flex:1' },
+                el('div.nt', { text: t('n.' + n.type) }),
+                el('div.nd', { text: timeAgo(n.created_at) })
+              ),
+              n.payload?.orderId
+                ? el('button.btn.sm', {
+                    text: t('order.detail'),
+                    onclick: async () => {
+                      if (!n.is_read) { await api.markRead(n.id); await refreshBadges(); }
+                      go('/orders/' + n.payload.orderId);
+                    },
+                  })
+                : null
+            )
+          )
+        )
+      : emptyState(t('notif.none'))
+  );
+
+  // Jede Art einzeln schaltbar – nicht nur ein globaler Schalter.
+  mount.append(
+    el('div.section-title', {}, t('notif.settings')),
+    el('p', { style: 'color:var(--muted);font-size:.86rem;margin:-6px 0 12px', text: t('notif.settings_hint') })
+  );
+
+  const changed = new Map();
+  const saveBtn = el('button.btn.primary', { text: t('profile.save'), disabled: true });
+
+  mount.append(
+    el('div.list', {},
+      ...preferences.map((p) => {
+        const box = el('input', { type: 'checkbox', style: 'width:auto', id: 'p-' + p.type });
+        box.checked = p.enabled;
+        box.addEventListener('change', () => {
+          changed.set(p.type, box.checked);
+          saveBtn.disabled = false;
+        });
+        return el('label.row', { for: 'p-' + p.type, style: 'cursor:pointer' },
+          box,
+          el('div.grow', {}, el('div.rt', { text: t('n.' + p.type) }))
+        );
+      })
+    ),
+    el('div', { style: 'margin-top:14px' }, saveBtn)
+  );
+
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    try {
+      await api.saveNotifPrefs([...changed].map(([type, enabled]) => ({ type, enabled })));
+      toast(t('notif.saved'));
+      changed.clear();
+    } catch (err) { toast(err.message, 'err'); saveBtn.disabled = false; }
+  });
+}
+
+/* ========================================================================== */
+/* Profil                                                                     */
+/* ========================================================================== */
+
+export async function renderProfile(mount, ctx) {
+  const { user, onSignOut, reloadUser, go } = ctx;
+  mount.append(spinner());
+
+  const [{ user: me }, tribe] = await Promise.all([
+    api.profile(),
+    api.myTribe().catch(() => null),
+  ]);
+
+  mount.replaceChildren();
+
+  const server = el('input', { type: 'text', value: me.server || '', id: 'p-server' });
+  const map = el('input', { type: 'text', value: me.map || '', id: 'p-map' });
+  const vault = el('input', { type: 'text', value: me.personalVaultNumber || '', id: 'p-vault' });
+  const saveBtn = el('button.btn.primary', { text: t('profile.save') });
+
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    try {
+      await api.updateProfile({
+        server: server.value.trim(),
+        map: map.value.trim(),
+        personalVaultNumber: vault.value.trim(),
+      });
+      toast(t('profile.saved'));
+    } catch (err) { toast(err.message, 'err'); }
+    finally { saveBtn.disabled = false; }
+  });
+
+  const avatarImg = el('img', {
+    src: me.avatarPath ? '/uploads/' + me.avatarPath : '/assets/logo.png',
+    alt: '',
+    style: 'width:76px;height:76px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--raised)',
+  });
+  const fileInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', style: 'display:none' });
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    try {
+      const base64 = await fileToBase64(file);
+      const res = await api.uploadAvatar({ imageBase64: base64, mimeType: file.type });
+      avatarImg.src = '/uploads/' + res.avatarPath + '?v=' + Date.now();
+      toast(t('profile.saved'));
+      await reloadUser();
+    } catch (err) { toast(err.message, 'err'); }
+  });
+
+  mount.append(
+    el('div.page-head', {}, el('div', {}, el('h1', { text: t('profile.title') }))),
+    el('div.card', {},
+      el('div', { style: 'display:flex;gap:16px;align-items:center;margin-bottom:18px' },
+        avatarImg,
+        el('div', {},
+          el('div', { style: 'font-family:var(--ff-display);font-size:1.3rem;font-weight:700', text: me.username }),
+          el('div', { style: 'color:var(--muted);font-size:.86rem', text: tribe?.tribe?.name || '—' }),
+          el('div.chips', { style: 'margin-top:7px' },
+            ...me.roles.map((r) => el('span.badge.b-role', { text: t('role.' + r) }))
+          )
+        )
+      ),
+      el('button.btn.sm', { text: t('profile.upload'), onclick: () => fileInput.click() }),
+      fileInput
+    ),
+    el('div.card', { style: 'margin-top:14px' },
+      el('div.field', {}, el('label', { for: 'p-server', text: t('profile.server') }), server),
+      el('div.field', {}, el('label', { for: 'p-map', text: t('profile.map') }), map),
+      el('div.field', {}, el('label', { for: 'p-vault', text: t('profile.vault') }), vault),
+      el('p.hint', { text: t('profile.visibility'), style: 'margin:-6px 0 14px' }),
+      saveBtn
+    ),
+    el('div.card', { style: 'margin-top:14px' },
+      el('div.field', {}, el('label', { text: t('profile.language') }),
+        el('div.chips', {},
+          ...LANGS.map((l) =>
+            el('button.btn.sm' + (getLang() === l.code ? '.primary' : ''), {
+              text: `${l.flag} ${l.label}`,
+              onclick: () => { setLang(l.code); location.reload(); },
+            })
+          )
+        )
+      )
+    ),
+    adminLinks(user, go),
+    el('div', { style: 'margin-top:18px' },
+      el('button.btn.danger', { text: t('auth.logout'), onclick: onSignOut })
+    )
+  );
+}
+
+/**
+ * Verwaltungsbereiche als Kacheln auf der Profilseite. Auf dem Desktop stehen sie
+ * zusaetzlich in der Seitenleiste; auf dem Handy ist das hier der Weg dorthin,
+ * weil die untere Leiste bewusst bei fuenf festen Eintraegen bleibt.
+ */
+function adminLinks(user, go) {
+  const links = [];
+  if (user.roles.includes('admin') || user.roles.includes('developer')) {
+    links.push(['/members', t('nav.members')], ['/audit', t('nav.audit')]);
+  }
+  if (user.roles.includes('developer')) {
+    links.push(['/tribes', t('nav.tribes')], ['/users', t('nav.users')], ['/catalog', t('nav.catalog')]);
+  }
+  if (!links.length) return null;
+
+  const group = user.roles.includes('developer') ? t('nav.group.platform') : t('nav.group.tribe');
+  return el('div', {},
+    el('div.section-title', {}, group),
+    el('div.chips', {},
+      ...links.map(([path, label]) => el('button.btn.sm', { text: label, onclick: () => go(path) }))
+    )
+  );
+}
+
+/* ========================================================================== */
+/* Admin – Mitglieder                                                         */
+/* ========================================================================== */
+
+export async function renderMembers(mount, ctx) {
+  mount.append(spinner());
+  let members;
+  try {
+    members = (await api.members()).members;
+  } catch (err) {
+    mount.replaceChildren(emptyState(err.message));
+    return;
+  }
+
+  function draw() {
+    mount.replaceChildren();
+    mount.append(el('div.page-head', {}, el('div', {}, el('h1', { text: t('admin.members') }))));
+
+    const pending = members.filter((m) => m.status === 'pending_approval');
+    const active = members.filter((m) => m.status !== 'pending_approval');
+
+    mount.append(el('div.section-title', {}, t('admin.pending'), el('span.c', { text: pending.length })));
+    mount.append(
+      pending.length
+        ? el('div.list', {}, ...pending.map(pendingRow))
+        : emptyState(t('admin.no_pending'))
+    );
+
+    mount.append(el('div.section-title', {}, t('admin.members'), el('span.c', { text: active.length })));
+    mount.append(el('div.list', {}, ...active.map(memberRow)));
+  }
+
+  async function reload() {
+    members = (await api.members()).members;
+    draw();
+  }
+
+  function pendingRow(m) {
+    return el('div.row', {},
+      el('div.grow', {},
+        el('div.rt', { text: m.username }),
+        el('div.rs', { text: timeAgo(m.created_at) })
+      ),
+      el('button.btn.sm.primary', {
+        text: t('admin.approve'),
+        onclick: async (e) => {
+          e.target.disabled = true;
+          try { await api.approve(m.id); toast(t('admin.approved')); await reload(); }
+          catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
+        },
+      }),
+      el('button.btn.sm.danger', {
+        text: t('admin.reject'),
+        onclick: async () => {
+          const ok = await confirmDialog({ title: t('admin.reject') + ' – ' + m.username, danger: true });
+          if (!ok) return;
+          try { await api.reject(m.id); toast(t('admin.rejected')); await reload(); }
+          catch (err) { toast(err.message, 'err'); }
+        },
+      })
+    );
+  }
+
+  function memberRow(m) {
+    const isBreeder = m.roles.includes('breeder_crafter');
+    return el('div.row', {},
+      el('div.grow', {},
+        el('div.rt', { text: m.username }),
+        el('div.rs', {}, ...m.roles.map((r) => el('span.badge.b-role', { text: t('role.' + r), style: 'margin-right:4px' })))
+      ),
+      m.status !== 'active' ? el('span.badge.b-pending', { text: t('ustatus.' + m.status) }) : null,
+      el('button.btn.sm' + (isBreeder ? '.primary' : ''), {
+        text: t('admin.make_breeder'),
+        onclick: async (e) => {
+          e.target.disabled = true;
+          try { await api.setBreeder(m.id, !isBreeder); toast(t('admin.role_saved')); await reload(); }
+          catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
+        },
+      }),
+      m.status === 'active'
+        ? el('button.btn.sm.danger', {
+            text: t('admin.disable'),
+            onclick: async () => {
+              const ok = await confirmDialog({ title: t('admin.disable') + ' – ' + m.username, danger: true });
+              if (!ok) return;
+              try { await api.disableMember(m.id); toast(t('admin.disabled')); await reload(); }
+              catch (err) { toast(err.message, 'err'); }
+            },
+          })
+        : null
+    );
+  }
+
+  draw();
+}
+
+/* ========================================================================== */
+/* Protokoll                                                                  */
+/* ========================================================================== */
+
+export async function renderAudit(mount, ctx) {
+  mount.append(spinner());
+  const isDev = ctx.user.roles.includes('developer');
+  let logs;
+  try {
+    logs = (isDev ? await api.devAuditLogs() : await api.auditLogs()).logs;
+  } catch (err) {
+    mount.replaceChildren(emptyState(err.message));
+    return;
+  }
+
+  mount.replaceChildren();
+  mount.append(
+    el('div.page-head', {}, el('div', {},
+      el('h1', { text: t('admin.audit') }),
+      el('p', { text: t('admin.audit_sub') })
+    ))
+  );
+  mount.append(
+    logs.length
+      ? el('div.list', {},
+          ...logs.map((l) =>
+            el('div.row', {},
+              el('div.grow', {},
+                el('div.rt', { text: l.action.replaceAll('_', ' ') }),
+                el('div.rs', { text: `${l.target_type || ''} ${l.target_id || ''} · ${timeAgo(l.created_at)}` })
+              )
+            )
+          )
+        )
+      : emptyState(t('notif.none'))
+  );
+}
+
+/* ========================================================================== */
+/* Developer                                                                  */
+/* ========================================================================== */
+
+export async function renderTribes(mount, ctx) {
+  mount.append(spinner());
+  let tribes = (await api.tribes()).tribes;
+
+  function draw() {
+    mount.replaceChildren();
+    const name = el('input', { type: 'text', id: 'nt-name', placeholder: 'OaO' });
+    const slug = el('input', { type: 'text', id: 'nt-slug', placeholder: 'oao' });
+    const create = el('button.btn.primary', { text: t('dev.new_tribe') });
+
+    create.addEventListener('click', async () => {
+      create.disabled = true;
+      try {
+        await api.createTribe({ name: name.value.trim(), slug: slug.value.trim().toLowerCase() });
+        toast(t('dev.created'));
+        tribes = (await api.tribes()).tribes;
+        draw();
+      } catch (err) { toast(err.message, 'err'); create.disabled = false; }
+    });
+
+    mount.append(
+      el('div.page-head', {}, el('div', {}, el('h1', { text: t('dev.tribes') }))),
+      el('div.card', {},
+        el('div.field', {}, el('label', { for: 'nt-name', text: t('dev.tribe_name') }), name),
+        el('div.field', {},
+          el('label', { for: 'nt-slug', text: t('dev.tribe_slug') }),
+          slug,
+          el('span.hint', { text: 'a–z, 0–9, -' })
+        ),
+        create
+      ),
+      el('div.section-title', {}, t('dev.tribes'), el('span.c', { text: tribes.length })),
+      el('div.list', {},
+        ...tribes.map((tr) =>
+          el('div.row', {},
+            el('div.grow', {},
+              el('div.rt', { text: tr.name }),
+              el('div.rs', { text: tr.slug })
+            ),
+            el('span.badge.' + (tr.is_active ? 'b-completed' : 'b-cancelled'), {
+              text: tr.is_active ? t('dev.active') : t('dev.inactive'),
+            }),
+            el('button.btn.sm', {
+              text: tr.is_active ? t('dev.deactivate') : t('dev.activate'),
+              onclick: async () => {
+                try {
+                  await api.updateTribe(tr.id, { isActive: !tr.is_active });
+                  tribes = (await api.tribes()).tribes;
+                  draw();
+                } catch (err) { toast(err.message, 'err'); }
+              },
+            })
+          )
+        )
+      )
+    );
+  }
+
+  draw();
+}
+
+const ASSIGNABLE_ROLES = ['member', 'breeder_crafter', 'admin', 'developer'];
+
+export async function renderUsers(mount, ctx) {
+  mount.append(spinner());
+  let users = (await api.allUsers()).users;
+  const tribes = (await api.tribes()).tribes;
+  const tribeName = (id) => tribes.find((tr) => tr.id === id)?.name || '—';
+
+  function draw() {
+    mount.replaceChildren();
+    mount.append(el('div.page-head', {}, el('div', {},
+      el('h1', { text: t('dev.users') }),
+      el('p', { text: `${users.length}` })
+    )));
+
+    mount.append(el('div.list', {},
+      ...users.map((u) => {
+        const roleButtons = ASSIGNABLE_ROLES.map((r) =>
+          el('button.btn.sm' + (u.roles.includes(r) ? '.primary' : ''), {
+            text: t('role.' + r),
+            onclick: async (e) => {
+              e.target.disabled = true;
+              const next = u.roles.includes(r) ? u.roles.filter((x) => x !== r) : [...u.roles, r];
+              if (next.length === 0) next.push('member');
+              try {
+                await api.setRoles(u.id, next);
+                toast(t('dev.roles_saved'));
+                users = (await api.allUsers()).users;
+                draw();
+              } catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
+            },
+          })
+        );
+
+        return el('div.card', {},
+          el('div', { style: 'display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:9px' },
+            el('div', { style: 'font-family:var(--ff-display);font-weight:700;font-size:1.05rem', text: u.username }),
+            el('span', { style: 'color:var(--muted);font-size:.84rem', text: tribeName(u.tribe_id) }),
+            el('span.badge.' + (u.status === 'active' ? 'b-completed' : 'b-pending'), { text: t('ustatus.' + u.status) })
+          ),
+          el('div.chips', {}, ...roleButtons)
+        );
+      })
+    ));
+  }
+
+  draw();
+}
+
+export async function renderCatalog(mount) {
+  mount.append(spinner());
+  const [{ items }, { categories }] = await Promise.all([api.items(), api.categories()]);
+
+  let filterCat = null;
+  let query = '';
+
+  const listBox = el('div.list');
+  const search = el('input', { type: 'search', placeholder: t('common.search') });
+
+  function drawList() {
+    const filtered = items.filter(
+      (i) =>
+        (!filterCat || i.category_id === filterCat) &&
+        (!query || i.name.toLowerCase().includes(query.toLowerCase()))
+    );
+    const LIMIT = 60;
+    listBox.replaceChildren(
+      ...filtered.slice(0, LIMIT).map((i) =>
+        el('div.row', {},
+          el('div.grow', {}, el('div.rt', { text: `${i.emoji ? i.emoji + ' ' : ''}${i.name}` }), el('div.rs', { text: i.key })),
+          el('span.type-tag.t-' + i.product_type, { text: t('type.' + i.product_type) })
+        )
+      ),
+      filtered.length > LIMIT
+        ? el('p.hint', { style: 'padding:10px 2px', text: `${LIMIT} / ${filtered.length} – ${t('common.search')} nutzen, um einzugrenzen.` })
+        : null
+    );
+  }
+
+  search.addEventListener('input', () => { query = search.value.trim(); drawList(); });
+
+  mount.replaceChildren();
+  mount.append(
+    el('div.page-head', {}, el('div', {},
+      el('h1', { text: t('dev.catalog') }),
+      el('p', { text: t('dev.catalog_sub', { n: items.length }) })
+    )),
+    el('div.card', {}, search,
+      el('div.chips', { style: 'margin-top:12px' },
+        el('button.btn.sm.primary', {
+          text: t('filter.all'),
+          onclick: (e) => {
+            filterCat = null;
+            [...e.target.parentElement.children].forEach((b) => b.classList.remove('primary'));
+            e.target.classList.add('primary');
+            drawList();
+          },
+        }),
+        ...categories.map((c) =>
+          el('button.btn.sm', {
+            text: c.name,
+            onclick: (e) => {
+              filterCat = c.id;
+              [...e.target.parentElement.children].forEach((b) => b.classList.remove('primary'));
+              e.target.classList.add('primary');
+              drawList();
+            },
+          })
+        )
+      )
+    ),
+    el('div', { style: 'margin-top:16px' }, listBox)
+  );
+  drawList();
+}
