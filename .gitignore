@@ -1,0 +1,11 @@
+node_modules/
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/.session-secret
+data/uploads/**/*
+!data/uploads/avatars/.gitkeep
+!data/uploads/items/.gitkeep
+.env
+*.log

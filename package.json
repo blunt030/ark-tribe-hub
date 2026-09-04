@@ -1,0 +1,19 @@
+{
+  "name": "ark-tribe-hub-backend",
+  "version": "1.0.0",
+  "description": "ARK Tribe Hub – Multi-Tribe Organisationsplattform (Backend: API, Datenbank, Auth, Berechtigungen)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "node --no-warnings src/server.js",
+    "start": "node --no-warnings src/server.js",
+    "seed": "node --no-warnings src/db/seed.js",
+    "test": "node --no-warnings test/run.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {}
+}

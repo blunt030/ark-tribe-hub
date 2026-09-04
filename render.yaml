@@ -1,0 +1,47 @@
+# Render-Blueprint für ARK Tribe Hub.
+#
+# Definiert zwei Ressourcen, die zusammengehören:
+#   1. einen Node.js-Webservice (Free-Plan) für App + API
+#   2. eine Postgres-Datenbank (Free-Plan) für dauerhafte Speicherung
+#
+# DATABASE_URL wird von Render automatisch in den Webservice injiziert, sobald
+# beide über "fromDatabase" verknüpft sind - keine manuelle Konfiguration nötig.
+# Sobald DATABASE_URL gesetzt ist, wechselt die App automatisch von der lokalen
+# SQLite-Datei auf Postgres (siehe src/db/index.js).
+#
+# Verwendung: Im Render-Dashboard "New +" -> "Blueprint" -> dieses Repository
+# auswählen. Render erkennt render.yaml automatisch und schlägt beide
+# Ressourcen zum Anlegen vor.
+
+databases:
+  - name: ark-tribe-hub-db
+    plan: free
+    databaseName: ark_tribe_hub
+    user: ark_tribe_hub
+
+services:
+  - type: web
+    name: ark-tribe-hub
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ark-tribe-hub-db
+          property: connectionString
+      # SESSION_SECRET wird von Render automatisch als zufälliger, dauerhafter
+      # Wert erzeugt (generateValue: true) - dadurch bleiben Logins auch über
+      # einen Neustart/Redeploy hinweg gültig, ohne dass ein Geheimnis im
+      # Repository oder im Blueprint selbst steht.
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: RATE_LIMIT_GLOBAL_MAX
+        value: 120
+      - key: RATE_LIMIT_AUTH_MAX
+        value: 10
