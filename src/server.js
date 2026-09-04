@@ -70,7 +70,11 @@ function serveStatic(req, res) {
   res.writeHead(200, {
     'Content-Type': STATIC_MIME[ext] || 'application/octet-stream',
     'Content-Length': data.length,
-    'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600',
+    // Während der aktiven Test-/Weiterentwicklungsphase bewusst "no-cache" statt
+    // langer Cache-Zeiten: erzwingt bei jedem Laden eine Rückfrage an den Server,
+    // damit ein frischer Deploy sofort ankommt statt bis zu eine Stunde alten Code
+    // aus dem Browser-Cache auszuliefern (genau das ist hier passiert).
+    'Cache-Control': 'no-cache',
   });
   res.end(req.method === 'HEAD' ? undefined : data);
   return true;
@@ -98,7 +102,8 @@ function buildUploadsRouter(db) {
       res.writeHead(200, {
         'Content-Type': row.mime || UPLOAD_MIME[ext] || 'application/octet-stream',
         'Content-Length': buffer.length,
-        'Cache-Control': 'private, max-age=31536000, immutable',
+        'Cache-Control': 'private, no-cache', // Dateiname ist jetzt pro Besitzer stabil (users/items-ID) -
+      // ein neuer Upload ersetzt denselben Pfad, 'immutable' waere hier falsch.
       });
       res.end(buffer);
       return;
@@ -110,7 +115,8 @@ function buildUploadsRouter(db) {
     res.writeHead(200, {
       'Content-Type': UPLOAD_MIME[ext] || 'application/octet-stream',
       'Content-Length': data.length,
-      'Cache-Control': 'private, max-age=31536000, immutable',
+      'Cache-Control': 'private, no-cache', // Dateiname ist jetzt pro Besitzer stabil (users/items-ID) -
+      // ein neuer Upload ersetzt denselben Pfad, 'immutable' waere hier falsch.
     });
     res.end(data);
   });
