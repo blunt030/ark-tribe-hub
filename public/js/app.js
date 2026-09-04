@@ -79,7 +79,7 @@ function buildShell() {
       el('div.chips', {},
         ...LANGS.map((l) =>
           el('button.btn.sm.ghost' + (getLang() === l.code ? ' primary' : ''), {
-            text: l.flag,
+            text: l.code.toUpperCase(),
             title: l.label,
             'aria-label': l.label,
             onclick: () => { setLang(l.code); location.reload(); },
