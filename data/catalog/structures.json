@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "source_note": "Namen gegen ark.wiki.gg und weitere Quellen recherchiert (Bauserien-Tiers, Vault, Storage Box, Crafting-Stationen, Verteidigung). Bewusst KEINE Mod-Inhalte (z.B. Structures Plus) vermischt - nur Vanilla-ARK:SA. Kein Anspruch auf Vollständigkeit über alle Rampen-/Fenster-/Geländer-Varianten hinweg; als Startset gedacht, über die Developer-Katalog-API jederzeit erweiterbar."
+    "source_note": "Namen gegen ark.wiki.gg (Structures/Building) recherchiert. Bewusst KEINE Mod-Inhalte (z.B. Structures Plus) vermischt - nur Vanilla-ARK:SA. Deckt die fünf Haupt-Bauserien (Thatch/Wood/Stone/Metal/Tek) mit ihrer vollen Bauteil-Reihe ab, plus eigenständige Kategorien (Storage, Crafting, Verteidigung, Beleuchtung, Gewächshaus). Adobe (Scorched-Earth-spezifische Sondervariante) bewusst ausgelassen, um die Haupt-Fünferserie nicht zu verwässern - über die Developer-Katalog-API jederzeit ergänzbar."
   },
   "tiers": [
     { "key": "thatch", "de": "Reet", "en": "Thatch" },
@@ -11,23 +11,42 @@
   ],
   "pieces": [
     { "key": "foundation", "de": "Fundament", "en": "Foundation" },
+    { "key": "triangle_foundation", "de": "Dreiecksfundament", "en": "Triangle Foundation" },
+    { "key": "fence_foundation", "de": "Zaunfundament", "en": "Fence Foundation" },
     { "key": "wall", "de": "Wand", "en": "Wall" },
-    { "key": "ceiling", "de": "Decke", "en": "Ceiling" },
+    { "key": "sloped_wall", "de": "Schräge Wand", "en": "Sloped Wall" },
     { "key": "doorframe", "de": "Türrahmen", "en": "Doorframe" },
-    { "key": "door", "de": "Tür", "en": "Door" }
+    { "key": "door", "de": "Tür", "en": "Door" },
+    { "key": "window", "de": "Fenster", "en": "Window" },
+    { "key": "windowframe", "de": "Fensterrahmen", "en": "Windowframe" },
+    { "key": "ceiling", "de": "Decke", "en": "Ceiling" },
+    { "key": "triangle_ceiling", "de": "Dreiecksdecke", "en": "Triangle Ceiling" },
+    { "key": "roof", "de": "Schrägdach", "en": "Sloped Roof" },
+    { "key": "pillar", "de": "Pfeiler", "en": "Pillar" },
+    { "key": "railing", "de": "Geländer", "en": "Railing" },
+    { "key": "ramp", "de": "Rampe", "en": "Ramp" },
+    { "key": "staircase", "de": "Treppenhaus", "en": "Staircase" },
+    { "key": "trapdoor", "de": "Falltür", "en": "Trapdoor" },
+    { "key": "hatchframe", "de": "Lukenrahmen", "en": "Hatchframe" },
+    { "key": "ladder", "de": "Leiter", "en": "Ladder" }
   ],
   "extra": [
     ["storage_box", "Storage Box", "🧰"],
     ["large_storage_box", "Large Storage Box", "🧰"],
     ["vault", "Vault", "🔒"],
     ["smithy", "Smithy", "🔨"],
+    ["mortar_and_pestle", "Mortar and Pestle", "🔨"],
     ["fabricator", "Fabricator", "⚙️"],
     ["chemistry_bench", "Chemistry Bench", "⚗️"],
     ["industrial_forge", "Industrial Forge", "🔥"],
     ["refining_forge", "Refining Forge", "🔥"],
+    ["industrial_cooker", "Industrial Cooker", "🍲"],
+    ["cooking_pot", "Cooking Pot", "🍲"],
+    ["compost_bin", "Compost Bin", "🌱"],
     ["preserving_bin", "Preserving Bin", "🧊"],
     ["refrigerator", "Refrigerator", "🧊"],
     ["generator", "Electrical Generator", "🔌"],
+    ["tek_generator", "Tek Generator", "🔌"],
     ["auto_turret", "Auto Turret", "🗼"],
     ["heavy_auto_turret", "Heavy Auto Turret", "🗼"],
     ["tek_turret", "Tek Turret", "🗼"],
@@ -35,6 +54,14 @@
     ["dinosaur_gateway", "Dinosaur Gateway", "🚪"],
     ["dinosaur_gate", "Dinosaur Gate", "🚪"],
     ["behemoth_dinosaur_gateway", "Behemoth Dinosaur Gateway", "🚪"],
-    ["behemoth_dinosaur_gate", "Behemoth Dinosaur Gate", "🚪"]
+    ["behemoth_dinosaur_gate", "Behemoth Dinosaur Gate", "🚪"],
+    ["standing_torch", "Standing Torch", "🔥"],
+    ["wall_torch", "Wall-Mounted Torch", "🔥"],
+    ["chandelier", "Chandelier", "💡"],
+    ["ceiling_lamp", "Ceiling Lamp", "💡"],
+    ["search_light", "Search Light", "💡"],
+    ["greenhouse_wall", "Greenhouse Wall", "🌿"],
+    ["greenhouse_ceiling", "Greenhouse Ceiling", "🌿"],
+    ["greenhouse_door", "Greenhouse Door", "🌿"]
   ]
 }
