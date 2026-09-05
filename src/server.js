@@ -4,7 +4,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 
 import { config } from './config.js';
 import { openDatabase } from './db/index.js';
-import { seedIfEmpty } from './db/seed.js';
+import { seed } from './db/seed.js';
 import { Router } from './lib/router.js';
 import { sendError, sendJson, notFound } from './lib/http.js';
 import { attachSession, requireActive } from './middleware/auth.js';
@@ -20,6 +20,7 @@ import { buildNotificationsRouter } from './routes/notifications.routes.js';
 import { buildAdminRouter } from './routes/admin.routes.js';
 import { buildDeveloperRouter } from './routes/developer.routes.js';
 import { buildNewsRouter } from './routes/news.routes.js';
+import { buildDinoRouter } from './routes/dinos.routes.js';
 
 const UPLOAD_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 
@@ -85,7 +86,7 @@ function buildUploadsRouter(db) {
   const router = new Router();
   router.get('/uploads/:subdir/:filename', requireActive, async (req, res) => {
     const { subdir, filename } = req.params;
-    if (!['avatars', 'items'].includes(subdir) || !isSafeUploadFilename(filename)) {
+    if (!['avatars', 'items', 'dinos'].includes(subdir) || !isSafeUploadFilename(filename)) {
       throw notFound('Datei nicht gefunden');
     }
     const ext = path.extname(filename).slice(1).toLowerCase();
@@ -93,7 +94,7 @@ function buildUploadsRouter(db) {
 
     if (db.kind === 'postgres') {
       // Kein lokales Dateisystem verfügbar -> Bild kommt als Blob aus der DB.
-      const table = subdir === 'avatars' ? 'users' : 'items';
+      const table = subdir === 'avatars' ? 'users' : subdir === 'dinos' ? 'dinos' : 'items';
       const dataCol = subdir === 'avatars' ? 'avatar_data' : 'image_data';
       const mimeCol = subdir === 'avatars' ? 'avatar_mime' : 'image_mime';
       if (!/^\d+$/.test(idPart)) throw notFound('Datei nicht gefunden');
@@ -128,7 +129,13 @@ function buildUploadsRouter(db) {
  *  dbPath wird nur verwendet, wenn KEIN DATABASE_URL gesetzt ist (SQLite-Pfad für Tests/lokal). */
 export async function createApp(dbPath, options = {}) {
   const db = await openDatabase({ dbPath, databaseUrl: options.databaseUrl });
-  await seedIfEmpty(db);
+  // Bewusst IMMER seed() statt "nur wenn leer": seed() ist vollständig idempotent
+  // (jede Zeile nutzt ON CONFLICT DO NOTHING), bestehende Daten (Bestellungen,
+  // echte Mitglieder, Änderungen an Tribes) bleiben unangetastet. Der Vorteil:
+  // wenn sich der Katalog (creatures.json/structures.json) ändert, zieht ein
+  // normaler Redeploy die neuen Einträge automatisch nach, ohne dass irgendwer
+  // manuell einen Seed-Befehl auf der laufenden Produktivdatenbank ausführen muss.
+  await seed(db);
 
   const { globalRateLimit, authRateLimit } = createRateLimiters(options.rateLimits);
 
@@ -143,6 +150,7 @@ export async function createApp(dbPath, options = {}) {
     buildAdminRouter(db),
     buildDeveloperRouter(db),
     buildNewsRouter(db),
+    buildDinoRouter(db),
     buildUploadsRouter(db),
   ];
   for (const sub of subRouters) router.routes.push(...sub.routes);
