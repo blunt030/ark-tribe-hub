@@ -450,7 +450,21 @@ export async function renderUsers(mount, ctx) {
             el('span', { style: 'color:var(--muted);font-size:.84rem', text: tribeName(u.tribe_id) }),
             el('span.badge.' + (u.status === 'active' ? 'b-completed' : 'b-pending'), { text: t('ustatus.' + u.status) })
           ),
-          el('div.chips', {}, ...roleButtons)
+          el('div.chips', {}, ...roleButtons,
+            el('button.btn.sm.danger', {
+              text: t('dev.delete_user'),
+              onclick: async () => {
+                const ok = await confirmDialog({ title: t('dev.delete_user_confirm', { name: u.username }), danger: true });
+                if (!ok) return;
+                try {
+                  await api.deleteUser(u.id);
+                  toast(t('dev.user_deleted'));
+                  users = (await api.allUsers()).users;
+                  draw();
+                } catch (err) { toast(err.message, 'err'); }
+              },
+            })
+          )
         );
       })
     ));
