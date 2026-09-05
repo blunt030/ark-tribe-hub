@@ -57,7 +57,7 @@ export async function getOrderWithItems(db, orderId, lang = 'de') {
   if (!order) return null;
   const items = await db.all(
     `SELECT oi.id, oi.item_id, oi.quantity, oi.status, oi.updated_at,
-            i.key AS item_key, i.emoji, i.product_type,
+            i.key AS item_key, i.emoji, i.product_type, i.image_path,
             COALESCE(t.name, t_de.name, i.key) AS item_name
      FROM order_items oi
      JOIN items i ON i.id = oi.item_id
