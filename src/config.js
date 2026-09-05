@@ -68,6 +68,20 @@ export const config = {
   // Render setzt diese Variable automatisch, sobald eine Postgres-Datenbank mit
   // dem Web Service verbunden ist - keine manuelle Konfiguration nötig.
   databaseUrl: process.env.DATABASE_URL || null,
+  // Für Links in E-Mails (z.B. E-Mail-Bestätigung) wird die volle, öffentlich
+  // erreichbare URL gebraucht, nicht nur ein relativer Pfad. RENDER_EXTERNAL_URL
+  // wird von Render selbst automatisch gesetzt - lokal fällt das auf localhost zurück.
+  publicUrl: process.env.APP_PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 3000}`,
+  // E-Mail-Versand (nur aktiv, wenn SMTP_HOST gesetzt ist - siehe mailService.js).
+  smtp: {
+    host: process.env.SMTP_HOST || null,
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    user: process.env.SMTP_USER || null,
+    pass: process.env.SMTP_PASS || null,
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || 'ARK Tribe Hub <no-reply@ark-tribe-hub.local>',
+  },
+  // Empfänger für Plattform-Benachrichtigungen (z.B. neue Registrierung).
+  adminNotificationEmail: process.env.ADMIN_NOTIFICATION_EMAIL || 'support.arkhub@gmail.com',
   corsOrigins: (process.env.CORS_ORIGINS || '')
     .split(',')
     .map((s) => s.trim())
