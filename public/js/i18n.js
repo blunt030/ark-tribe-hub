@@ -12,7 +12,7 @@ export const LANGS = [
 const STRINGS = {
   de: {
     'app.tagline': 'TRIBE HUB', 'nav.collapse': 'Menü ein-/ausklappen',
-    'nav.dashboard': 'Übersicht', 'nav.orders': 'Bestellungen', 'nav.new': 'Neu',
+    'nav.dashboard': 'Startseite', 'nav.orders': 'Offene Bestellungen', 'nav.new': 'Neue Bestellung',
     'nav.open_jobs': 'Aufträge', 'nav.notifications': 'Mitteilungen', 'nav.profile': 'Profil',
     'nav.members': 'Mitglieder', 'nav.news': 'News', 'nav.audit': 'Protokoll', 'nav.tribes': 'Tribes',
     'nav.users': 'Benutzer', 'nav.catalog': 'Katalog', 'nav.more': 'Mehr',
@@ -114,6 +114,8 @@ const STRINGS = {
     'dev.catalog': 'Katalog', 'dev.catalog_sub': '{n} Einträge – Tiere, Eier, Embryos und Sättel.',
     'dev.roles_saved': 'Rollen gespeichert.', 'dev.delete_user': 'Löschen', 'dev.user_deleted': 'Benutzer gelöscht.',
     'dev.delete_user_confirm': '{name} endgültig löschen? Das kann nicht rückgängig gemacht werden.',
+    'dev.test_mail': 'Test-Mail senden', 'dev.test_mail_hint': 'Prüft den E-Mail-Versand unabhängig von einer Registrierung.',
+    'dev.test_mail_ok': 'Mail wurde gesendet.', 'dev.test_mail_fail': 'Mail konnte nicht gesendet werden.',
     'role.developer': 'Developer', 'role.admin': 'Admin',
     'role.breeder_crafter': 'Breeder/Crafter', 'role.member': 'Member',
     'ustatus.active': 'Aktiv', 'ustatus.pending_approval': 'Wartet',
@@ -129,7 +131,7 @@ const STRINGS = {
 
   en: {
     'app.tagline': 'TRIBE HUB', 'nav.collapse': 'Collapse/expand menu',
-    'nav.dashboard': 'Overview', 'nav.orders': 'Orders', 'nav.new': 'New',
+    'nav.dashboard': 'Home', 'nav.orders': 'Open Orders', 'nav.new': 'New Order',
     'nav.open_jobs': 'Jobs', 'nav.notifications': 'Alerts', 'nav.profile': 'Profile',
     'nav.members': 'Members', 'nav.news': 'News', 'nav.audit': 'Activity', 'nav.tribes': 'Tribes',
     'nav.users': 'Users', 'nav.catalog': 'Catalog', 'nav.more': 'More',
@@ -231,6 +233,8 @@ const STRINGS = {
     'dev.catalog': 'Catalog', 'dev.catalog_sub': '{n} entries – creatures, eggs, embryos and saddles.',
     'dev.roles_saved': 'Roles saved.', 'dev.delete_user': 'Delete', 'dev.user_deleted': 'User deleted.',
     'dev.delete_user_confirm': 'Permanently delete {name}? This cannot be undone.',
+    'dev.test_mail': 'Send test email', 'dev.test_mail_hint': 'Checks email delivery independently of a registration.',
+    'dev.test_mail_ok': 'Email was sent.', 'dev.test_mail_fail': 'Email could not be sent.',
     'role.developer': 'Developer', 'role.admin': 'Admin',
     'role.breeder_crafter': 'Breeder/Crafter', 'role.member': 'Member',
     'ustatus.active': 'Active', 'ustatus.pending_approval': 'Waiting',
@@ -246,7 +250,7 @@ const STRINGS = {
 
   fr: {
     'app.tagline': 'TRIBE HUB', 'nav.collapse': 'Réduire/agrandir le menu',
-    'nav.dashboard': 'Aperçu', 'nav.orders': 'Commandes', 'nav.new': 'Nouveau',
+    'nav.dashboard': 'Accueil', 'nav.orders': 'Commandes ouvertes', 'nav.new': 'Nouvelle commande',
     'nav.open_jobs': 'Missions', 'nav.notifications': 'Alertes', 'nav.profile': 'Profil',
     'nav.members': 'Membres', 'nav.news': 'Actualités', 'nav.audit': 'Journal', 'nav.tribes': 'Tribus',
     'nav.users': 'Utilisateurs', 'nav.catalog': 'Catalogue', 'nav.more': 'Plus',
@@ -348,6 +352,8 @@ const STRINGS = {
     'dev.catalog': 'Catalogue', 'dev.catalog_sub': '{n} entrées – créatures, œufs, embryons et selles.',
     'dev.roles_saved': 'Rôles enregistrés.', 'dev.delete_user': 'Supprimer', 'dev.user_deleted': 'Utilisateur supprimé.',
     'dev.delete_user_confirm': 'Supprimer définitivement {name} ? Action irréversible.',
+    'dev.test_mail': 'Envoyer un e-mail test', 'dev.test_mail_hint': 'Teste l\'envoi d\'e-mails indépendamment d\'une inscription.',
+    'dev.test_mail_ok': 'E-mail envoyé.', 'dev.test_mail_fail': 'E-mail non envoyé.',
     'role.developer': 'Développeur', 'role.admin': 'Admin',
     'role.breeder_crafter': 'Breeder/Crafter', 'role.member': 'Membre',
     'ustatus.active': 'Actif', 'ustatus.pending_approval': 'En attente',
@@ -363,7 +369,7 @@ const STRINGS = {
 
   es: {
     'app.tagline': 'TRIBE HUB', 'nav.collapse': 'Contraer/expandir menú',
-    'nav.dashboard': 'Resumen', 'nav.orders': 'Pedidos', 'nav.new': 'Nuevo',
+    'nav.dashboard': 'Inicio', 'nav.orders': 'Pedidos abiertos', 'nav.new': 'Nuevo pedido',
     'nav.open_jobs': 'Encargos', 'nav.notifications': 'Avisos', 'nav.profile': 'Perfil',
     'nav.members': 'Miembros', 'nav.news': 'Noticias', 'nav.audit': 'Registro', 'nav.tribes': 'Tribus',
     'nav.users': 'Usuarios', 'nav.catalog': 'Catálogo', 'nav.more': 'Más',
@@ -465,6 +471,8 @@ const STRINGS = {
     'dev.catalog': 'Catálogo', 'dev.catalog_sub': '{n} entradas: criaturas, huevos, embriones y monturas.',
     'dev.roles_saved': 'Roles guardados.', 'dev.delete_user': 'Eliminar', 'dev.user_deleted': 'Usuario eliminado.',
     'dev.delete_user_confirm': '¿Eliminar definitivamente a {name}? No se puede deshacer.',
+    'dev.test_mail': 'Enviar correo de prueba', 'dev.test_mail_hint': 'Prueba el envío de correo independientemente de un registro.',
+    'dev.test_mail_ok': 'Correo enviado.', 'dev.test_mail_fail': 'No se pudo enviar el correo.',
     'role.developer': 'Desarrollador', 'role.admin': 'Admin',
     'role.breeder_crafter': 'Breeder/Crafter', 'role.member': 'Miembro',
     'ustatus.active': 'Activo', 'ustatus.pending_approval': 'Esperando',

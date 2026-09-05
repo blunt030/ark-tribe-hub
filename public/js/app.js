@@ -25,12 +25,15 @@ function navItems() {
   const isAdmin = user.roles.includes('admin');
   const isBreeder = user.roles.includes('breeder_crafter');
 
+  // Reihenfolge bewusst so: Startseite -> Neue Bestellung -> Offene Bestellungen ->
+  // Profil zuerst (die vier meistgenutzten Punkte), Mitteilungen danach. Admin-/
+  // Developer-Bereiche stehen separat in eigenen Gruppen weiter unten.
   const main = [
     { path: '/', icon: '◈', label: t('nav.dashboard') },
-    { path: '/orders', icon: '☰', label: t('nav.orders') },
     { path: '/orders/new', icon: '＋', label: t('nav.new'), primary: true },
-    { path: '/notifications', icon: '◔', label: t('nav.notifications'), badge: () => unreadCount },
+    { path: '/orders', icon: '☰', label: t('nav.orders') },
     { path: '/profile', icon: '◐', label: t('nav.profile') },
+    { path: '/notifications', icon: '◔', label: t('nav.notifications'), badge: () => unreadCount },
   ];
 
   const tribe = [];
