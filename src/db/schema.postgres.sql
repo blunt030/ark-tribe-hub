@@ -271,3 +271,29 @@ CREATE TABLE IF NOT EXISTS map_markers (
 
 CREATE INDEX IF NOT EXISTS idx_markers_server ON map_markers(server_id);
 CREATE INDEX IF NOT EXISTS idx_markers_tribe ON map_markers(tribe_id);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  assignee_id INTEGER REFERENCES users(id),
+  priority TEXT NOT NULL DEFAULT 'normal',
+  status TEXT NOT NULL DEFAULT 'open',
+  due_date TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+  updated_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_tribe ON tasks(tribe_id, status);
+
+CREATE TABLE IF NOT EXISTS task_comments (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  author_id INTEGER NOT NULL REFERENCES users(id),
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);

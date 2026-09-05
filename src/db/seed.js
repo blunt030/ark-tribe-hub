@@ -25,6 +25,9 @@ const NOTIFICATION_TYPES = [
   'member_accepted',
   'member_rejected',
   'new_comment',
+  'task_assigned',
+  'task_status_changed',
+  'task_comment',
 ];
 
 const CATEGORIES = [
