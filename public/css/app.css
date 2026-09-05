@@ -41,7 +41,13 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body { height: 100%; }
+/* min-height statt height: body darf länger als der Bildschirm werden, wenn der
+   Inhalt es braucht - dann scrollt die ECHTE Seite (window), nicht ein innerer
+   Container. Eine feste height:100% hätte body auf Bildschirmhöhe eingesperrt und
+   ihm dadurch sein EIGENES, inneres Scrollen gegeben (siehe .app min-height weiter
+   unten) - das fühlt sich anders an als normales Scrollen und kann dazu führen,
+   dass man den echten Seitenanfang nicht sauber erreicht. */
+html, body { min-height: 100%; }
 
 body {
   margin: 0;
@@ -67,6 +73,12 @@ html, body {
   overflow-x: hidden;
   overscroll-behavior-x: none;
   touch-action: pan-y;
+  /* viewport-fit=cover (siehe index.html) lässt den Inhalt bis unter Notch/abgerundete
+     Ecken/Kamera-Ausschnitt laufen - ohne diese Polsterung könnte Inhalt dort optisch
+     "abgeschnitten" wirken, besonders im Querformat, wo der sichere Bereich links
+     oder rechts liegt statt oben/unten. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 h1, h2, h3, h4 {
@@ -100,18 +112,22 @@ a:hover { text-decoration: underline; }
 
 .app { display: flex; min-height: 100%; }
 
+/* position:fixed statt sticky: dadurch bleibt die Sidebar garantiert am Bildschirm
+   kleben, unabhängig davon, wie hoch der Hauptinhalt wird - komplett losgelöst vom
+   Dokument-Scroll. .main bekommt im Gegenzug einen linken Rand in Sidebar-Breite,
+   da ein fixiertes Element aus dem normalen Layoutfluss herausfällt. */
 .sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: var(--sidebar-w);
-  flex: 0 0 var(--sidebar-w);
+  height: 100vh;
   background: var(--panel);
   border-right: 1px solid var(--line);
   padding: 20px 14px 24px;
   display: flex;
   flex-direction: column;
   gap: 22px;
-  position: sticky;
-  top: 0;
-  height: 100vh;
 }
 
 .brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; position: relative; }
@@ -191,7 +207,8 @@ a:hover { text-decoration: underline; }
 .who { font-size: .84rem; color: var(--muted); }
 .who b { display: block; color: var(--text); font-family: var(--ff-display); font-size: 1rem; }
 
-.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; margin-left: var(--sidebar-w); transition: margin-left .15s ease; }
+.app:has(.sidebar.collapsed) .main { margin-left: 68px; }
 .topbar { display: none; }
 .content { padding: 26px 30px 40px; max-width: var(--shell-w); width: 100%; }
 .bottomnav { display: none; }
@@ -625,6 +642,7 @@ textarea { resize: vertical; min-height: 74px; }
 
 @media (max-width: 899px) {
   .sidebar { display: none; }
+  .main { margin-left: 0; }
   .topbar {
     display: flex;
     align-items: center;
