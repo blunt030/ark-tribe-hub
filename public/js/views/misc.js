@@ -195,7 +195,7 @@ export async function renderProfile(mount, ctx) {
 function adminLinks(user, go) {
   const links = [];
   if (user.roles.includes('admin') || user.roles.includes('developer')) {
-    links.push(['/members', t('nav.members')], ['/audit', t('nav.audit')]);
+    links.push(['/members', t('nav.members')], ['/news', t('nav.news')], ['/audit', t('nav.audit')]);
   }
   if (user.roles.includes('developer')) {
     links.push(['/tribes', t('nav.tribes')], ['/users', t('nav.users')], ['/catalog', t('nav.catalog')]);
@@ -524,4 +524,110 @@ export async function renderCatalog(mount) {
     el('div', { style: 'margin-top:16px' }, listBox)
   );
   drawList();
+}
+
+/* ========================================================================== */
+/* News-Verwaltung (Admin)                                                    */
+/* ========================================================================== */
+
+export async function renderNews(mount) {
+  mount.append(spinner());
+  let news;
+  try {
+    news = (await api.adminNews()).news;
+  } catch (err) {
+    mount.replaceChildren(emptyState(err.message));
+    return;
+  }
+
+  const bodyInput = el('textarea', { maxlength: '280', placeholder: t('news.body_ph') });
+  const bodyCount = el('span.hint', { text: '0 / 280' });
+  bodyInput.addEventListener('input', () => { bodyCount.textContent = `${bodyInput.value.length} / 280`; });
+  let priority = 'normal';
+  const prioSeg = el('div.seg', {},
+    ...['normal', 'high', 'urgent'].map((p) =>
+      el('button' + (p === 'normal' ? '.on' : ''), {
+        type: 'button',
+        text: t('prio.' + p),
+        onclick: (e) => { priority = p; [...prioSeg.children].forEach((b) => b.classList.remove('on')); e.target.classList.add('on'); },
+      })
+    )
+  );
+  const createBtn = el('button.btn.primary', { text: t('news.create') });
+
+  async function reload() {
+    news = (await api.adminNews()).news;
+    draw();
+  }
+
+  createBtn.addEventListener('click', async () => {
+    if (!bodyInput.value.trim()) return;
+    createBtn.disabled = true;
+    try {
+      await api.createNews({ body: bodyInput.value.trim(), priority });
+      toast(t('news.created'));
+      bodyInput.value = '';
+      bodyCount.textContent = '0 / 280';
+      priority = 'normal';
+      [...prioSeg.children].forEach((b, i) => b.classList.toggle('on', i === 0));
+      await reload();
+    } catch (err) { toast(err.message, 'err'); }
+    finally { createBtn.disabled = false; }
+  });
+
+  function draw() {
+    mount.replaceChildren();
+    mount.append(
+      el('div.page-head', {}, el('div', {}, el('h1', { text: t('news.title') }))),
+      el('div.card', {},
+        bodyInput, bodyCount,
+        el('div', { style: 'margin:12px 0' }, el('div.hint', { text: t('news.priority') }), prioSeg),
+        createBtn
+      ),
+      el('div.section-title', {}, t('news.title'), el('span.c', { text: news.length }))
+    );
+
+    if (!news.length) {
+      mount.append(emptyState(t('news.none')));
+      return;
+    }
+
+    mount.append(
+      el('div.list', {},
+        ...news.map((n) =>
+          el('div.row', {},
+            el('div.grow', {},
+              el('div.rt', { text: n.body }),
+              el('div.rs', {}, priorityBadgeFor(n.priority), ' · ', timeAgo(n.created_at))
+            ),
+            el('span.badge.' + (n.is_active ? 'b-completed' : 'b-cancelled'), { text: n.is_active ? t('news.active') : t('news.inactive') }),
+            el('button.btn.sm', {
+              text: n.is_active ? t('news.deactivate') : t('news.activate'),
+              onclick: async () => {
+                try { await api.updateNews(n.id, { isActive: !n.is_active }); toast(t('news.updated')); await reload(); }
+                catch (err) { toast(err.message, 'err'); }
+              },
+            }),
+            el('button.btn.sm.danger', {
+              text: '✕',
+              'aria-label': t('common.cancel'),
+              onclick: async () => {
+                const ok = await confirmDialog({ title: t('news.delete_confirm'), danger: true });
+                if (!ok) return;
+                try { await api.deleteNews(n.id); toast(t('news.deleted')); await reload(); }
+                catch (err) { toast(err.message, 'err'); }
+              },
+            })
+          )
+        )
+      )
+    );
+  }
+
+  function priorityBadgeFor(p) {
+    if (p === 'normal') return el('span', { text: t('prio.normal') });
+    return el('span.badge.b-' + p, { text: t('prio.' + p) });
+  }
+
+  draw();
 }

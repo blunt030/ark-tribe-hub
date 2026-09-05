@@ -60,7 +60,6 @@ export async function renderNewOrder(mount, ctx) {
   const { go } = ctx;
   const chosen = []; // { itemId, name, emoji, product_type, quantity }
   let priority = 'normal';
-  let activeCategoryId = null;
   let renderToken = 0; // schützt vor überholten Antworten: Kategorie-Vorschau und Suche
                         // laufen beide asynchron - ohne das hier könnte eine spät
                         // eintreffende Kategorie-Antwort eine bereits aktuellere
@@ -68,7 +67,8 @@ export async function renderNewOrder(mount, ctx) {
 
   const chosenBox = el('div.list');
   const resultsBox = el('div.picker-results');
-  const catChips = el('div.chips', { style: 'margin-top:10px' });
+  const typeChips = el('div.chips', { style: 'margin-top:10px' });
+  const habitatChips = el('div.chips', { style: 'margin-top:8px' });
   const search = el('input', {
     type: 'search',
     placeholder: t('order.search_items'),
@@ -134,31 +134,76 @@ export async function renderNewOrder(mount, ctx) {
     }
   }
 
-  async function showCategory(catId) {
-    activeCategoryId = catId;
+  // Zwei Ebenen, wie im Katalog-Dokument gefordert: oben Produkttyp
+  // (Kreaturen/Eier/Embryos/Sättel/Strukturen/Sonstiges), bei "Kreaturen"
+  // zusätzlich der Lebensraum als zweite Ebene (Land/Wasser/Fliegend/Sonstige).
+  const PRODUCT_TYPES = [
+    { key: 'creature', icon: '🦖' },
+    { key: 'egg', icon: '🥚' },
+    { key: 'embryo', icon: '🪺' },
+    { key: 'saddle', icon: '🪑' },
+    { key: 'structure', icon: '🧱' },
+    { key: 'resource', icon: '📦' },
+  ];
+  let creatureCategories = [];
+  let activeProductType = 'creature';
+  let activeHabitatId = null;
+
+  async function loadResults() {
     const myToken = ++renderToken;
-    [...catChips.children].forEach((b) => b.classList.toggle('primary', Number(b.dataset.catid) === catId));
     resultsBox.replaceChildren(spinner());
     try {
-      const { items } = await api.items({ categoryId: catId });
+      const query = { productType: activeProductType };
+      if (activeProductType === 'creature' && activeHabitatId) query.categoryId = activeHabitatId;
+      const { items } = await api.items(query);
       if (myToken !== renderToken) return; // eine neuere Anfrage (Suche o.ä.) lief inzwischen los
       renderResults(items, t('order.no_items'));
-    } catch { /* Kategorie-Wechsel still scheitern lassen */ }
+    } catch { /* still scheitern lassen, UI bleibt bedienbar */ }
   }
 
-  // Kategorien laden: eigene Tiere/Sättel/Eier lassen sich so direkt durchstöbern
-  // und antippen, nicht nur über die Suche finden (Feedback aus dem ersten Test).
-  api.categories().then(({ categories }) => {
-    catChips.replaceChildren(
-      ...categories.map((c) =>
-        el('button.btn.sm', {
+  function drawHabitatChips() {
+    if (activeProductType !== 'creature' || creatureCategories.length === 0) {
+      habitatChips.replaceChildren();
+      return;
+    }
+    habitatChips.replaceChildren(
+      el('button.btn.sm' + (activeHabitatId === null ? '.primary' : ''), {
+        text: t('catalog.all_creatures'),
+        onclick: () => { activeHabitatId = null; drawHabitatChips(); loadResults(); },
+      }),
+      ...creatureCategories.map((c) =>
+        el('button.btn.sm' + (activeHabitatId === c.id ? '.primary' : ''), {
           text: c.name,
-          dataset: { catid: c.id },
-          onclick: () => showCategory(c.id),
+          onclick: () => { activeHabitatId = c.id; drawHabitatChips(); loadResults(); },
         })
       )
     );
-    if (categories.length) showCategory(categories[0].id);
+  }
+
+  function drawTypeChips() {
+    typeChips.replaceChildren(
+      ...PRODUCT_TYPES.map((pt) =>
+        el('button.btn.sm' + (activeProductType === pt.key ? '.primary' : ''), {
+          text: `${pt.icon} ${t('catalog.tab.' + pt.key)}`,
+          onclick: () => {
+            activeProductType = pt.key;
+            activeHabitatId = null;
+            drawTypeChips();
+            drawHabitatChips();
+            loadResults();
+          },
+        })
+      )
+    );
+  }
+
+  drawTypeChips();
+  loadResults();
+  // Lebensraum-Kategorien einmalig laden (nur die vier Kreaturen-Lebensräume,
+  // "structures" ist keine Kreaturen-Unterkategorie).
+  api.categories().then(({ categories }) => {
+    creatureCategories = categories.filter((c) => c.key !== 'structures');
+    drawHabitatChips();
   }).catch(() => {});
 
   let searchTimer;
@@ -166,8 +211,8 @@ export async function renderNewOrder(mount, ctx) {
     clearTimeout(searchTimer);
     const q = search.value.trim();
     if (!q) {
-      // Suche geleert -> zurück zur zuletzt gewählten Kategorie.
-      if (activeCategoryId) showCategory(activeCategoryId);
+      // Suche geleert -> zurück zur aktuell gewählten Produkttyp-/Lebensraum-Ansicht.
+      loadResults();
       return;
     }
     if (q.length < 2) return;
@@ -222,7 +267,8 @@ export async function renderNewOrder(mount, ctx) {
         el('label', { for: 'item-search', text: t('order.add_item') }),
         search
       ),
-      catChips,
+      typeChips,
+      habitatChips,
       resultsBox
     ),
     el('div.section-title', {}, t('order.items')),
@@ -380,9 +426,13 @@ export async function renderOrderDetail(mount, ctx, id) {
       el('div.list', {},
         ...order.items.map((it) => {
           const statusText = el('div.rs', {}, el('span.dot.s-' + it.status), ' ' + t('istatus.' + it.status));
+          const thumb = it.image_path
+            ? el('img', { src: '/uploads/' + it.image_path, alt: '', style: 'width:36px;height:36px;object-fit:cover;border-radius:6px;flex:0 0 36px' })
+            : el('span', { style: 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:0 0 36px', text: it.emoji || '•' });
           const row = el('div.row', {},
+            thumb,
             el('div.grow', {},
-              el('div.rt', { text: `${it.emoji ? it.emoji + ' ' : ''}${it.item_name} × ${it.quantity}` }),
+              el('div.rt', { text: `${it.item_name} × ${it.quantity}` }),
               statusText
             )
           );

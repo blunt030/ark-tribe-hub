@@ -1,4 +1,4 @@
-import { el, spinner, orderCard, emptyState, statusBadge, priorityBadge } from '../ui.js';
+import { el, spinner, orderCard, emptyState, statusBadge, priorityBadge, newsTicker } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 import { api } from '../api.js';
 
@@ -16,10 +16,11 @@ export async function renderDashboard(mount, ctx) {
   const isAdmin = user.roles.includes('admin');
   const isBreeder = user.roles.includes('breeder_crafter');
 
-  const [orders, notifications, members] = await Promise.all([
+  const [orders, notifications, members, newsRes] = await Promise.all([
     api.orders().catch(() => ({ orders: [] })),
     api.notifications().catch(() => ({ notifications: [] })),
     isAdmin && !isDev ? api.members().catch(() => ({ members: [] })) : Promise.resolve({ members: [] }),
+    api.news().catch(() => ({ news: [] })),
   ]);
 
   const all = orders.orders;
@@ -27,6 +28,9 @@ export async function renderDashboard(mount, ctx) {
   const pendingMembers = members.members.filter((m) => m.status === 'pending_approval');
 
   mount.replaceChildren();
+
+  const ticker = newsTicker(newsRes.news);
+  if (ticker) mount.append(ticker);
 
   const sub = isDev ? 'dash.sub_dev' : isAdmin ? 'dash.sub_admin' : isBreeder ? 'dash.sub_breeder' : 'dash.sub_member';
 
