@@ -4,7 +4,7 @@ import { badRequest, unauthorized, conflict } from '../lib/http.js';
 import { config } from '../config.js';
 import { notify } from './notificationService.js';
 import { audit } from './auditService.js';
-import { notifyAdminOfRegistration } from './mailService.js';
+import { notifyAdminOfRegistration, sendVerificationEmail } from './mailService.js';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_WINDOW_MS = 15 * 60 * 1000; // 15 Minuten
@@ -38,11 +38,12 @@ export async function register(db, { tribeSlug, username, email, password }) {
   }
 
   const passwordHash = await hashPassword(password);
+  const emailVerifyToken = email ? randomToken(24) : null;
 
   const result = await db.transaction(async (tx) => {
     const insertResult = await tx.get(
-      `INSERT INTO users (tribe_id, username, email, password_hash, status) VALUES (?,?,?,?, 'pending_approval') RETURNING *`,
-      [tribe.id, username, email || null, passwordHash]
+      `INSERT INTO users (tribe_id, username, email, password_hash, status, email_verify_token) VALUES (?,?,?,?, 'pending_approval', ?) RETURNING *`,
+      [tribe.id, username, email || null, passwordHash, emailVerifyToken]
     );
     const user = insertResult;
 
@@ -63,23 +64,33 @@ export async function register(db, { tribeSlug, username, email, password }) {
   });
   console.log(`[REGISTRATION] Benutzer gespeichert: id=${result.id} username=${result.username} status=${result.status}`);
 
-  // Auf den Mailversand WARTEN (mit Zeitlimit), statt ihn rein im Hintergrund laufen
-  // zu lassen: nur so ist garantiert, dass der Versand (Erfolg oder Fehler) wirklich
-  // zu Ende läuft und im Log auftaucht, bevor die Anfrage beendet ist. Ein Zeitlimit
-  // verhindert, dass eine extrem langsame SMTP-Verbindung die Registrierung spürbar
-  // verzögert - in der Praxis dauert ein normaler Versand nur ein bis zwei Sekunden.
+  // Zwei getrennte Mails: eine an den Admin (Freischaltung nötig), eine an den
+  // Nutzer selbst (E-Mail-Adresse bestätigen). Beide unabhängig voneinander mit
+  // Zeitlimit - eine langsame/fehlschlagende Verbindung blockiert weder die
+  // Registrierung noch die jeweils andere Mail.
   console.log(`[EMAIL] Benachrichtigung angefordert für Registrierung von "${result.username}"`);
-  const mailTimeout = new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'timeout_8s' }), 8000));
+  const withTimeout = (promise) =>
+    Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'timeout_8s' }), 8000))]);
+
   try {
-    const mailResult = await Promise.race([
-      notifyAdminOfRegistration({ username: result.username, tribeName: tribe.name, email: result.email }),
-      mailTimeout,
-    ]);
-    console.log(`[EMAIL] Ergebnis:`, JSON.stringify(mailResult));
+    const adminMailResult = await withTimeout(
+      notifyAdminOfRegistration({ username: result.username, tribeName: tribe.name, email: result.email })
+    );
+    console.log('[EMAIL] Admin-Benachrichtigung Ergebnis:', JSON.stringify(adminMailResult));
   } catch (err) {
-    // Sollte dank der try/catches in mailService.js nie hier landen - falls doch,
-    // MUSS es sichtbar geloggt werden statt still zu verschwinden.
-    console.error(`[EMAIL] Unerwarteter Fehler außerhalb von mailService.js:`, err && err.stack ? err.stack : err);
+    console.error('[EMAIL] Unerwarteter Fehler bei Admin-Benachrichtigung:', err && err.stack ? err.stack : err);
+  }
+
+  if (email && emailVerifyToken) {
+    try {
+      const verifyUrl = `${config.publicUrl}/api/auth/verify-email?token=${emailVerifyToken}`;
+      const verifyMailResult = await withTimeout(
+        sendVerificationEmail({ to: email, username: result.username, verifyUrl })
+      );
+      console.log('[EMAIL] Bestätigungsmail Ergebnis:', JSON.stringify(verifyMailResult));
+    } catch (err) {
+      console.error('[EMAIL] Unerwarteter Fehler bei Bestätigungsmail:', err && err.stack ? err.stack : err);
+    }
   }
 
   return result;
@@ -139,6 +150,16 @@ export async function login(db, { identifier, password, ip, userAgent }) {
 
 export async function logout(db, sessionId) {
   await db.run('DELETE FROM sessions WHERE id = ?', [sessionId]);
+}
+
+/** Bestätigt eine E-Mail-Adresse anhand des Tokens aus der Bestätigungsmail. */
+export async function verifyEmail(db, token) {
+  if (!token) return { ok: false, reason: 'missing_token' };
+  const user = await db.get('SELECT id, username, email_verified FROM users WHERE email_verify_token = ?', [token]);
+  if (!user) return { ok: false, reason: 'invalid_token' };
+  if (user.email_verified) return { ok: true, username: user.username, alreadyVerified: true };
+  await db.run('UPDATE users SET email_verified = 1, email_verify_token = NULL WHERE id = ?', [user.id]);
+  return { ok: true, username: user.username, alreadyVerified: false };
 }
 
 /**

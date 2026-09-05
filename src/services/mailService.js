@@ -86,3 +86,22 @@ export async function notifyAdminOfRegistration({ username, tribeName, email }) 
       `Freischalten im Adminbereich von ARK Tribe Hub.`,
   });
 }
+
+/**
+ * Bestätigungsmail AN den neu registrierten Nutzer selbst (nicht an den Admin) -
+ * getrennter Zweck: bestätigt, dass die angegebene E-Mail-Adresse wirklich ihm/ihr
+ * gehört. Blockiert die Admin-Freischaltung bewusst NICHT - beides läuft parallel,
+ * kein zusätzlicher Blocker für den bestehenden Freischalt-Ablauf.
+ */
+export async function sendVerificationEmail({ to, username, verifyUrl }) {
+  console.log(`[EMAIL] Bestätigungsmail angefordert für neu registrierten Nutzer "${username}"`);
+  return sendMail({
+    to,
+    subject: 'ARK Tribe Hub – Bitte bestätige deine E-Mail-Adresse',
+    text:
+      `Hallo ${username},\n\n` +
+      `bitte bestätige deine E-Mail-Adresse für ARK Tribe Hub, indem du diesen Link öffnest:\n\n` +
+      `${verifyUrl}\n\n` +
+      `Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.`,
+  });
+}
