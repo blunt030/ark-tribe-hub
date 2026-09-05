@@ -149,12 +149,18 @@ export async function renderNewOrder(mount, ctx) {
   let activeProductType = 'creature';
   let activeHabitatId = null;
 
+  // Land/Wasser/Flieger/Sonstige gilt nicht nur für Kreaturen, sondern genauso für
+  // deren Eier/Embryos/Sättel (die haben in der Datenbank dieselbe Kategorie wie
+  // ihre Kreatur - z.B. "Rex Egg" liegt in "Landtiere", genau wie "Rex" selbst).
+  // Nur Strukturen und Sonstiges haben keinen Lebensraum-Bezug.
+  const HABITAT_AWARE_TYPES = ['creature', 'egg', 'embryo', 'saddle'];
+
   async function loadResults() {
     const myToken = ++renderToken;
     resultsBox.replaceChildren(spinner());
     try {
       const query = { productType: activeProductType };
-      if (activeProductType === 'creature' && activeHabitatId) query.categoryId = activeHabitatId;
+      if (HABITAT_AWARE_TYPES.includes(activeProductType) && activeHabitatId) query.categoryId = activeHabitatId;
       const { items } = await api.items(query);
       if (myToken !== renderToken) return; // eine neuere Anfrage (Suche o.ä.) lief inzwischen los
       renderResults(items, t('order.no_items'));
@@ -162,13 +168,13 @@ export async function renderNewOrder(mount, ctx) {
   }
 
   function drawHabitatChips() {
-    if (activeProductType !== 'creature' || creatureCategories.length === 0) {
+    if (!HABITAT_AWARE_TYPES.includes(activeProductType) || creatureCategories.length === 0) {
       habitatChips.replaceChildren();
       return;
     }
     habitatChips.replaceChildren(
       el('button.btn.sm' + (activeHabitatId === null ? '.primary' : ''), {
-        text: t('catalog.all_creatures'),
+        text: t('common.all'),
         onclick: () => { activeHabitatId = null; drawHabitatChips(); loadResults(); },
       }),
       ...creatureCategories.map((c) =>

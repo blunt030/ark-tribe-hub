@@ -18,9 +18,7 @@ export function renderAuth(root, { onSignedIn }) {
       el('div.auth-wrap', {},
         el('div.auth-box', {},
           el('div.auth-logo', {},
-            el('img', { src: '/assets/logo.png', alt: 'ARK Tribe Hub', width: '132', height: '132' }),
-            el('h1', { text: 'ARK Tribe Hub' }),
-            el('p', { text: t('app.tagline') })
+            el('img', { src: '/assets/logo.png', alt: 'ARK Tribe Hub', width: '132', height: '132' })
           ),
           el('div.card', {},
             // Echte Tabs statt zweier gleich benannter Buttons: sonst lesen
@@ -92,7 +90,7 @@ export function renderAuth(root, { onSignedIn }) {
   function registerForm() {
     const tribe = el('input', { type: 'text', required: true, id: 'r-tribe', placeholder: 'oao' });
     const username = el('input', { type: 'text', required: true, id: 'r-user', autocomplete: 'username' });
-    const email = el('input', { type: 'email', id: 'r-mail', autocomplete: 'email' });
+    const email = el('input', { type: 'email', required: true, id: 'r-mail', autocomplete: 'email' });
     const password = el('input', { type: 'password', required: true, minlength: '8', id: 'r-pw', autocomplete: 'new-password' });
     const submit = el('button.btn.primary.block', { type: 'submit', text: t('auth.register') });
 
@@ -104,7 +102,7 @@ export function renderAuth(root, { onSignedIn }) {
           await api.register({
             tribeSlug: tribe.value.trim().toLowerCase(),
             username: username.value.trim(),
-            email: email.value.trim() || undefined,
+            email: email.value.trim(),
             password: password.value,
           });
           mode = 'login';
@@ -145,8 +143,7 @@ export function renderPending(root, { user, onSignOut }) {
     el('div.auth-wrap', {},
       el('div.auth-box', {},
         el('div.auth-logo', {},
-          el('img', { src: '/assets/logo.png', alt: '', width: '132', height: '132' }),
-          el('h1', { text: 'ARK Tribe Hub' })
+          el('img', { src: '/assets/logo.png', alt: 'ARK Tribe Hub', width: '132', height: '132' })
         ),
         el('div.card', {},
           el('h2', { text: t('dash.welcome', { name: user.username }) }),
