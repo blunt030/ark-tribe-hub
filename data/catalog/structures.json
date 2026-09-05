@@ -1,0 +1,40 @@
+{
+  "_meta": {
+    "source_note": "Namen gegen ark.wiki.gg und weitere Quellen recherchiert (Bauserien-Tiers, Vault, Storage Box, Crafting-Stationen, Verteidigung). Bewusst KEINE Mod-Inhalte (z.B. Structures Plus) vermischt - nur Vanilla-ARK:SA. Kein Anspruch auf Vollständigkeit über alle Rampen-/Fenster-/Geländer-Varianten hinweg; als Startset gedacht, über die Developer-Katalog-API jederzeit erweiterbar."
+  },
+  "tiers": [
+    { "key": "thatch", "de": "Reet", "en": "Thatch" },
+    { "key": "wood", "de": "Holz", "en": "Wood" },
+    { "key": "stone", "de": "Stein", "en": "Stone" },
+    { "key": "metal", "de": "Metall", "en": "Metal" },
+    { "key": "tek", "de": "Tek", "en": "Tek" }
+  ],
+  "pieces": [
+    { "key": "foundation", "de": "Fundament", "en": "Foundation" },
+    { "key": "wall", "de": "Wand", "en": "Wall" },
+    { "key": "ceiling", "de": "Decke", "en": "Ceiling" },
+    { "key": "doorframe", "de": "Türrahmen", "en": "Doorframe" },
+    { "key": "door", "de": "Tür", "en": "Door" }
+  ],
+  "extra": [
+    ["storage_box", "Storage Box", "🧰"],
+    ["large_storage_box", "Large Storage Box", "🧰"],
+    ["vault", "Vault", "🔒"],
+    ["smithy", "Smithy", "🔨"],
+    ["fabricator", "Fabricator", "⚙️"],
+    ["chemistry_bench", "Chemistry Bench", "⚗️"],
+    ["industrial_forge", "Industrial Forge", "🔥"],
+    ["refining_forge", "Refining Forge", "🔥"],
+    ["preserving_bin", "Preserving Bin", "🧊"],
+    ["refrigerator", "Refrigerator", "🧊"],
+    ["generator", "Electrical Generator", "🔌"],
+    ["auto_turret", "Auto Turret", "🗼"],
+    ["heavy_auto_turret", "Heavy Auto Turret", "🗼"],
+    ["tek_turret", "Tek Turret", "🗼"],
+    ["plant_species_x", "Plant Species X", "🌱"],
+    ["dinosaur_gateway", "Dinosaur Gateway", "🚪"],
+    ["dinosaur_gate", "Dinosaur Gate", "🚪"],
+    ["behemoth_dinosaur_gateway", "Behemoth Dinosaur Gateway", "🚪"],
+    ["behemoth_dinosaur_gate", "Behemoth Dinosaur Gate", "🚪"]
+  ]
+}
