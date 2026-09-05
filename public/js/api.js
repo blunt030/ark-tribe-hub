@@ -57,6 +57,18 @@ export const api = {
   updateProfile: (b) => call('PATCH', '/api/users/me', b),
   uploadAvatar: (b) => call('POST', '/api/users/me/avatar', b),
   uploadItemImage: (id, b) => call('POST', `/api/items/${id}/image`, b),
+  dinos: (q = {}) => {
+    const p = new URLSearchParams();
+    if (q.search) p.set('search', q.search);
+    if (q.species) p.set('species', q.species);
+    if (q.status) p.set('status', q.status);
+    return call('GET', `/api/dinos?${p}`);
+  },
+  dino: (id) => call('GET', `/api/dinos/${id}`),
+  createDino: (b) => call('POST', '/api/dinos', b),
+  updateDino: (id, b) => call('PATCH', `/api/dinos/${id}`, b),
+  deleteDino: (id) => call('DELETE', `/api/dinos/${id}`),
+  uploadDinoImage: (id, b) => call('POST', `/api/dinos/${id}/image`, b),
   user: (id) => call('GET', `/api/users/${id}`),
   myTribe: () => call('GET', '/api/tribes/me'),
 

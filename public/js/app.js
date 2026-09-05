@@ -8,6 +8,7 @@ import {
   renderNotifications, renderProfile, renderMembers,
   renderAudit, renderTribes, renderUsers, renderCatalog, renderNews,
 } from './views/misc.js';
+import { renderDinos, renderDinoForm, renderDinoDetail } from './views/dinos.js';
 
 const root = document.getElementById('root');
 let user = null;
@@ -36,6 +37,13 @@ function navItems() {
     { path: '/notifications', icon: '◔', label: t('nav.notifications'), badge: () => unreadCount },
   ];
 
+  // Geteilte Tribe-Werkzeuge (fuer ALLE aktiven Mitglieder, nicht nur Admin) -
+  // getrennt von der Admin-Gruppe unten, die bewusst nur Verwaltungsfunktionen zeigt.
+  const tools = [];
+  if (!isDev && user.tribeId) {
+    tools.push({ path: '/dinos', icon: '🦖', label: t('nav.dinos') });
+  }
+
   const tribe = [];
   if (isAdmin) {
     tribe.push({ path: '/members', icon: '⚌', label: t('nav.members') });
@@ -50,11 +58,11 @@ function navItems() {
     platform.push({ path: '/catalog', icon: '⌗', label: t('nav.catalog') });
   }
 
-  return { main, tribe, platform, isBreeder };
+  return { main, tools, tribe, platform, isBreeder };
 }
 
 function buildShell() {
-  const { main, tribe, platform } = navItems();
+  const { main, tools, tribe, platform } = navItems();
   const collapsed = localStorage.getItem('ath_sidebar_collapsed') === '1';
 
   const navLink = (item) => {
@@ -86,6 +94,7 @@ function buildShell() {
     ),
     el('nav.nav', {},
       ...main.map(navLink),
+      ...(tools.length ? [el('div.nav-group-label', { text: t('nav.group.tools') }), ...tools.map(navLink)] : []),
       ...(tribe.length ? [el('div.nav-group-label', { text: t('nav.group.tribe') }), ...tribe.map(navLink)] : []),
       ...(platform.length ? [el('div.nav-group-label', { text: t('nav.group.platform') }), ...platform.map(navLink)] : [])
     ),
@@ -165,6 +174,10 @@ const ROUTES = [
   { re: /^\/profile$/, view: renderProfile },
   { re: /^\/members$/, view: renderMembers },
   { re: /^\/news$/, view: renderNews },
+  { re: /^\/dinos$/, view: renderDinos },
+  { re: /^\/dinos\/new$/, view: renderDinoForm },
+  { re: /^\/dinos\/(\d+)\/edit$/, view: renderDinoForm },
+  { re: /^\/dinos\/(\d+)$/, view: renderDinoDetail },
   { re: /^\/audit$/, view: renderAudit },
   { re: /^\/tribes$/, view: renderTribes },
   { re: /^\/users$/, view: renderUsers },
