@@ -66,8 +66,11 @@ function buildShell() {
 
   const sidebar = el('aside.sidebar' + (collapsed ? '.collapsed' : ''), {},
     el('div.brand', {},
-      el('img', { src: '/assets/logo.png', alt: '', width: '42', height: '42' }),
-      el('div.brand-text', {}, el('b', { text: 'ARK' }), el('span', { text: t('app.tagline') })),
+      el('button.brand-link', {
+        title: t('nav.dashboard'),
+        'aria-label': t('nav.dashboard'),
+        onclick: () => go('/'),
+      }, el('img', { src: '/assets/logo.png', alt: 'ARK Tribe Hub', width: '42', height: '42' })),
       el('button.sidebar-toggle', {
         title: t('nav.collapse'),
         'aria-label': t('nav.collapse'),
@@ -103,8 +106,11 @@ function buildShell() {
   );
 
   const topbar = el('header.topbar', {},
-    el('img', { src: '/assets/logo.png', alt: '' }),
-    el('div.tb-title', { text: 'ARK Tribe Hub' }),
+    el('button.tb-brand', {
+      title: t('nav.dashboard'),
+      'aria-label': t('nav.dashboard'),
+      onclick: () => go('/'),
+    }, el('img', { src: '/assets/logo.png', alt: 'ARK Tribe Hub' })),
     el('button.tb-btn', {
       'aria-label': t('nav.notifications'),
       onclick: () => go('/notifications'),
