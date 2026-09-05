@@ -227,3 +227,37 @@ CREATE TABLE IF NOT EXISTS dinos (
 
 CREATE INDEX IF NOT EXISTS idx_dinos_tribe ON dinos(tribe_id, status);
 CREATE INDEX IF NOT EXISTS idx_dinos_species ON dinos(tribe_id, species);
+
+CREATE TABLE IF NOT EXISTS game_servers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  name TEXT NOT NULL,
+  map_name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  notes TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_servers_tribe ON game_servers(tribe_id);
+
+CREATE TABLE IF NOT EXISTS map_markers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  server_id INTEGER NOT NULL REFERENCES game_servers(id) ON DELETE CASCADE,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  name TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'other',
+  coord_x REAL,
+  coord_y REAL,
+  description TEXT,
+  image_path TEXT,
+  image_data BLOB,
+  image_mime TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_markers_server ON map_markers(server_id);
+CREATE INDEX IF NOT EXISTS idx_markers_tribe ON map_markers(tribe_id);
