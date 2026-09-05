@@ -4,6 +4,8 @@ import { requireString, requireOneOf, parseIdParam } from '../lib/validate.js';
 import { requireRole, requireCsrf } from '../middleware/auth.js';
 import { getUserRoles } from '../services/authService.js';
 import { audit, listAuditLogs } from '../services/auditService.js';
+import { sendMail } from '../services/mailService.js';
+import { config } from '../config.js';
 
 const ALL_ROLES = ['member', 'breeder_crafter', 'admin', 'developer'];
 
@@ -148,6 +150,26 @@ export function buildDeveloperRouter(db) {
       });
     });
     sendJson(res, 200, { ok: true });
+  });
+
+  // Unabhängiger Diagnose-Endpunkt: schickt eine Test-Mail, KOMPLETT losgelöst von der
+  // Registrierung. Damit lässt sich eindeutig trennen, ob (A) SMTP/Gmail grundsätzlich
+  // nicht funktioniert, oder (B) die Registrierung den Mailversand nicht korrekt
+  // aufruft. Nur für Developer sichtbar, loggt niemals Zugangsdaten.
+  router.post('/api/developer/test-mail', requireRole('developer'), requireCsrf, async (req, res) => {
+    const configured = {
+      smtpHost: config.smtp.host || null,
+      smtpPort: config.smtp.port,
+      smtpUser: config.smtp.user || null,
+      adminNotificationEmail: config.adminNotificationEmail || null,
+    };
+    const startedAt = Date.now();
+    const result = await sendMail({
+      to: config.adminNotificationEmail || config.smtp.user,
+      subject: 'ARK Tribe Hub – Test-Mail (Developer-Diagnose)',
+      text: `Dies ist eine Test-Mail, ausgelöst von ${req.user.username} über den Developer-Diagnosebereich, um den Mailversand unabhängig von einer Registrierung zu prüfen.\n\nZeitpunkt: ${new Date().toISOString()}`,
+    });
+    sendJson(res, 200, { result, configured, durationMs: Date.now() - startedAt });
   });
 
   return router;
