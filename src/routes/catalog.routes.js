@@ -33,6 +33,7 @@ export function buildCatalogRouter(db) {
     const lang = langOf(req);
     const search = (req.query.search || '').trim();
     const categoryId = req.query.categoryId ? parseIdParam(req.query.categoryId, 'categoryId') : null;
+    const productType = req.query.productType || null;
 
     let sql = `SELECT i.id, i.key, i.product_type, i.category_id, i.emoji, i.image_path,
                       COALESCE(t.name, t_de.name, i.key) AS name
@@ -44,6 +45,15 @@ export function buildCatalogRouter(db) {
     if (categoryId) {
       sql += ' AND i.category_id = ?';
       params.push(categoryId);
+    }
+    if (productType) {
+      // Mehrere Typen kommagetrennt erlauben (z.B. "egg,embryo" für eine kombinierte
+      // Zucht-Ansicht), ohne die Parametrisierung aufzugeben.
+      const types = productType.split(',').map((s) => s.trim()).filter(Boolean);
+      if (types.length) {
+        sql += ` AND i.product_type IN (${types.map(() => '?').join(',')})`;
+        params.push(...types);
+      }
     }
     if (search) {
       // Parametrisiert (kein String-Concat) -> sicher gegen SQL-Injection, auch bei
@@ -119,7 +129,7 @@ export function buildCatalogRouter(db) {
     const body = await readJsonBody(req);
     const key = requireString(body.key, 'key', { min: 2, max: 60 });
     const categoryId = parseIdParam(body.categoryId, 'categoryId');
-    const productType = requireOneOf(body.productType, ['creature', 'egg', 'embryo', 'saddle', 'resource'], 'productType');
+    const productType = requireOneOf(body.productType, ['creature', 'egg', 'embryo', 'saddle', 'structure', 'resource'], 'productType');
     const names = body.names || {};
 
     const result = await db.transaction(async (tx) => {
