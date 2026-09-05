@@ -54,6 +54,16 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* Nur senkrechtes Scrollen erlauben. Deckt zwei unterschiedliche Ursachen für
+   "seitliches Wischen" gleichzeitig ab: (1) echten horizontalen Überlauf, falls doch
+   irgendwo ein Element zu breit wird, und (2) den elastischen iOS-Bounce-Effekt beim
+   Wischen an den Rändern, der auch ganz OHNE Überlauf auftreten kann. */
+html, body {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
 h1, h2, h3, h4 {
   font-family: var(--ff-display);
   font-weight: 700;
@@ -99,11 +109,43 @@ a:hover { text-decoration: underline; }
   height: 100vh;
 }
 
-.brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; }
-.brand img { width: 42px; height: 42px; object-fit: contain; }
-.brand-text { font-family: var(--ff-display); font-weight: 700; line-height: 1.05; }
-.brand-text b { display: block; font-size: 1.12rem; color: var(--text); letter-spacing: .02em; }
-.brand-text span { display: block; font-size: .74rem; color: var(--gold); letter-spacing: .18em; }
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; position: relative; }
+.brand img { width: 42px; height: 42px; object-fit: contain; flex: 0 0 42px; }
+.brand-text { font-family: var(--ff-display); font-weight: 700; line-height: 1.05; overflow: hidden; }
+.brand-text b { display: block; font-size: 1.12rem; color: var(--text); letter-spacing: .02em; white-space: nowrap; }
+.brand-text span { display: block; font-size: .74rem; color: var(--gold); letter-spacing: .18em; white-space: nowrap; }
+
+.sidebar-toggle {
+  margin-left: auto;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .85rem;
+  flex: 0 0 24px;
+}
+.sidebar-toggle:hover { color: var(--text); border-color: #2E3742; }
+
+/* Eingeklappt: nur Icons, Texte/Beschriftungen ausgeblendet - "wie moderne Apps". */
+.sidebar.collapsed { width: 68px; flex-basis: 68px; padding-left: 10px; padding-right: 10px; }
+.sidebar.collapsed .brand-text,
+.sidebar.collapsed .nav a span:not(.ico),
+.sidebar.collapsed .nav-group-label,
+.sidebar.collapsed .who,
+.sidebar.collapsed .sidebar-foot .chips,
+.sidebar.collapsed .logout-btn span,
+.sidebar.collapsed .sidebar-foot p {
+  display: none;
+}
+.sidebar.collapsed .brand { justify-content: center; }
+.sidebar.collapsed .sidebar-toggle { margin-left: 0; transform: rotate(180deg); }
+.sidebar.collapsed .nav a { justify-content: center; padding: 9px 6px; }
+.sidebar.collapsed .nav a .count { position: absolute; top: 4px; right: 4px; }
+.sidebar.collapsed .sidebar-foot { align-items: center; }
+.sidebar.collapsed .logout-btn { width: 32px; padding: 5px 0; }
+.sidebar.collapsed .logout-btn::before { content: '⏻'; }
 
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-group-label {
@@ -392,6 +434,62 @@ textarea { resize: vertical; min-height: 74px; }
   gap: 10px;
 }
 .section-title .c { font-family: var(--ff-body); font-size: .78rem; color: var(--faint); font-weight: 400; }
+
+/* ---------- News-Ticker ---------------------------------------------------- */
+
+.news-ticker {
+  display: flex;
+  align-items: stretch;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.news-ticker .nt-label {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--ff-display);
+  font-weight: 700;
+  font-size: .8rem;
+  letter-spacing: .05em;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+.nt-track-wrap { flex: 1; overflow: hidden; position: relative; min-height: 40px; }
+.nt-track {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  position: absolute;
+  top: 0; bottom: 0;
+  white-space: nowrap;
+  will-change: transform;
+  animation-name: nt-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  padding: 0 28px;
+}
+.nt-track.paused { animation-play-state: paused; }
+.nt-item { font-size: .9rem; color: var(--text); }
+.nt-item.urgent { color: var(--st-unavailable); font-weight: 600; }
+.nt-item.high { color: var(--orange); font-weight: 600; }
+.nt-sep { color: var(--faint); }
+@keyframes nt-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nt-track { animation: none; position: static; padding-left: 14px; }
+  .nt-track-wrap { overflow-x: auto; }
+}
+@media (max-width: 899px) {
+  .news-ticker .nt-label { font-size: .72rem; padding: 0 10px; }
+  .nt-item { font-size: .84rem; }
+}
 
 /* ---------- Auth-Seite ---------------------------------------------------- */
 
