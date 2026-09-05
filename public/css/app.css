@@ -52,6 +52,11 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
+  /* Generelle Absicherung: ein langes, ungebrochenes Wort (z.B. "Paraceratherium")
+     darf seinen Container nie sprengen. Bricht nur, wenn es wirklich nötig ist -
+     normale Leerzeichen-Umbrüche bleiben unangetastet, kein unnötiges Zerreißen
+     kurzer Wörter. */
+  overflow-wrap: break-word;
 }
 
 /* Nur senkrechtes Scrollen erlauben. Deckt zwei unterschiedliche Ursachen für
@@ -110,10 +115,10 @@ a:hover { text-decoration: underline; }
 }
 
 .brand { display: flex; align-items: center; gap: 11px; padding: 0 6px; position: relative; }
-.brand img { width: 42px; height: 42px; object-fit: contain; flex: 0 0 42px; }
-.brand-text { font-family: var(--ff-display); font-weight: 700; line-height: 1.05; overflow: hidden; }
-.brand-text b { display: block; font-size: 1.12rem; color: var(--text); letter-spacing: .02em; white-space: nowrap; }
-.brand-text span { display: block; font-size: .74rem; color: var(--gold); letter-spacing: .18em; white-space: nowrap; }
+.brand-link { background: none; border: none; padding: 4px; margin: -4px; cursor: pointer; border-radius: 8px; line-height: 0; }
+.brand-link:hover { background: var(--raised); }
+.brand-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.brand-link img { width: 42px; height: 42px; object-fit: contain; display: block; }
 
 .sidebar-toggle {
   margin-left: auto;
@@ -130,7 +135,6 @@ a:hover { text-decoration: underline; }
 
 /* Eingeklappt: nur Icons, Texte/Beschriftungen ausgeblendet - "wie moderne Apps". */
 .sidebar.collapsed { width: 68px; flex-basis: 68px; padding-left: 10px; padding-right: 10px; }
-.sidebar.collapsed .brand-text,
 .sidebar.collapsed .nav a span:not(.ico),
 .sidebar.collapsed .nav-group-label,
 .sidebar.collapsed .who,
@@ -401,7 +405,7 @@ textarea { resize: vertical; min-height: 74px; }
   border-radius: var(--radius);
 }
 .row .grow { flex: 1; min-width: 0; }
-.row .rt { font-family: var(--ff-display); font-weight: 600; font-size: 1.03rem; }
+.row .rt { font-family: var(--ff-display); font-weight: 600; font-size: 1.03rem; overflow-wrap: break-word; }
 .row .rs { font-size: .82rem; color: var(--muted); }
 
 .empty {
@@ -632,8 +636,8 @@ textarea { resize: vertical; min-height: 74px; }
     top: 0;
     z-index: 30;
   }
-  .topbar img { width: 32px; height: 32px; object-fit: contain; }
-  .topbar .tb-title { font-family: var(--ff-display); font-weight: 700; font-size: 1.06rem; flex: 1; }
+  .topbar .tb-brand { background: none; border: none; padding: 4px; margin: -4px; cursor: pointer; border-radius: 8px; line-height: 0; flex: 1; display: flex; }
+  .topbar .tb-brand img { width: 32px; height: 32px; object-fit: contain; display: block; }
   .topbar .tb-btn {
     background: none; border: none; color: var(--muted);
     font-size: 1.18rem; cursor: pointer; padding: 5px 7px; position: relative;
