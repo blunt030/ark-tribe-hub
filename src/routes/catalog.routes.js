@@ -62,7 +62,10 @@ export function buildCatalogRouter(db) {
       const pattern = `%${search.replace(/[%_]/g, '\\$&')}%`;
       params.push(pattern, pattern);
     }
-    sql += ' ORDER BY name LIMIT 500';
+    // Absichtlich deutlich über der aktuellen Kataloggröße (mit Luft für Wachstum) -
+    // ein zu knappes Limit hätte hier sonst alphabetisch spät einsortierte Einträge
+    // (z.B. "Yutyrannus") aus einer ungefilterten Abfrage stillschweigend abgeschnitten.
+    sql += ' ORDER BY name LIMIT 2000';
 
     const rows = await db.all(sql, params);
     sendJson(res, 200, { items: rows });
