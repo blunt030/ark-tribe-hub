@@ -10,10 +10,7 @@ export async function renderNotifications(mount, ctx) {
   const { go, refreshBadges } = ctx;
   mount.append(spinner());
 
-  const [{ notifications }, { preferences }] = await Promise.all([
-    api.notifications(),
-    api.notifPrefs(),
-  ]);
+  const { notifications } = await api.notifications();
 
   mount.replaceChildren();
   mount.append(
@@ -57,41 +54,15 @@ export async function renderNotifications(mount, ctx) {
       : emptyState(t('notif.none'))
   );
 
-  // Jede Art einzeln schaltbar – nicht nur ein globaler Schalter.
+  // Die Einstellungen (welche Art von Benachrichtigung man erhält) leben jetzt im
+  // Profil unter "Einstellungen" - hier auf dieser Seite geht es nur noch um den
+  // eigentlichen Posteingang, das war vorher vermischt.
   mount.append(
-    el('div.section-title', {}, t('notif.settings')),
-    el('p', { style: 'color:var(--muted);font-size:.86rem;margin:-6px 0 12px', text: t('notif.settings_hint') })
+    el('p.hint', { style: 'margin-top:16px;text-align:center' },
+      t('notif.settings_moved'), ' ',
+      el('a', { href: '#/profile', text: t('nav.profile') })
+    )
   );
-
-  const changed = new Map();
-  const saveBtn = el('button.btn.primary', { text: t('profile.save'), disabled: true });
-
-  mount.append(
-    el('div.list', {},
-      ...preferences.map((p) => {
-        const box = el('input', { type: 'checkbox', style: 'width:auto', id: 'p-' + p.type });
-        box.checked = p.enabled;
-        box.addEventListener('change', () => {
-          changed.set(p.type, box.checked);
-          saveBtn.disabled = false;
-        });
-        return el('label.row', { for: 'p-' + p.type, style: 'cursor:pointer' },
-          box,
-          el('div.grow', {}, el('div.rt', { text: t('n.' + p.type) }))
-        );
-      })
-    ),
-    el('div', { style: 'margin-top:14px' }, saveBtn)
-  );
-
-  saveBtn.addEventListener('click', async () => {
-    saveBtn.disabled = true;
-    try {
-      await api.saveNotifPrefs([...changed].map(([type, enabled]) => ({ type, enabled })));
-      toast(t('notif.saved'));
-      changed.clear();
-    } catch (err) { toast(err.message, 'err'); saveBtn.disabled = false; }
-  });
 }
 
 /* ========================================================================== */
@@ -102,9 +73,10 @@ export async function renderProfile(mount, ctx) {
   const { user, onSignOut, reloadUser, go } = ctx;
   mount.append(spinner());
 
-  const [{ user: me }, tribe] = await Promise.all([
+  const [{ user: me }, tribe, { preferences }] = await Promise.all([
     api.profile(),
     api.myTribe().catch(() => null),
+    api.notifPrefs(),
   ]);
 
   mount.replaceChildren();
@@ -145,6 +117,42 @@ export async function renderProfile(mount, ctx) {
     } catch (err) { toast(err.message, 'err'); }
   });
 
+  // Einstellungen -> Benachrichtigungen: jede Art einzeln schaltbar, plus
+  // "Alle an/aus" für den schnellen Fall.
+  const prefChanged = new Map();
+  const prefSaveBtn = el('button.btn.primary', { text: t('profile.save'), disabled: true });
+  const prefBoxes = [];
+
+  function markChanged() { prefSaveBtn.disabled = false; }
+
+  const prefList = el('div.list', {},
+    ...preferences.map((p) => {
+      const box = el('input', { type: 'checkbox', style: 'width:auto', id: 'p-' + p.type });
+      box.checked = p.enabled;
+      box.addEventListener('change', () => { prefChanged.set(p.type, box.checked); markChanged(); });
+      prefBoxes.push(box);
+      return el('label.row', { for: 'p-' + p.type, style: 'cursor:pointer' },
+        box,
+        el('div.grow', {}, el('div.rt', { text: t('n.' + p.type) }))
+      );
+    })
+  );
+
+  prefSaveBtn.addEventListener('click', async () => {
+    prefSaveBtn.disabled = true;
+    try {
+      await api.saveNotifPrefs([...prefChanged].map(([type, enabled]) => ({ type, enabled })));
+      toast(t('notif.saved'));
+      prefChanged.clear();
+    } catch (err) { toast(err.message, 'err'); prefSaveBtn.disabled = false; }
+  });
+
+  const setAll = (enabled) => {
+    for (const box of prefBoxes) {
+      if (box.checked !== enabled) { box.checked = enabled; box.dispatchEvent(new Event('change')); }
+    }
+  };
+
   mount.append(
     el('div.page-head', {}, el('div', {}, el('h1', { text: t('profile.title') }))),
     el('div.card', {},
@@ -179,6 +187,17 @@ export async function renderProfile(mount, ctx) {
           )
         )
       )
+    ),
+    el('div.section-title', { style: 'margin-top:22px' }, '⚙️ ' + t('profile.settings')),
+    el('div.card', {},
+      el('div', { style: 'font-weight:600;margin-bottom:4px', text: '🔔 ' + t('notif.settings') }),
+      el('p', { style: 'color:var(--muted);font-size:.86rem;margin:0 0 12px', text: t('notif.settings_hint') }),
+      el('div.chips', { style: 'margin-bottom:12px' },
+        el('button.btn.sm', { text: t('notif.enable_all'), onclick: () => setAll(true) }),
+        el('button.btn.sm', { text: t('notif.disable_all'), onclick: () => setAll(false) })
+      ),
+      prefList,
+      el('div', { style: 'margin-top:14px' }, prefSaveBtn)
     ),
     adminLinks(user, go),
     el('div', { style: 'margin-top:18px' },
