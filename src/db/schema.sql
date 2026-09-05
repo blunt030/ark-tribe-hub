@@ -197,3 +197,33 @@ CREATE TABLE IF NOT EXISTS news (
 );
 
 CREATE INDEX IF NOT EXISTS idx_news_tribe ON news(tribe_id, is_active);
+
+CREATE TABLE IF NOT EXISTS dinos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  name TEXT NOT NULL,
+  species TEXT NOT NULL,
+  sex TEXT NOT NULL DEFAULT 'unknown',
+  level INTEGER,
+  owner_id INTEGER REFERENCES users(id),
+  server TEXT,
+  map TEXT,
+  location TEXT,
+  generation INTEGER,
+  mutations_male INTEGER NOT NULL DEFAULT 0,
+  mutations_female INTEGER NOT NULL DEFAULT 0,
+  parent_male_id INTEGER REFERENCES dinos(id),
+  parent_female_id INTEGER REFERENCES dinos(id),
+  image_path TEXT,
+  image_data BLOB,
+  image_mime TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  stats TEXT,
+  notes TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_dinos_tribe ON dinos(tribe_id, status);
+CREATE INDEX IF NOT EXISTS idx_dinos_species ON dinos(tribe_id, species);
