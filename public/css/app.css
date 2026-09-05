@@ -592,6 +592,17 @@ textarea { resize: vertical; min-height: 74px; }
 .modal p { color: var(--muted); font-size: .92rem; margin: 0 0 18px; }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
+/* ---------- Server-Karte (schematisches Koordinatenraster) ---------------- */
+
+.map-grid-wrap { margin: 12px 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--panel); }
+.map-grid-svg { width: 100%; height: auto; display: block; aspect-ratio: 1 / 1; }
+.map-grid-bg { fill: #0D1013; pointer-events: none; }
+.map-grid-line { stroke: var(--line); stroke-width: 1; pointer-events: none; }
+.map-dot circle { fill: var(--gold); stroke: #0B0D10; stroke-width: 2; cursor: pointer; transition: r .12s ease; }
+.map-dot text { font-size: 11px; fill: var(--text); pointer-events: none; }
+.map-dot.active circle { fill: var(--red); }
+.active-row { border-color: var(--gold); }
+
 /* ---------- Item-Picker --------------------------------------------------- */
 
 .picker-results { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
