@@ -111,5 +111,6 @@ export const api = {
   updateTribe: (id, b) => call('PATCH', `/api/developer/tribes/${id}`, b),
   allUsers: (tribeId) => call('GET', '/api/developer/users' + (tribeId ? `?tribeId=${tribeId}` : '')),
   setRoles: (id, roles) => call('PATCH', `/api/developer/users/${id}/roles`, { roles }),
+  deleteUser: (id) => call('DELETE', `/api/developer/users/${id}`),
   devAuditLogs: () => call('GET', '/api/developer/audit-logs'),
 };
