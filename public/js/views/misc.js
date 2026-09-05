@@ -524,6 +524,7 @@ export async function renderCatalog(mount) {
 
   let filterCat = null;
   let query = '';
+  let onlyMissingImage = false;
 
   const listBox = el('div.list');
   const search = el('input', { type: 'search', placeholder: t('common.search') });
@@ -532,16 +533,38 @@ export async function renderCatalog(mount) {
     const filtered = items.filter(
       (i) =>
         (!filterCat || i.category_id === filterCat) &&
-        (!query || i.name.toLowerCase().includes(query.toLowerCase()))
+        (!query || i.name.toLowerCase().includes(query.toLowerCase())) &&
+        (!onlyMissingImage || !i.image_path)
     );
     const LIMIT = 60;
     listBox.replaceChildren(
-      ...filtered.slice(0, LIMIT).map((i) =>
-        el('div.row', {},
-          el('div.grow', {}, el('div.rt', { text: `${i.emoji ? i.emoji + ' ' : ''}${i.name}` }), el('div.rs', { text: i.key })),
-          el('span.type-tag.t-' + i.product_type, { text: t('type.' + i.product_type) })
-        )
-      ),
+      ...filtered.slice(0, LIMIT).map((i) => {
+        const thumb = i.image_path
+          ? el('img', { src: '/uploads/' + i.image_path + '?v=' + (i._v || 0), alt: '', style: 'width:34px;height:34px;object-fit:cover;border-radius:6px;flex:0 0 34px' })
+          : el('span', { style: 'width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex:0 0 34px;background:var(--raised);border-radius:6px', text: i.emoji || '•' });
+
+        const fileInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', style: 'display:none' });
+        fileInput.addEventListener('change', async () => {
+          const file = fileInput.files[0];
+          if (!file) return;
+          try {
+            const base64 = await fileToBase64(file);
+            const res = await api.uploadItemImage(i.id, { imageBase64: base64, mimeType: file.type });
+            i.image_path = res.imagePath;
+            i._v = Date.now();
+            toast(t('dev.image_saved'));
+            drawList();
+          } catch (err) { toast(err.message, 'err'); }
+        });
+
+        return el('div.row', {},
+          thumb,
+          el('div.grow', {}, el('div.rt', { text: i.name }), el('div.rs', { text: i.key })),
+          el('span.type-tag.t-' + i.product_type, { text: t('type.' + i.product_type) }),
+          el('button.btn.sm', { text: i.image_path ? t('dev.image_replace') : t('dev.image_add'), onclick: () => fileInput.click() }),
+          fileInput
+        );
+      }),
       filtered.length > LIMIT
         ? el('p.hint', { style: 'padding:10px 2px', text: `${LIMIT} / ${filtered.length} – ${t('common.search')} nutzen, um einzugrenzen.` })
         : null
@@ -558,12 +581,21 @@ export async function renderCatalog(mount) {
     )),
     el('div.card', {}, search,
       el('div.chips', { style: 'margin-top:12px' },
+        el('button.btn.sm', {
+          text: t('dev.only_missing_image'),
+          onclick: (e) => {
+            onlyMissingImage = !onlyMissingImage;
+            e.target.classList.toggle('primary', onlyMissingImage);
+            drawList();
+          },
+        }),
         el('button.btn.sm.primary', {
           text: t('filter.all'),
           onclick: (e) => {
             filterCat = null;
             [...e.target.parentElement.children].forEach((b) => b.classList.remove('primary'));
             e.target.classList.add('primary');
+            onlyMissingImage = false;
             drawList();
           },
         }),
