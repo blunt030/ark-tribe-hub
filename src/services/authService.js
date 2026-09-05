@@ -4,6 +4,7 @@ import { badRequest, unauthorized, conflict } from '../lib/http.js';
 import { config } from '../config.js';
 import { notify } from './notificationService.js';
 import { audit } from './auditService.js';
+import { notifyAdminOfRegistration } from './mailService.js';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_WINDOW_MS = 15 * 60 * 1000; // 15 Minuten
@@ -37,7 +38,7 @@ export async function register(db, { tribeSlug, username, email, password }) {
 
   const passwordHash = await hashPassword(password);
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const insertResult = await tx.get(
       `INSERT INTO users (tribe_id, username, email, password_hash, status) VALUES (?,?,?,?, 'pending_approval') RETURNING *`,
       [tribe.id, username, email || null, passwordHash]
@@ -59,6 +60,19 @@ export async function register(db, { tribeSlug, username, email, password }) {
 
     return { ...user, roles: [] };
   });
+
+  // Auf den Mailversand WARTEN (mit Zeitlimit), statt ihn rein im Hintergrund laufen
+  // zu lassen: nur so ist garantiert, dass der Versand (Erfolg oder Fehler) wirklich
+  // zu Ende läuft und im Log auftaucht, bevor die Anfrage beendet ist. Ein Zeitlimit
+  // verhindert, dass eine extrem langsame SMTP-Verbindung die Registrierung spürbar
+  // verzögert - in der Praxis dauert ein normaler Versand nur ein bis zwei Sekunden.
+  const mailTimeout = new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'timeout' }), 8000));
+  await Promise.race([
+    notifyAdminOfRegistration({ username: result.username, tribeName: tribe.name, email: result.email }),
+    mailTimeout,
+  ]).catch(() => {});
+
+  return result;
 }
 
 async function isLockedOut(db, identifier, ip) {
