@@ -10,6 +10,7 @@ import {
 } from './views/misc.js';
 import { renderDinos, renderDinoForm, renderDinoDetail } from './views/dinos.js';
 import { renderServers, renderServerDetail } from './views/servers.js';
+import { renderTasks, renderTaskForm, renderTaskDetail } from './views/tasks.js';
 
 const root = document.getElementById('root');
 let user = null;
@@ -44,6 +45,7 @@ function navItems() {
   if (!isDev && user.tribeId) {
     tools.push({ path: '/dinos', icon: '🦖', label: t('nav.dinos') });
     tools.push({ path: '/servers', icon: '🗺️', label: t('nav.servers') });
+    tools.push({ path: '/tasks', icon: '✓', label: t('nav.tasks') });
   }
 
   const tribe = [];
@@ -182,6 +184,10 @@ const ROUTES = [
   { re: /^\/dinos\/(\d+)$/, view: renderDinoDetail },
   { re: /^\/servers$/, view: renderServers },
   { re: /^\/servers\/(\d+)$/, view: renderServerDetail },
+  { re: /^\/tasks$/, view: renderTasks },
+  { re: /^\/tasks\/new$/, view: renderTaskForm },
+  { re: /^\/tasks\/(\d+)\/edit$/, view: renderTaskForm },
+  { re: /^\/tasks\/(\d+)$/, view: renderTaskDetail },
   { re: /^\/audit$/, view: renderAudit },
   { re: /^\/tribes$/, view: renderTribes },
   { re: /^\/users$/, view: renderUsers },

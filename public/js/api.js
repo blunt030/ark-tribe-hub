@@ -78,6 +78,16 @@ export const api = {
   updateMarker: (id, b) => call('PATCH', `/api/markers/${id}`, b),
   deleteMarker: (id) => call('DELETE', `/api/markers/${id}`),
   uploadMarkerImage: (id, b) => call('POST', `/api/markers/${id}/image`, b),
+  tasks: (q = {}) => {
+    const p = new URLSearchParams();
+    if (q.status) p.set('status', q.status);
+    return call('GET', `/api/tasks?${p}`);
+  },
+  task: (id) => call('GET', `/api/tasks/${id}`),
+  createTask: (b) => call('POST', '/api/tasks', b),
+  updateTask: (id, b) => call('PATCH', `/api/tasks/${id}`, b),
+  deleteTask: (id) => call('DELETE', `/api/tasks/${id}`),
+  addTaskComment: (id, b) => call('POST', `/api/tasks/${id}/comments`, b),
   user: (id) => call('GET', `/api/users/${id}`),
   myTribe: () => call('GET', '/api/tribes/me'),
 
