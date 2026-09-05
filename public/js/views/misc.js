@@ -418,12 +418,38 @@ export async function renderUsers(mount, ctx) {
   const tribes = (await api.tribes()).tribes;
   const tribeName = (id) => tribes.find((tr) => tr.id === id)?.name || '—';
 
+  const mailResultBox = el('div', { style: 'margin-bottom:16px' });
+  const testMailBtn = el('button.btn', {
+    text: t('dev.test_mail'),
+    onclick: async () => {
+      testMailBtn.disabled = true;
+      mailResultBox.replaceChildren(spinner());
+      try {
+        const { result, configured, durationMs } = await api.testMail();
+        const ok = result.sent;
+        mailResultBox.replaceChildren(
+          el('div.card', { style: `border-color:${ok ? 'var(--st-issued)' : 'var(--st-unavailable)'}` },
+            el('div', { style: 'font-weight:700;margin-bottom:6px', text: ok ? '✅ ' + t('dev.test_mail_ok') : '❌ ' + t('dev.test_mail_fail') }),
+            el('div.hint', { text: `SMTP_HOST: ${configured.smtpHost || '(nicht gesetzt)'} · Port: ${configured.smtpPort} · An: ${configured.adminNotificationEmail || '(nicht gesetzt)'} · ${durationMs}ms` }),
+            !ok ? el('div', { style: 'margin-top:6px;color:var(--st-unavailable);font-size:.88rem', text: result.reason }) : null
+          )
+        );
+      } catch (err) {
+        mailResultBox.replaceChildren(el('div.card', {}, el('div', { text: '❌ ' + err.message })));
+      } finally {
+        testMailBtn.disabled = false;
+      }
+    },
+  });
+
   function draw() {
     mount.replaceChildren();
     mount.append(el('div.page-head', {}, el('div', {},
       el('h1', { text: t('dev.users') }),
       el('p', { text: `${users.length}` })
     )));
+    mount.append(el('div.card', {}, el('div', { style: 'margin-bottom:10px', text: t('dev.test_mail_hint') }), testMailBtn));
+    mount.append(mailResultBox);
 
     mount.append(el('div.list', {},
       ...users.map((u) => {
