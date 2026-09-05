@@ -93,5 +93,62 @@ export function buildDeveloperRouter(db) {
     sendJson(res, 200, { logs: await listAuditLogs(db, { tribeId, limit: 300 }) });
   });
 
+  // Echtes Löschen (nicht nur Deaktivieren) - nur für Developer, mit Schutz gegen
+  // versehentlichen Datenverlust: ein Benutzer mit echten Bestellungen, Kommentaren,
+  // hochgeladenen Katalog-Bildern oder News bleibt erhalten (Fehlermeldung statt
+  // stillem Datenverlust). Zuweisungen und Audit-Einträge werden dagegen nur
+  // "entkoppelt" (auf NULL gesetzt), da sie reine Nebenreferenzen sind, kein
+  // eigentlicher Inhalt des Nutzers.
+  router.delete('/api/developer/users/:id', requireRole('developer'), requireCsrf, async (req, res) => {
+    const id = parseIdParam(req.params.id);
+    if (id === req.user.id) throw badRequest('Du kannst dich nicht selbst löschen');
+
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [id]);
+    if (!user) throw notFound('Benutzer nicht gefunden');
+
+    const roles = await getUserRoles(db, id);
+    if (roles.includes('developer')) {
+      const otherDevs = await db.get(
+        `SELECT COUNT(*) AS c FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE r.key = 'developer' AND ur.user_id != ?`,
+        [id]
+      );
+      if (Number(otherDevs.c) === 0) throw badRequest('Letzter Developer-Account kann nicht gelöscht werden');
+    }
+
+    const [orders, comments, items, news] = await Promise.all([
+      db.get('SELECT COUNT(*) AS c FROM orders WHERE member_id = ?', [id]),
+      db.get('SELECT COUNT(*) AS c FROM order_comments WHERE author_id = ?', [id]),
+      db.get('SELECT COUNT(*) AS c FROM items WHERE created_by = ?', [id]),
+      db.get('SELECT COUNT(*) AS c FROM news WHERE created_by = ?', [id]),
+    ]);
+    const blockers = [];
+    if (Number(orders.c) > 0) blockers.push(`${orders.c} Bestellung(en)`);
+    if (Number(comments.c) > 0) blockers.push(`${comments.c} Kommentar(e)`);
+    if (Number(items.c) > 0) blockers.push(`${items.c} Katalog-Eintrag/Einträge`);
+    if (Number(news.c) > 0) blockers.push(`${news.c} News-Eintrag/Einträge`);
+    if (blockers.length) {
+      throw conflict(`Kann nicht gelöscht werden - dieser Benutzer hat noch: ${blockers.join(', ')}. Stattdessen deaktivieren.`);
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.run('UPDATE orders SET assigned_to = NULL WHERE assigned_to = ?', [id]);
+      await tx.run('UPDATE audit_logs SET actor_id = NULL WHERE actor_id = ?', [id]);
+      await tx.run('DELETE FROM user_roles WHERE user_id = ?', [id]);
+      await tx.run('DELETE FROM sessions WHERE user_id = ?', [id]);
+      await tx.run('DELETE FROM notifications WHERE user_id = ?', [id]);
+      await tx.run('DELETE FROM notification_preferences WHERE user_id = ?', [id]);
+      await tx.run('DELETE FROM users WHERE id = ?', [id]);
+      await audit(tx, {
+        tribeId: user.tribe_id,
+        actorId: req.user.id,
+        action: 'user_deleted',
+        targetType: 'user',
+        targetId: id,
+        meta: { username: user.username },
+      });
+    });
+    sendJson(res, 200, { ok: true });
+  });
+
   return router;
 }
