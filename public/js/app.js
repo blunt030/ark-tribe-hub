@@ -9,6 +9,7 @@ import {
   renderAudit, renderTribes, renderUsers, renderCatalog, renderNews,
 } from './views/misc.js';
 import { renderDinos, renderDinoForm, renderDinoDetail } from './views/dinos.js';
+import { renderServers, renderServerDetail } from './views/servers.js';
 
 const root = document.getElementById('root');
 let user = null;
@@ -42,6 +43,7 @@ function navItems() {
   const tools = [];
   if (!isDev && user.tribeId) {
     tools.push({ path: '/dinos', icon: '🦖', label: t('nav.dinos') });
+    tools.push({ path: '/servers', icon: '🗺️', label: t('nav.servers') });
   }
 
   const tribe = [];
@@ -178,6 +180,8 @@ const ROUTES = [
   { re: /^\/dinos\/new$/, view: renderDinoForm },
   { re: /^\/dinos\/(\d+)\/edit$/, view: renderDinoForm },
   { re: /^\/dinos\/(\d+)$/, view: renderDinoDetail },
+  { re: /^\/servers$/, view: renderServers },
+  { re: /^\/servers\/(\d+)$/, view: renderServerDetail },
   { re: /^\/audit$/, view: renderAudit },
   { re: /^\/tribes$/, view: renderTribes },
   { re: /^\/users$/, view: renderUsers },
