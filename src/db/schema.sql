@@ -180,3 +180,18 @@ CREATE TABLE IF NOT EXISTS ui_strings (
   value TEXT NOT NULL,
   PRIMARY KEY (key, lang)
 );
+
+CREATE TABLE IF NOT EXISTS news (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  body TEXT NOT NULL,
+  priority TEXT NOT NULL DEFAULT 'normal',
+  is_active INTEGER NOT NULL DEFAULT 1,
+  starts_at TEXT,
+  ends_at TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_news_tribe ON news(tribe_id, is_active);

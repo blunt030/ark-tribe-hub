@@ -190,3 +190,18 @@ CREATE TABLE IF NOT EXISTS ui_strings (
   value TEXT NOT NULL,
   PRIMARY KEY (key, lang)
 );
+
+CREATE TABLE IF NOT EXISTS news (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  body TEXT NOT NULL,
+  priority TEXT NOT NULL DEFAULT 'normal',
+  is_active INTEGER NOT NULL DEFAULT 1,
+  starts_at TEXT,
+  ends_at TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+  updated_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+);
+
+CREATE INDEX IF NOT EXISTS idx_news_tribe ON news(tribe_id, is_active);

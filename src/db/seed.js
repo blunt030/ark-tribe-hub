@@ -32,7 +32,26 @@ const CATEGORIES = [
   { key: 'water_creatures', sort: 2, de: 'Wassertiere', en: 'Water Creatures', fr: 'Créatures aquatiques', es: 'Criaturas acuáticas' },
   { key: 'flying_creatures', sort: 3, de: 'Fliegende Tiere', en: 'Flying Creatures', fr: 'Créatures volantes', es: 'Criaturas voladoras' },
   { key: 'misc', sort: 4, de: 'Sonstiges', en: 'Miscellaneous', fr: 'Divers', es: 'Varios' },
+  { key: 'structures', sort: 5, de: 'Strukturen', en: 'Structures', fr: 'Structures', es: 'Estructuras' },
 ];
+const STRUCTURES_FILE = path.resolve(__dirname, '../../data/catalog/structures.json');
+
+function loadStructureCatalog() {
+  const raw = JSON.parse(readFileSync(STRUCTURES_FILE, 'utf8'));
+  const items = [];
+  for (const tier of raw.tiers) {
+    for (const piece of raw.pieces) {
+      items.push({
+        key: `${tier.key}_${piece.key}`,
+        name: { de: `${piece.de} (${tier.de})`, en: `${tier.en} ${piece.en}` },
+      });
+    }
+  }
+  for (const [key, name] of raw.extra) {
+    items.push({ key, name: { de: name, en: name } });
+  }
+  return items;
+}
 
 // Hinweis zu Bildern: Es werden bewusst KEINE echten ARK-Spielgrafiken eingebettet
 // (Copyright von Studio Wildcard / Instinct Games). image_path bleibt leer;
@@ -142,6 +161,17 @@ export async function seed(db) {
       const itemRow = await tx.get('SELECT id FROM items WHERE key = ?', [item.key]);
       await tx.run('INSERT INTO item_translations (item_id, lang, name) VALUES (?,?,?) ON CONFLICT(item_id, lang) DO NOTHING', [itemRow.id, 'de', item.name]);
       await tx.run('INSERT INTO item_translations (item_id, lang, name) VALUES (?,?,?) ON CONFLICT(item_id, lang) DO NOTHING', [itemRow.id, 'en', item.name]);
+    }
+
+    // Strukturen: eigene, recherchierte Liste (data/catalog/structures.json) - eigene
+    // Kategorie "structures", product_type "structure". Dieselbe generische
+    // Item-/Bestell-Logik wie bei allem anderen, kein Sonderweg.
+    const structuresCat = await tx.get('SELECT id FROM categories WHERE key = ?', ['structures']);
+    for (const item of loadStructureCatalog()) {
+      await tx.run('INSERT INTO items (category_id, product_type, key) VALUES (?,?,?) ON CONFLICT(key) DO NOTHING', [structuresCat.id, 'structure', item.key]);
+      const itemRow = await tx.get('SELECT id FROM items WHERE key = ?', [item.key]);
+      await tx.run('INSERT INTO item_translations (item_id, lang, name) VALUES (?,?,?) ON CONFLICT(item_id, lang) DO NOTHING', [itemRow.id, 'de', item.name.de]);
+      await tx.run('INSERT INTO item_translations (item_id, lang, name) VALUES (?,?,?) ON CONFLICT(item_id, lang) DO NOTHING', [itemRow.id, 'en', item.name.en]);
     }
 
     // Demo-Benutzer. WICHTIG: Nur für Entwicklung/Test – Passwort vor echtem
