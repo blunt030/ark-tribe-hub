@@ -19,6 +19,7 @@ import { buildOrdersRouter } from './routes/orders.routes.js';
 import { buildNotificationsRouter } from './routes/notifications.routes.js';
 import { buildAdminRouter } from './routes/admin.routes.js';
 import { buildDeveloperRouter } from './routes/developer.routes.js';
+import { buildNewsRouter } from './routes/news.routes.js';
 
 const UPLOAD_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 
@@ -141,6 +142,7 @@ export async function createApp(dbPath, options = {}) {
     buildNotificationsRouter(db),
     buildAdminRouter(db),
     buildDeveloperRouter(db),
+    buildNewsRouter(db),
     buildUploadsRouter(db),
   ];
   for (const sub of subRouters) router.routes.push(...sub.routes);
