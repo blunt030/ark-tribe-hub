@@ -1,7 +1,7 @@
 import { Router } from '../lib/router.js';
 import { readJsonBody, sendJson, serializeCookie, clearCookie, badRequest } from '../lib/http.js';
 import { requireString, requirePassword, requireEmail } from '../lib/validate.js';
-import { register, login, logout, csrfTokenFor } from '../services/authService.js';
+import { register, login, logout, csrfTokenFor, verifyEmail } from '../services/authService.js';
 import { requireAuth, SESSION_COOKIE } from '../middleware/auth.js';
 import { config } from '../config.js';
 
@@ -36,13 +36,13 @@ export function buildAuthRouter(db, { authRateLimit }) {
     const body = await readJsonBody(req);
     const tribeSlug = requireString(body.tribeSlug, 'tribeSlug', { max: 50 }).toLowerCase();
     const username = requireString(body.username, 'username', { min: 2, max: 40 });
-    const email = body.email ? requireEmail(body.email) : null;
+    const email = requireEmail(body.email);
     const password = requirePassword(body.password);
 
     const user = await register(db, { tribeSlug, username, email, password });
     sendJson(res, 201, {
       user: publicUser(user),
-      message: 'Registrierung erfolgreich. Ein Admin deines Tribes muss dein Konto noch freischalten.',
+      message: 'Registrierung erfolgreich. Ein Admin deines Tribes muss dein Konto noch freischalten. Wir haben dir außerdem eine Mail zur Bestätigung deiner E-Mail-Adresse geschickt.',
     });
   });
 
@@ -82,7 +82,38 @@ export function buildAuthRouter(db, { authRateLimit }) {
     });
   });
 
+  // Direkt aus dem Mail-Programm klickbar: liefert eine einfache, eigenständige
+  // HTML-Seite statt JSON (kein SPA-Umweg nötig für diesen einen Klick).
+  router.get('/api/auth/verify-email', async (req, res) => {
+    const token = req.query.token;
+    const result = await verifyEmail(db, token);
+    const title = result.ok ? '✅ E-Mail bestätigt' : '❌ Link ungültig';
+    const message = result.ok
+      ? (result.alreadyVerified
+          ? `Deine E-Mail-Adresse war bereits bestätigt, ${escapeHtml(result.username)}.`
+          : `Danke, ${escapeHtml(result.username)} - deine E-Mail-Adresse ist jetzt bestätigt.`)
+      : 'Dieser Bestätigungslink ist ungültig oder wurde bereits verwendet.';
+    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARK Tribe Hub – E-Mail-Bestätigung</title>
+<style>
+  body { font-family: system-ui, sans-serif; background:#0B0D10; color:#EDEFF2; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; padding:24px; box-sizing:border-box; }
+  .box { max-width:420px; text-align:center; background:#14171B; border:1px solid #262B31; border-radius:14px; padding:32px 26px; }
+  h1 { font-size:1.3rem; margin:0 0 12px; }
+  p { color:#A7AEB8; line-height:1.5; }
+  a { color:#D4AF37; }
+</style></head><body>
+<div class="box"><h1>${title}</h1><p>${message}</p><p><a href="/">Zurück zu ARK Tribe Hub</a></p></div>
+</body></html>`;
+    res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(html);
+  });
+
   return router;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 export { publicUser };
