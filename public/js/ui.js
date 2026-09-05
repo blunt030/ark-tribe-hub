@@ -142,6 +142,45 @@ export function orderCard(order, onOpen) {
   );
 }
 
+/**
+ * Horizontales News-Laufband. Rendert die Einträge zweimal hintereinander und
+ * animiert exakt über die halbe Breite (-50%) - dadurch wirkt der Übergang nahtlos,
+ * ohne dass am Ende sichtbar "zurückgesprungen" wird. Pausiert bei Hover UND bei
+ * Touch (Mobilgeräte kennen kein :hover), damit man eine Nachricht in Ruhe lesen kann.
+ */
+export function newsTicker(items) {
+  if (!items || items.length === 0) return null;
+
+  const renderItem = (n) =>
+    el('span.nt-item.' + n.priority, {},
+      n.priority === 'urgent' ? '⚠️ ' : n.priority === 'high' ? '❗ ' : '',
+      n.body
+    );
+
+  const sep = () => el('span.nt-sep', { text: '•' });
+
+  function buildTrackChildren() {
+    const out = [];
+    items.forEach((n, i) => { out.push(renderItem(n)); if (i < items.length - 1) out.push(sep()); });
+    return out;
+  }
+
+  const track = el('div.nt-track', {}, ...buildTrackChildren(), sep(), ...buildTrackChildren());
+
+  // Geschwindigkeit an die Textmenge koppeln, damit lange wie kurze Laufbänder
+  // ungefähr gleich schnell WIRKEN (mehr Text -> proportional länger Zeit).
+  const totalChars = items.reduce((sum, n) => sum + n.body.length, 0);
+  const duration = Math.max(18, Math.min(90, totalChars * 0.28));
+  track.style.animationDuration = duration + 's';
+
+  const pause = () => track.classList.add('paused');
+  const resume = () => track.classList.remove('paused');
+
+  const wrap = el('div.nt-track-wrap', { onmouseenter: pause, onmouseleave: resume, ontouchstart: pause, ontouchend: resume }, track);
+
+  return el('div.news-ticker', {}, el('span.nt-label', { text: '🔴 NEWS' }), wrap);
+}
+
 /** Liest eine Datei als Base64 (ohne data:-Präfix) für den Bild-Upload. */
 export function fileToBase64(file) {
   return new Promise((resolve, reject) => {

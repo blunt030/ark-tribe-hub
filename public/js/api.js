@@ -65,6 +65,7 @@ export const api = {
     const p = new URLSearchParams();
     if (q.search) p.set('search', q.search);
     if (q.categoryId) p.set('categoryId', q.categoryId);
+    if (q.productType) p.set('productType', q.productType);
     p.set('lang', getLang());
     return call('GET', `/api/items?${p}`);
   },
@@ -96,6 +97,13 @@ export const api = {
   setBreeder: (id, on, tribeId) =>
     call('PATCH', `/api/admin/members/${id}/roles` + (tribeId ? `?tribeId=${tribeId}` : ''), { breederCrafter: on }),
   auditLogs: () => call('GET', '/api/admin/audit-logs'),
+
+  // News
+  news: () => call('GET', '/api/news'),
+  adminNews: (tribeId) => call('GET', '/api/admin/news' + (tribeId ? `?tribeId=${tribeId}` : '')),
+  createNews: (b, tribeId) => call('POST', '/api/admin/news' + (tribeId ? `?tribeId=${tribeId}` : ''), b),
+  updateNews: (id, b, tribeId) => call('PATCH', `/api/admin/news/${id}` + (tribeId ? `?tribeId=${tribeId}` : ''), b),
+  deleteNews: (id, tribeId) => call('DELETE', `/api/admin/news/${id}` + (tribeId ? `?tribeId=${tribeId}` : '')),
 
   // Developer
   tribes: () => call('GET', '/api/developer/tribes'),

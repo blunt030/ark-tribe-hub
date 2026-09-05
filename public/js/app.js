@@ -6,7 +6,7 @@ import { renderDashboard } from './views/dashboard.js';
 import { renderOrders, renderNewOrder, renderOrderDetail } from './views/orders.js';
 import {
   renderNotifications, renderProfile, renderMembers,
-  renderAudit, renderTribes, renderUsers, renderCatalog,
+  renderAudit, renderTribes, renderUsers, renderCatalog, renderNews,
 } from './views/misc.js';
 
 const root = document.getElementById('root');
@@ -36,6 +36,7 @@ function navItems() {
   const tribe = [];
   if (isAdmin) {
     tribe.push({ path: '/members', icon: '⚌', label: t('nav.members') });
+    tribe.push({ path: '/news', icon: '📰', label: t('nav.news') });
     tribe.push({ path: '/audit', icon: '⎙', label: t('nav.audit') });
   }
 
@@ -51,6 +52,7 @@ function navItems() {
 
 function buildShell() {
   const { main, tribe, platform } = navItems();
+  const collapsed = localStorage.getItem('ath_sidebar_collapsed') === '1';
 
   const navLink = (item) => {
     const a = el('a', { href: '#' + item.path, dataset: { path: item.path } },
@@ -62,10 +64,19 @@ function buildShell() {
     return a;
   };
 
-  const sidebar = el('aside.sidebar', {},
+  const sidebar = el('aside.sidebar' + (collapsed ? '.collapsed' : ''), {},
     el('div.brand', {},
       el('img', { src: '/assets/logo.png', alt: '', width: '42', height: '42' }),
-      el('div.brand-text', {}, el('b', { text: 'ARK' }), el('span', { text: t('app.tagline') }))
+      el('div.brand-text', {}, el('b', { text: 'ARK' }), el('span', { text: t('app.tagline') })),
+      el('button.sidebar-toggle', {
+        title: t('nav.collapse'),
+        'aria-label': t('nav.collapse'),
+        onclick: () => {
+          const nowCollapsed = !sidebar.classList.contains('collapsed');
+          sidebar.classList.toggle('collapsed', nowCollapsed);
+          localStorage.setItem('ath_sidebar_collapsed', nowCollapsed ? '1' : '0');
+        },
+      }, '«')
     ),
     el('nav.nav', {},
       ...main.map(navLink),
@@ -86,7 +97,7 @@ function buildShell() {
           })
         )
       ),
-      el('button.btn.sm.ghost', { text: t('auth.logout'), onclick: signOut }),
+      el('button.btn.sm.ghost.logout-btn', { title: t('auth.logout'), onclick: signOut }, el('span', { text: t('auth.logout') })),
       el('p', { style: 'color:var(--faint);font-size:.7rem;margin:0', text: t('footer.by') })
     )
   );
@@ -144,6 +155,7 @@ const ROUTES = [
   { re: /^\/notifications$/, view: renderNotifications },
   { re: /^\/profile$/, view: renderProfile },
   { re: /^\/members$/, view: renderMembers },
+  { re: /^\/news$/, view: renderNews },
   { re: /^\/audit$/, view: renderAudit },
   { re: /^\/tribes$/, view: renderTribes },
   { re: /^\/users$/, view: renderUsers },
