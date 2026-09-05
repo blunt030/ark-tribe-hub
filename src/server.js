@@ -21,6 +21,7 @@ import { buildAdminRouter } from './routes/admin.routes.js';
 import { buildDeveloperRouter } from './routes/developer.routes.js';
 import { buildNewsRouter } from './routes/news.routes.js';
 import { buildDinoRouter } from './routes/dinos.routes.js';
+import { buildServerMapRouter } from './routes/servers.routes.js';
 
 const UPLOAD_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 
@@ -86,7 +87,7 @@ function buildUploadsRouter(db) {
   const router = new Router();
   router.get('/uploads/:subdir/:filename', requireActive, async (req, res) => {
     const { subdir, filename } = req.params;
-    if (!['avatars', 'items', 'dinos'].includes(subdir) || !isSafeUploadFilename(filename)) {
+    if (!['avatars', 'items', 'dinos', 'markers'].includes(subdir) || !isSafeUploadFilename(filename)) {
       throw notFound('Datei nicht gefunden');
     }
     const ext = path.extname(filename).slice(1).toLowerCase();
@@ -94,7 +95,7 @@ function buildUploadsRouter(db) {
 
     if (db.kind === 'postgres') {
       // Kein lokales Dateisystem verfügbar -> Bild kommt als Blob aus der DB.
-      const table = subdir === 'avatars' ? 'users' : subdir === 'dinos' ? 'dinos' : 'items';
+      const table = subdir === 'avatars' ? 'users' : subdir === 'dinos' ? 'dinos' : subdir === 'markers' ? 'map_markers' : 'items';
       const dataCol = subdir === 'avatars' ? 'avatar_data' : 'image_data';
       const mimeCol = subdir === 'avatars' ? 'avatar_mime' : 'image_mime';
       if (!/^\d+$/.test(idPart)) throw notFound('Datei nicht gefunden');
@@ -151,6 +152,7 @@ export async function createApp(dbPath, options = {}) {
     buildDeveloperRouter(db),
     buildNewsRouter(db),
     buildDinoRouter(db),
+    buildServerMapRouter(db),
     buildUploadsRouter(db),
   ];
   for (const sub of subRouters) router.routes.push(...sub.routes);
