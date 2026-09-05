@@ -24,6 +24,7 @@ async function loadFullUser(db, userId) {
 }
 
 export async function register(db, { tribeSlug, username, email, password }) {
+  console.log(`[REGISTRATION] Anfrage erhalten: tribeSlug=${tribeSlug} username=${username}`);
   username = username?.trim();
   const tribe = await db.get('SELECT * FROM tribes WHERE slug = ? AND is_active = 1', [tribeSlug]);
   if (!tribe) throw badRequest('Unbekannter oder inaktiver Tribe', 'UNKNOWN_TRIBE');
@@ -60,17 +61,26 @@ export async function register(db, { tribeSlug, username, email, password }) {
 
     return { ...user, roles: [] };
   });
+  console.log(`[REGISTRATION] Benutzer gespeichert: id=${result.id} username=${result.username} status=${result.status}`);
 
   // Auf den Mailversand WARTEN (mit Zeitlimit), statt ihn rein im Hintergrund laufen
   // zu lassen: nur so ist garantiert, dass der Versand (Erfolg oder Fehler) wirklich
   // zu Ende läuft und im Log auftaucht, bevor die Anfrage beendet ist. Ein Zeitlimit
   // verhindert, dass eine extrem langsame SMTP-Verbindung die Registrierung spürbar
   // verzögert - in der Praxis dauert ein normaler Versand nur ein bis zwei Sekunden.
-  const mailTimeout = new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'timeout' }), 8000));
-  await Promise.race([
-    notifyAdminOfRegistration({ username: result.username, tribeName: tribe.name, email: result.email }),
-    mailTimeout,
-  ]).catch(() => {});
+  console.log(`[EMAIL] Benachrichtigung angefordert für Registrierung von "${result.username}"`);
+  const mailTimeout = new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'timeout_8s' }), 8000));
+  try {
+    const mailResult = await Promise.race([
+      notifyAdminOfRegistration({ username: result.username, tribeName: tribe.name, email: result.email }),
+      mailTimeout,
+    ]);
+    console.log(`[EMAIL] Ergebnis:`, JSON.stringify(mailResult));
+  } catch (err) {
+    // Sollte dank der try/catches in mailService.js nie hier landen - falls doch,
+    // MUSS es sichtbar geloggt werden statt still zu verschwinden.
+    console.error(`[EMAIL] Unerwarteter Fehler außerhalb von mailService.js:`, err && err.stack ? err.stack : err);
+  }
 
   return result;
 }
