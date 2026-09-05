@@ -56,6 +56,7 @@ export const api = {
   profile: () => call('GET', '/api/users/me'),
   updateProfile: (b) => call('PATCH', '/api/users/me', b),
   uploadAvatar: (b) => call('POST', '/api/users/me/avatar', b),
+  uploadItemImage: (id, b) => call('POST', `/api/items/${id}/image`, b),
   user: (id) => call('GET', `/api/users/${id}`),
   myTribe: () => call('GET', '/api/tribes/me'),
 
