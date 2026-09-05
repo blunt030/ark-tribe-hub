@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runMigrations } from './migrations.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -72,7 +73,9 @@ export async function openDatabase(connectionString) {
   const schema = readFileSync(path.join(__dirname, 'schema.postgres.sql'), 'utf8');
   await pool.query(schema);
 
-  return new PgClient(pool);
+  const client = new PgClient(pool);
+  await runMigrations(client);
+  return client;
 }
 
 class PgClient {

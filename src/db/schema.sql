@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
   tribe_id INTEGER REFERENCES tribes(id),
   username TEXT NOT NULL,               -- entspricht dem ARK-Charakternamen
   email TEXT,
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  email_verify_token TEXT,
   password_hash TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending_approval', -- pending_approval | active | rejected | disabled
   avatar_path TEXT,

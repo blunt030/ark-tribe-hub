@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS users (
   tribe_id INTEGER REFERENCES tribes(id),
   username TEXT NOT NULL,
   email TEXT,
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  email_verify_token TEXT,
   password_hash TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending_approval',
   avatar_path TEXT,

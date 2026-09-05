@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runMigrations } from './migrations.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -17,7 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * deshalb einheitlich mit await auf - lokal bei der Entwicklung genau wie in
  * Produktion, ohne zwei verschiedene Programmiermodelle pflegen zu müssen.
  */
-export function openDatabase(dbPath) {
+export async function openDatabase(dbPath) {
   mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA journal_mode = WAL;');
@@ -26,7 +27,9 @@ export function openDatabase(dbPath) {
   const schema = readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   db.exec(schema);
 
-  return new SqliteClient(db);
+  const client = new SqliteClient(db);
+  await runMigrations(client);
+  return client;
 }
 
 class SqliteClient {
