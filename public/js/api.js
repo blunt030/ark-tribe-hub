@@ -137,6 +137,8 @@ export const api = {
   notifications: () => call('GET', '/api/notifications'),
   markRead: (id) => call('PATCH', `/api/notifications/${id}/read`),
   markAllRead: () => call('POST', '/api/notifications/read-all'),
+  deleteNotification: (id) => call('DELETE', `/api/notifications/${id}`),
+  clearReadNotifications: () => call('POST', '/api/notifications/clear-read'),
   notifPrefs: () => call('GET', '/api/notifications/preferences'),
   saveNotifPrefs: (preferences) => call('PUT', '/api/notifications/preferences', { preferences }),
 
