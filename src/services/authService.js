@@ -50,7 +50,7 @@ export async function register(db, { tribeSlug, username, email, password }) {
     await audit(tx, { tribeId: tribe.id, actorId: user.id, action: 'member_registered', targetType: 'user', targetId: user.id });
 
     const admins = await tx.all(
-      `SELECT u.id FROM users u
+      `SELECT u.id, u.email FROM users u
        JOIN user_roles ur ON ur.user_id = u.id
        JOIN roles r ON r.id = ur.role_id
        WHERE u.tribe_id = ? AND r.key = 'admin' AND u.status = 'active'`,
@@ -60,7 +60,7 @@ export async function register(db, { tribeSlug, username, email, password }) {
       await notify(tx, { userId: admin.id, tribeId: tribe.id, type: 'member_registered', payload: { username: user.username } });
     }
 
-    return { ...user, roles: [] };
+    return { ...user, roles: [], adminEmails: admins.map((a) => a.email).filter(Boolean) };
   });
   console.log(`[REGISTRATION] Benutzer gespeichert: id=${result.id} username=${result.username} status=${result.status}`);
 
@@ -74,7 +74,14 @@ export async function register(db, { tribeSlug, username, email, password }) {
 
   try {
     const adminMailResult = await withTimeout(
-      notifyAdminOfRegistration({ username: result.username, tribeName: tribe.name, email: result.email })
+      notifyAdminOfRegistration({
+        username: result.username,
+        tribeName: tribe.name,
+        email: result.email,
+        // Zusätzlich zur festen Support-Adresse bekommen ALLE aktiven Admins des
+        // betroffenen Tribes eine Mail - sie sind es ja, die freischalten müssen.
+        extraRecipients: result.adminEmails || [],
+      })
     );
     console.log('[EMAIL] Admin-Benachrichtigung Ergebnis:', JSON.stringify(adminMailResult));
   } catch (err) {

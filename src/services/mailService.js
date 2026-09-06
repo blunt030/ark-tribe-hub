@@ -72,11 +72,14 @@ export async function sendMail({ to, subject, text }) {
   }
 }
 
-export async function notifyAdminOfRegistration({ username, tribeName, email }) {
-  console.log(`[EMAIL] Benachrichtigung angefordert (Registrierung ${username}). Ziel-Adresse konfiguriert: ${config.adminNotificationEmail ? 'ja' : 'NEIN'}`);
-  if (!config.adminNotificationEmail) return { sent: false, reason: 'no_admin_email_configured' };
+export async function notifyAdminOfRegistration({ username, tribeName, email, extraRecipients = [] }) {
+  // Empfänger: die feste Support-/Betreiberadresse UND alle Admins des Tribes.
+  // Doppelte Adressen werden entfernt, damit niemand zwei identische Mails bekommt.
+  const recipients = [...new Set([config.adminNotificationEmail, ...extraRecipients].filter(Boolean))];
+  console.log(`[EMAIL] Benachrichtigung angefordert (Registrierung ${username}). Empfänger: ${recipients.length}`);
+  if (!recipients.length) return { sent: false, reason: 'no_admin_email_configured' };
   return sendMail({
-    to: config.adminNotificationEmail,
+    to: recipients.join(', '),
     subject: `ARK Tribe Hub – Neue Registrierung: ${username} (${tribeName})`,
     text:
       `Ein neues Mitglied wartet auf Freischaltung.\n\n` +
