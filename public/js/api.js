@@ -55,6 +55,7 @@ export const api = {
   // Profil & Tribe
   profile: () => call('GET', '/api/users/me'),
   updateProfile: (b) => call('PATCH', '/api/users/me', b),
+  changePassword: (b) => call('POST', '/api/users/me/password', b),
   uploadAvatar: (b) => call('POST', '/api/users/me/avatar', b),
   uploadItemImage: (id, b) => call('POST', `/api/items/${id}/image`, b),
   dinos: (q = {}) => {
