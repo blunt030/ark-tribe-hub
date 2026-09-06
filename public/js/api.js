@@ -88,6 +88,23 @@ export const api = {
   updateTask: (id, b) => call('PATCH', `/api/tasks/${id}`, b),
   deleteTask: (id) => call('DELETE', `/api/tasks/${id}`),
   addTaskComment: (id, b) => call('POST', `/api/tasks/${id}/comments`, b),
+  inventory: (q = {}) => {
+    const p = new URLSearchParams();
+    if (q.location) p.set('location', q.location);
+    if (q.onlyLow) p.set('onlyLow', '1');
+    return call('GET', `/api/inventory?${p}`);
+  },
+  inventoryLocations: () => call('GET', '/api/inventory/locations'),
+  createInventory: (b) => call('POST', '/api/inventory', b),
+  updateInventory: (id, b) => call('PATCH', `/api/inventory/${id}`, b),
+  adjustInventory: (id, delta) => call('POST', `/api/inventory/${id}/adjust`, { delta }),
+  deleteInventory: (id) => call('DELETE', `/api/inventory/${id}`),
+  voiceChannels: () => call('GET', '/api/voice/channels'),
+  createVoiceChannel: (b) => call('POST', '/api/voice/channels', b),
+  deleteVoiceChannel: (id) => call('DELETE', `/api/voice/channels/${id}`),
+  voiceJoin: (id) => call('POST', `/api/voice/channels/${id}/join`, {}),
+  voiceLeave: (id) => call('POST', `/api/voice/channels/${id}/leave`, {}),
+  voiceMute: (id, muted) => call('POST', `/api/voice/channels/${id}/mute`, { muted }),
   user: (id) => call('GET', `/api/users/${id}`),
   myTribe: () => call('GET', '/api/tribes/me'),
 
