@@ -796,6 +796,10 @@ textarea { resize: vertical; min-height: 74px; }
   font-family: var(--ff-display); font-weight: 700; font-size: .95rem;
   color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.brand-ident .bi-name {
+  font-size: .8rem; color: var(--text); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .brand-ident .bi-role {
   font-size: .74rem; color: var(--gold);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
