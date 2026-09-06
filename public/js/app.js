@@ -106,6 +106,7 @@ function buildShell() {
       // Seitenmenue wird der Block per CSS ausgeblendet.
       el('div.brand-ident', {},
         el('div.bi-tribe', { text: user.tribeName || t('nav.group.platform') }),
+        el('div.bi-name', { text: user.username }),
         el('div.bi-role', { text: (user.roles || []).map((r) => t('role.' + r)).join(', ') })
       ),
       el('button.sidebar-toggle', {
@@ -153,6 +154,7 @@ function buildShell() {
     // deshalb muss der Block zusaetzlich in der Topbar stehen.
     el('div.brand-ident', {},
       el('div.bi-tribe', { text: user.tribeName || t('nav.group.platform') }),
+      el('div.bi-name', { text: user.username }),
       el('div.bi-role', { text: (user.roles || []).map((r) => t('role.' + r)).join(', ') })
     ),
     el('button.tb-btn', {
