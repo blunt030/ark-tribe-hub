@@ -23,6 +23,8 @@ import { buildNewsRouter } from './routes/news.routes.js';
 import { buildDinoRouter } from './routes/dinos.routes.js';
 import { buildServerMapRouter } from './routes/servers.routes.js';
 import { buildTaskRouter } from './routes/tasks.routes.js';
+import { buildInventoryRouter } from './routes/inventory.routes.js';
+import { buildVoiceRouter } from './routes/voice.routes.js';
 
 const UPLOAD_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 
@@ -155,6 +157,8 @@ export async function createApp(dbPath, options = {}) {
     buildDinoRouter(db),
     buildServerMapRouter(db),
     buildTaskRouter(db),
+    buildInventoryRouter(db),
+    buildVoiceRouter(db),
     buildUploadsRouter(db),
   ];
   for (const sub of subRouters) router.routes.push(...sub.routes);
