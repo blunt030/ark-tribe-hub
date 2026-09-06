@@ -30,12 +30,12 @@ Postgres-Betrieb beim Hosting geladen (Abschnitt 10) und lokal nie angefasst.
 
 | Benutzer | Tribe | Rollen | Passwort |
 |---|---|---|---|
-| `Blunt` | — (plattformweit) | developer | `ChangeMe123!` |
-| `OaO Admin` | OaO | member + admin | `ChangeMe123!` |
-| `OaO Breeder` | OaO | member + breeder_crafter | `ChangeMe123!` |
-| `Blunt OaO` | OaO | member | `ChangeMe123!` |
-| `BetaTribe Admin` | BetaTribe (Test-Tribe) | member + admin | `ChangeMe123!` |
-| `BetaTribe Member` | BetaTribe (Test-Tribe) | member | `ChangeMe123!` |
+| `Blunt` | — (plattformweit) | developer | *(nur lokal, siehe unten)* |
+| `OaO Admin` | OaO | member + admin | *(nur lokal, siehe unten)* |
+| `OaO Breeder` | OaO | member + breeder_crafter | *(nur lokal, siehe unten)* |
+| `Blunt OaO` | OaO | member | *(nur lokal, siehe unten)* |
+| `BetaTribe Admin` | BetaTribe (Test-Tribe) | member + admin | *(nur lokal, siehe unten)* |
+| `BetaTribe Member` | BetaTribe (Test-Tribe) | member | *(nur lokal, siehe unten)* |
 
 „BetaTribe" ist ein zweiter, rein synthetischer Test-Tribe – ausschließlich dazu da,
 um die Mandantentrennung nachzuprüfen (mit `BetaTribe Admin` einloggen und
@@ -339,7 +339,7 @@ Developer zusätzlich: `POST/PATCH /categories`, `POST/PATCH /items`, `POST /ite
 # 1. Login – csrfToken aus der Antwort merken
 curl -c cookies.txt -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"identifier":"Blunt OaO","password":"ChangeMe123!"}'
+  -d '{"identifier":"Blunt OaO","password":"DEIN_PASSWORT"}'
 
 # 2. Bestellung anlegen
 curl -b cookies.txt -X POST http://localhost:3000/api/orders \
@@ -480,4 +480,16 @@ sich also automatisch mit Tribe OaO, dem Katalog und den Demo-Zugängen.
   meiner Recherche. Für eine reine Testphase unkritisch – für den dauerhaften
   Einsatz mit deinem Tribe müsstest du rechtzeitig auf einen bezahlten
   Datenbank-Plan wechseln (kein Zwang, nur zur Kenntnis).
+
+
+
+## Sicherheit
+
+> **Demo-Konten gibt es ausschließlich lokal.** Sobald `DATABASE_URL` gesetzt ist
+> (also in jeder gehosteten Umgebung), legt der Seed **keine** Konten mit
+> Standardpasswort mehr an – nur noch den Katalog. Lokal lässt sich das Passwort
+> über die Umgebungsvariable `SEED_DEMO_PASSWORD` frei setzen.
+>
+> Jeder Benutzer kann sein Passwort unter **Profil → Einstellungen → Passwort ändern**
+> selbst wechseln. Dabei werden alle anderen angemeldeten Geräte abgemeldet.
 
