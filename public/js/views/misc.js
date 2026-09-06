@@ -214,7 +214,7 @@ export async function renderProfile(mount, ctx) {
 function adminLinks(user, go) {
   const links = [];
   if (!user.roles.includes('developer') && user.tribeId) {
-    links.push(['/dinos', t('nav.dinos')], ['/servers', t('nav.servers')], ['/tasks', t('nav.tasks')]);
+    links.push(['/dinos', t('nav.dinos')], ['/servers', t('nav.servers')], ['/tasks', t('nav.tasks')], ['/inventory', t('nav.inventory')], ['/voice', t('nav.voice')]);
   }
   if (user.roles.includes('admin') || user.roles.includes('developer')) {
     links.push(['/members', t('nav.members')], ['/news', t('nav.news')], ['/audit', t('nav.audit')]);
