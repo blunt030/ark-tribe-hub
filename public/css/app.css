@@ -781,3 +781,22 @@ textarea { resize: vertical; min-height: 74px; }
 @media (min-width: 900px) {
   .only-mobile { display: none !important; }
 }
+
+/* ---------- Tribe + Rang neben dem Logo (Punkt 19) ----------------------- */
+
+.brand-ident { min-width: 0; flex: 1; line-height: 1.15; }
+.brand-ident .bi-tribe {
+  font-family: var(--ff-display); font-weight: 700; font-size: .95rem;
+  color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.brand-ident .bi-role {
+  font-size: .74rem; color: var(--gold);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Eingeklappte Seitenleiste: nur das Logo bleibt sichtbar. */
+.sidebar.collapsed .brand-ident { display: none; }
+/* Mobil steckt der Block in der Topbar - dort kompakter, damit nichts drueckt. */
+@media (max-width: 900px) {
+  .brand-ident .bi-tribe { font-size: .86rem; }
+  .brand-ident .bi-role { font-size: .68rem; }
+}
