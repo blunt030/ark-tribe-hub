@@ -149,6 +149,12 @@ function buildShell() {
       'aria-label': t('nav.dashboard'),
       onclick: () => go('/'),
     }, el('img', { src: '/assets/logo.png', alt: 'ARK Tribe Hub' })),
+    // Tribe + Rang auch mobil (Punkt 19). Die Seitenleiste ist hier ausgeblendet,
+    // deshalb muss der Block zusaetzlich in der Topbar stehen.
+    el('div.brand-ident', {},
+      el('div.bi-tribe', { text: user.tribeName || t('nav.group.platform') }),
+      el('div.bi-role', { text: (user.roles || []).map((r) => t('role.' + r)).join(', ') })
+    ),
     el('button.tb-btn', {
       'aria-label': t('nav.notifications'),
       onclick: () => go('/notifications'),
