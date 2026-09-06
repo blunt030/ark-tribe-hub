@@ -3,6 +3,7 @@ import { sendJson, notFound, badRequest, readJsonBody } from '../lib/http.js';
 import { parseIdParam } from '../lib/validate.js';
 import { requireRole, requireCsrf } from '../middleware/auth.js';
 import { getUserRoles } from '../services/authService.js';
+import { serializeUserAdmin } from '../lib/userSerializer.js';
 import { notify } from '../services/notificationService.js';
 import { audit, listAuditLogs } from '../services/auditService.js';
 
@@ -34,7 +35,7 @@ export function buildAdminRouter(db) {
     const tribeId = effectiveTribeId(req);
     const rows = await db.all('SELECT * FROM users WHERE tribe_id = ? ORDER BY status, username', [tribeId]);
     const members = [];
-    for (const u of rows) members.push({ ...u, roles: await getUserRoles(db, u.id) });
+    for (const u of rows) members.push(serializeUserAdmin(u, { roles: await getUserRoles(db, u.id) }));
     sendJson(res, 200, { members });
   });
 

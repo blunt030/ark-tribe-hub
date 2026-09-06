@@ -3,6 +3,7 @@ import { readJsonBody, sendJson, notFound, conflict, badRequest } from '../lib/h
 import { requireString, requireOneOf, parseIdParam } from '../lib/validate.js';
 import { requireRole, requireCsrf } from '../middleware/auth.js';
 import { getUserRoles } from '../services/authService.js';
+import { serializeUserAdmin } from '../lib/userSerializer.js';
 import { audit, listAuditLogs } from '../services/auditService.js';
 import { sendMail } from '../services/mailService.js';
 import { config } from '../config.js';
@@ -57,7 +58,7 @@ export function buildDeveloperRouter(db) {
       ? await db.all('SELECT * FROM users WHERE tribe_id = ? ORDER BY username', [tribeId])
       : await db.all('SELECT * FROM users ORDER BY tribe_id, username');
     const users = [];
-    for (const u of rows) users.push({ ...u, roles: await getUserRoles(db, u.id) });
+    for (const u of rows) users.push(serializeUserAdmin(u, { roles: await getUserRoles(db, u.id) }));
     sendJson(res, 200, { users });
   });
 
