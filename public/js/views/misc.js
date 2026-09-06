@@ -262,6 +262,9 @@ export async function renderProfile(mount, ctx) {
  */
 function adminLinks(user, go) {
   const links = [];
+  // "Offene Bestellungen" ist aus der Hauptnavigation entfernt (Punkt 18), die
+  // Funktion bleibt aber vollstaendig erhalten und ist hier erreichbar.
+  links.push(['/orders', t('nav.orders')]);
   if (!user.roles.includes('developer') && user.tribeId) {
     links.push(['/dinos', t('nav.dinos')], ['/servers', t('nav.servers')], ['/tasks', t('nav.tasks')], ['/inventory', t('nav.inventory')], ['/voice', t('nav.voice')]);
   }
