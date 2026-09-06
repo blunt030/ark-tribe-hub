@@ -170,13 +170,18 @@ export function newsTicker(items) {
   // Geschwindigkeit an die Textmenge koppeln, damit lange wie kurze Laufbänder
   // ungefähr gleich schnell WIRKEN (mehr Text -> proportional länger Zeit).
   const totalChars = items.reduce((sum, n) => sum + n.body.length, 0);
-  const duration = Math.max(18, Math.min(90, totalChars * 0.28));
+  // Deutlich schnelleres Tempo (Nachrichtenlaufband im Fernsehen) und Dauerschleife.
+  // Der Faktor 0.11 statt 0.28 laesst den Text rund 2,5x zuegiger durchlaufen;
+  // Ober- und Untergrenze verhindern, dass sehr kurze News hetzen oder sehr
+  // lange ewig brauchen. Die Wiederholung kommt aus animation-iteration-count:
+  // infinite im CSS, zusammen mit der doppelt eingefuegten Inhaltsliste - dadurch
+  // gibt es keinen sichtbaren Sprung beim Neustart.
+  const duration = Math.max(10, Math.min(38, totalChars * 0.11));
   track.style.animationDuration = duration + 's';
 
-  const pause = () => track.classList.add('paused');
-  const resume = () => track.classList.remove('paused');
-
-  const wrap = el('div.nt-track-wrap', { onmouseenter: pause, onmouseleave: resume, ontouchstart: pause, ontouchend: resume }, track);
+  // Bewusst KEIN Anhalten bei Mauszeiger/Beruehrung: das Band soll ununterbrochen
+  // weiterlaufen.
+  const wrap = el('div.nt-track-wrap', {}, track);
 
   return el('div.news-ticker', {}, el('span.nt-label', { text: '🔴 NEWS' }), wrap);
 }

@@ -128,6 +128,7 @@ export const api = {
   releaseOrder: (id) => call('POST', `/api/orders/${id}/release`),
   assignOrder: (id, userId) => call('POST', `/api/orders/${id}/assign`, { userId }),
   cancelOrder: (id) => call('POST', `/api/orders/${id}/cancel`),
+  deleteOrder: (id) => call('DELETE', `/api/orders/${id}`),
   setItemStatus: (id, itemId, status) => call('PATCH', `/api/orders/${id}/items/${itemId}`, { status }),
   comments: (id) => call('GET', `/api/orders/${id}/comments`),
   addComment: (id, body) => call('POST', `/api/orders/${id}/comments`, { body }),
