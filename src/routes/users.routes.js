@@ -1,8 +1,9 @@
 import { Router } from '../lib/router.js';
-import { readJsonBody, sendJson, notFound } from '../lib/http.js';
-import { optionalString, requireEmail, parseIdParam } from '../lib/validate.js';
+import { readJsonBody, sendJson, notFound, badRequest, unauthorized } from '../lib/http.js';
+import { optionalString, requireEmail, parseIdParam, requirePassword } from '../lib/validate.js';
 import { requireActive, requireCsrf } from '../middleware/auth.js';
 import { getUserRoles } from '../services/authService.js';
+import { hashPassword, verifyPassword } from '../lib/password.js';
 import { validateImage, saveImageToDisk } from '../lib/imageUpload.js';
 import { audit } from '../services/auditService.js';
 import { config } from '../config.js';
@@ -65,6 +66,29 @@ export function buildUsersRouter(db) {
     }
     const updated = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
     sendJson(res, 200, { user: await serializeProfile(db, { ...updated, roles: req.user.roles }, req.user) });
+  });
+
+  // Passwortwechsel. Verlangt bewusst das AKTUELLE Passwort: sonst könnte jemand
+  // mit einer gekaperten offenen Sitzung das Konto dauerhaft übernehmen. Nach dem
+  // Wechsel werden alle ANDEREN Sitzungen beendet - wer das alte Passwort kannte,
+  // fliegt damit sofort raus, die eigene Sitzung bleibt aber bestehen.
+  router.post('/api/users/me/password', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    const currentPassword = body.currentPassword || '';
+    const newPassword = requirePassword(body.newPassword);
+
+    const me = await db.get('SELECT id, password_hash FROM users WHERE id = ?', [req.user.id]);
+    const ok = await verifyPassword(currentPassword, me.password_hash);
+    if (!ok) throw unauthorized('Das aktuelle Passwort stimmt nicht');
+    if (currentPassword === newPassword) throw badRequest('Das neue Passwort muss sich vom bisherigen unterscheiden');
+
+    const newHash = await hashPassword(newPassword);
+    await db.transaction(async (tx) => {
+      await tx.run('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, req.user.id]);
+      await tx.run('DELETE FROM sessions WHERE user_id = ? AND id != ?', [req.user.id, req.session.id]);
+      await audit(tx, { tribeId: req.user.tribe_id, actorId: req.user.id, action: 'password_changed', targetType: 'user', targetId: req.user.id });
+    });
+    sendJson(res, 200, { ok: true });
   });
 
   router.post('/api/users/me/avatar', requireActive, requireCsrf, async (req, res) => {

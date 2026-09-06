@@ -162,6 +162,10 @@ export function buildDeveloperRouter(db) {
       smtpPort: config.smtp.port,
       smtpUser: config.smtp.user || null,
       adminNotificationEmail: config.adminNotificationEmail || null,
+      versandweg: config.brevoApiKey ? 'HTTPS-API' : 'SMTP',
+      hinweis: config.brevoApiKey
+        ? null
+        : 'SMTP wird in gehosteten Gratis-Tarifen häufig blockiert (Timeout). Bei Problemen BREVO_API_KEY setzen.',
     };
     const startedAt = Date.now();
     const result = await sendMail({
