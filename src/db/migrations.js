@@ -11,6 +11,7 @@
 const MIGRATIONS = [
   { table: 'users', column: 'email_verified', sql: 'ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0' },
   { table: 'users', column: 'email_verify_token', sql: 'ALTER TABLE users ADD COLUMN email_verify_token TEXT' },
+  { table: 'users', column: 'email_verify_expires_at', sql: 'ALTER TABLE users ADD COLUMN email_verify_expires_at TEXT' },
 ];
 
 function isAlreadyExistsError(err) {
