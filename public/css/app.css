@@ -813,3 +813,21 @@ textarea { resize: vertical; min-height: 74px; }
   .brand-ident .bi-tribe { font-size: .86rem; }
   .brand-ident .bi-role { font-size: .68rem; }
 }
+
+/* ---------- Katalog-Silhouetten (ersetzen die alten Aufzaehlungspunkte) ---- */
+
+.item-icon { display: block; color: var(--muted); }
+.icon-box {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--raised); border-radius: 6px; color: var(--gold);
+}
+/* Artikelarten farblich unterscheiden, damit man sie in Listen schnell trennt. */
+.ic-egg, .ic-embryo { color: var(--st-prepared); }
+.ic-saddle { color: var(--gold); }
+.ic-structure { color: var(--muted); }
+.ic-water { color: var(--st-prepared); }
+.ic-flying { color: var(--st-available); }
+
+/* Filterknopf mit Symbol + Text nebeneinander. */
+.btn.with-icon { display: inline-flex; align-items: center; gap: 6px; }
+.btn.with-icon .item-icon { color: currentColor; }
