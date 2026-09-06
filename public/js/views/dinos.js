@@ -5,7 +5,8 @@ import { api } from '../api.js';
 const STAT_KEYS = ['health', 'stamina', 'oxygen', 'food', 'weight', 'melee', 'movement_speed', 'torpor'];
 
 function statusBadge(status) {
-  return el('span.badge.b-' + (status === 'active' ? 'completed' : status === 'dead' ? 'cancelled' : 'pending'), { text: t('dino.status.' + status) });
+  const cls = status === 'active' ? 'completed' : status === 'breeding' ? 'issued' : status === 'reserve' ? 'role' : 'pending';
+  return el('span.badge.b-' + cls, { text: t('dino.status.' + status) });
 }
 
 /* ========================================================================== */
@@ -63,7 +64,7 @@ export async function renderDinos(mount, ctx) {
     el('div.card', {}, search,
       el('div.chips', { style: 'margin-top:12px' },
         el('button.btn.sm.primary', { text: t('common.all'), onclick: (e) => { statusFilter = null; setActive(e); draw(); } }),
-        ...['active', 'dead', 'traded', 'lost'].map((s) =>
+        ...['active', 'breeding', 'paused', 'reserve'].map((s) =>
           el('button.btn.sm', { text: t('dino.status.' + s), onclick: (e) => { statusFilter = s; setActive(e); draw(); } })
         )
       )
@@ -110,7 +111,7 @@ export async function renderDinoForm(mount, ctx, idParam) {
   const generation = el('input', { type: 'number', min: '0', value: d.generation ?? '' });
   const mutM = el('input', { type: 'number', min: '0', value: d.mutations_male ?? 0 });
   const mutF = el('input', { type: 'number', min: '0', value: d.mutations_female ?? 0 });
-  const status = el('select', {}, ...['active', 'dead', 'traded', 'lost'].map((s) => el('option', { value: s, text: t('dino.status.' + s), selected: (d.status || 'active') === s })));
+  const status = el('select', {}, ...['active', 'breeding', 'paused', 'reserve'].map((s) => el('option', { value: s, text: t('dino.status.' + s), selected: (d.status || 'active') === s })));
   const notes = el('textarea', { value: d.notes || '' });
 
   const otherDinos = allDinos.filter((x) => x.id !== editingId);
