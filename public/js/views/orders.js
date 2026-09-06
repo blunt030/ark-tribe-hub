@@ -1,4 +1,5 @@
 import { el, spinner, orderCard, orderTitle, emptyState, statusBadge, priorityBadge, typeTag, toast, confirmDialog } from '../ui.js';
+import { iconFuerItem, itemIcon } from '../icons.js';
 import { t, timeAgo } from '../i18n.js';
 import { api, ApiError } from '../api.js';
 
@@ -117,7 +118,7 @@ export async function renderNewOrder(mount, ctx) {
     },
       it.image_path
         ? el('img', { src: '/uploads/' + it.image_path, alt: '', style: 'width:28px;height:28px;object-fit:cover;border-radius:4px;flex:0 0 28px' })
-        : el('span', { style: 'width:28px;text-align:center;flex:0 0 28px', text: it.emoji || '•' }),
+        : el('span.icon-box', { style: 'width:28px;height:28px;flex:0 0 28px' }, iconFuerItem(it)),
       el('span.pt', { text: it.name }),
       typeTag(it.product_type)
     );
@@ -137,13 +138,15 @@ export async function renderNewOrder(mount, ctx) {
   // Zwei Ebenen, wie im Katalog-Dokument gefordert: oben Produkttyp
   // (Kreaturen/Eier/Embryos/Sättel/Strukturen/Sonstiges), bei "Kreaturen"
   // zusätzlich der Lebensraum als zweite Ebene (Land/Wasser/Fliegend/Sonstige).
+  // Silhouetten statt Emojis: das bisherige Sattel-Emoji zeigte einen STUHL,
+  // was mit einem Reitsattel nichts zu tun hat.
   const PRODUCT_TYPES = [
-    { key: 'creature', icon: '🦖' },
-    { key: 'egg', icon: '🥚' },
-    { key: 'embryo', icon: '🪺' },
-    { key: 'saddle', icon: '🪑' },
-    { key: 'structure', icon: '🧱' },
-    { key: 'resource', icon: '📦' },
+    { key: 'creature', art: 'creature' },
+    { key: 'egg', art: 'egg' },
+    { key: 'embryo', art: 'embryo' },
+    { key: 'saddle', art: 'saddle' },
+    { key: 'structure', art: 'structure' },
+    { key: 'resource', art: 'structure' },
   ];
   let creatureCategories = [];
   let activeProductType = 'creature';
@@ -189,8 +192,7 @@ export async function renderNewOrder(mount, ctx) {
   function drawTypeChips() {
     typeChips.replaceChildren(
       ...PRODUCT_TYPES.map((pt) =>
-        el('button.btn.sm' + (activeProductType === pt.key ? '.primary' : ''), {
-          text: `${pt.icon} ${t('catalog.tab.' + pt.key)}`,
+        el('button.btn.sm.with-icon' + (activeProductType === pt.key ? '.primary' : ''), {
           onclick: () => {
             activeProductType = pt.key;
             activeHabitatId = null;
@@ -198,7 +200,7 @@ export async function renderNewOrder(mount, ctx) {
             drawHabitatChips();
             loadResults();
           },
-        })
+        }, itemIcon(pt.art, 16), el('span', { text: t('catalog.tab.' + pt.key) }))
       )
     );
   }
@@ -453,7 +455,7 @@ export async function renderOrderDetail(mount, ctx, id) {
           const statusText = el('div.rs', {}, el('span.dot.s-' + it.status), ' ' + t('istatus.' + it.status));
           const thumb = it.image_path
             ? el('img', { src: '/uploads/' + it.image_path, alt: '', style: 'width:36px;height:36px;object-fit:cover;border-radius:6px;flex:0 0 36px' })
-            : el('span', { style: 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:0 0 36px', text: it.emoji || '•' });
+            : el('span.icon-box', { style: 'width:36px;height:36px;flex:0 0 36px' }, iconFuerItem(it));
           const row = el('div.row', {},
             thumb,
             el('div.grow', {},

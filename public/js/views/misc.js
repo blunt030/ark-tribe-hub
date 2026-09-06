@@ -1,4 +1,5 @@
 import { el, spinner, emptyState, toast, confirmDialog, fileToBase64 } from '../ui.js';
+import { iconFuerItem } from '../icons.js';
 import { t, timeAgo, LANGS, getLang, setLang } from '../i18n.js';
 import { api } from '../api.js';
 
@@ -607,7 +608,7 @@ export async function renderCatalog(mount) {
       ...filtered.slice(0, LIMIT).map((i) => {
         const thumb = i.image_path
           ? el('img', { src: '/uploads/' + i.image_path + '?v=' + (i._v || 0), alt: '', style: 'width:34px;height:34px;object-fit:cover;border-radius:6px;flex:0 0 34px' })
-          : el('span', { style: 'width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex:0 0 34px;background:var(--raised);border-radius:6px', text: i.emoji || '•' });
+          : el('span.icon-box', { style: 'width:34px;height:34px;flex:0 0 34px' }, iconFuerItem(i));
 
         const fileInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', style: 'display:none' });
         fileInput.addEventListener('change', async () => {
