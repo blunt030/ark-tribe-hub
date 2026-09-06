@@ -81,6 +81,14 @@ export function buildOrdersRouter(db) {
     sendJson(res, 200, { order });
   });
 
+  // Endgültiges Löschen. Berechtigung wird im Service geprüft (Ersteller oder
+  // Admin des eigenen Tribes) - bewusst NICHT nur über einen versteckten Button.
+  router.delete('/api/orders/:id', requireActive, requireCsrf, async (req, res) => {
+    const id = parseIdParam(req.params.id);
+    await orderService.deleteOrder(db, id, req.user);
+    sendJson(res, 200, { ok: true });
+  });
+
   router.get('/api/orders/:id/comments', requireActive, async (req, res) => {
     const id = parseIdParam(req.params.id);
     const comments = await orderService.listComments(db, id, req.user);
