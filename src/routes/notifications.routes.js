@@ -1,5 +1,5 @@
 import { Router } from '../lib/router.js';
-import { readJsonBody, sendJson, badRequest } from '../lib/http.js';
+import { readJsonBody, sendJson, badRequest, notFound } from '../lib/http.js';
 import { parseIdParam } from '../lib/validate.js';
 import { requireActive, requireCsrf } from '../middleware/auth.js';
 import * as notificationService from '../services/notificationService.js';
@@ -17,6 +17,21 @@ export function buildNotificationsRouter(db) {
     const id = parseIdParam(req.params.id);
     await notificationService.markRead(db, req.user.id, id);
     sendJson(res, 200, { ok: true });
+  });
+
+  // Einzelne Meldung entfernen. Die Besitzpruefung steckt in der Abfrage selbst
+  // (user_id), deshalb kann niemand fremde Meldungen loeschen.
+  router.delete('/api/notifications/:id', requireActive, requireCsrf, async (req, res) => {
+    const id = parseIdParam(req.params.id);
+    const geloescht = await notificationService.remove(db, id, req.user.id);
+    if (!geloescht) throw notFound('Mitteilung nicht gefunden');
+    sendJson(res, 200, { ok: true });
+  });
+
+  // Alle bereits gelesenen auf einmal aufraeumen.
+  router.post('/api/notifications/clear-read', requireActive, requireCsrf, async (req, res) => {
+    const anzahl = await notificationService.removeAllRead(db, req.user.id);
+    sendJson(res, 200, { removed: anzahl });
   });
 
   router.post('/api/notifications/read-all', requireActive, requireCsrf, async (req, res) => {
