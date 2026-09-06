@@ -42,16 +42,32 @@ const STRUCTURES_FILE = path.resolve(__dirname, '../../data/catalog/structures.j
 function loadStructureCatalog() {
   const raw = JSON.parse(readFileSync(STRUCTURES_FILE, 'utf8'));
   const items = [];
+  // Baustufe x Bauteil: der Name wird je Sprache passend zusammengesetzt. Im
+  // Deutschen/Spanischen steht das Material hinten in Klammern ("Wand (Metall)"),
+  // im Englischen davor ("Metal Wall") - das ist die jeweils natuerliche Form.
   for (const tier of raw.tiers) {
     for (const piece of raw.pieces) {
       items.push({
         key: `${tier.key}_${piece.key}`,
-        name: { de: `${piece.de} (${tier.de})`, en: `${tier.en} ${piece.en}` },
+        cat: piece.cat,
+        name: {
+          de: `${piece.de} (${tier.de})`,
+          en: `${tier.en} ${piece.en}`,
+          fr: `${piece.fr} (${tier.fr})`,
+          es: `${piece.es} (${tier.es})`,
+        },
       });
     }
   }
-  for (const [key, name] of raw.extra) {
-    items.push({ key, name: { de: name, en: name } });
+  // Eigenstaendige Strukturen (Lagerung, Herstellung, Verteidigung, ...):
+  // liegen bereits vollstaendig uebersetzt in structures.json.
+  for (const ex of raw.extra) {
+    items.push({
+      key: ex.key,
+      cat: ex.cat,
+      emoji: ex.emoji,
+      name: { de: ex.de, en: ex.en, fr: ex.fr, es: ex.es },
+    });
   }
   return items;
 }
@@ -173,13 +189,17 @@ export async function seed(db) {
     for (const item of loadStructureCatalog()) {
       await tx.run('INSERT INTO items (category_id, product_type, key) VALUES (?,?,?) ON CONFLICT(key) DO NOTHING', [structuresCat.id, 'structure', item.key]);
       const itemRow = await tx.get('SELECT id FROM items WHERE key = ?', [item.key]);
-      await tx.run('INSERT INTO item_translations (item_id, lang, name) VALUES (?,?,?) ON CONFLICT(item_id, lang) DO NOTHING', [itemRow.id, 'de', item.name.de]);
-      await tx.run('INSERT INTO item_translations (item_id, lang, name) VALUES (?,?,?) ON CONFLICT(item_id, lang) DO NOTHING', [itemRow.id, 'en', item.name.en]);
+      // ALLE unterstuetzten Sprachen schreiben - vorher nur de/en, wodurch bei
+      // FR/ES (und bei den Extras sogar auf Deutsch) englische Namen durchschlugen.
+      for (const lang of config.supportedLangs) {
+        const name = item.name[lang] || item.name.en;
+        await tx.run('INSERT INTO item_translations (item_id, lang, name) VALUES (?,?,?) ON CONFLICT(item_id, lang) DO NOTHING', [itemRow.id, lang, name]);
+      }
     }
 
     // Demo-Benutzer. WICHTIG: Nur für Entwicklung/Test – Passwort vor echtem
     // Einsatz ändern bzw. Demo-Accounts deaktivieren (siehe README "Sicherheit").
-    const demoPasswordHash = await hashPassword('ChangeMe123!');
+    const demoPasswordHash = await hashPassword(process.env.SEED_DEMO_PASSWORD || 'ChangeMe123!');
 
     async function ensureUser({ tribeId, username, email, roles, server, map, vault }) {
       let user = tribeId
@@ -197,6 +217,21 @@ export async function seed(db) {
         await tx.run('INSERT INTO user_roles (user_id, role_id) VALUES (?,?) ON CONFLICT(user_id, role_id) DO NOTHING', [user.id, rid]);
       }
       return user;
+    }
+
+    // ----------------------------------------------------------------------
+    // SICHERHEIT: Demo-Konten mit bekanntem Passwort dürfen NIEMALS in der
+    // Produktion entstehen. Sie werden deshalb nur angelegt, wenn KEINE
+    // DATABASE_URL gesetzt ist - das ist genau dann der Fall, wenn lokal mit
+    // SQLite entwickelt wird. In der Produktion (Render/Postgres) bleibt der
+    // Katalog erhalten, aber es entstehen keine Konten mit Standardpasswort.
+    //
+    // Zusätzlich lässt sich das Passwort über SEED_DEMO_PASSWORD überschreiben,
+    // damit selbst lokal kein fest verdrahtetes Passwort nötig ist.
+    // ----------------------------------------------------------------------
+    if (config.databaseUrl) {
+      console.log('[SEED] Produktionsdatenbank erkannt - Demo-Konten werden bewusst NICHT angelegt.');
+      return;
     }
 
     await ensureUser({ tribeId: null, username: 'Blunt', email: 'blunt@ark-tribe-hub.dev', roles: ['developer'] });
