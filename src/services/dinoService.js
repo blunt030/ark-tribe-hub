@@ -40,11 +40,15 @@ export async function listDinos(db, tribeId, { search, species, status, ownerId 
 
 export async function getDino(db, id, tribeId) {
   const row = await scopedDino(db, id, tribeId);
+  // JEDE verwandte Abfrage ebenfalls auf den Tribe eingrenzen. Ohne den Zusatz
+  // koennte ueber eine (frueher gesetzte oder manipulierte) Elternreferenz Name
+  // und Spezies eines fremden Tribe-Dinos ausgelesen werden - ein Cross-Tribe-Leck
+  // ueber Umwege, obwohl der Dino selbst korrekt abgesichert ist.
   const [father, mother, children, owner] = await Promise.all([
-    row.parent_male_id ? db.get('SELECT id, name, species FROM dinos WHERE id = ?', [row.parent_male_id]) : null,
-    row.parent_female_id ? db.get('SELECT id, name, species FROM dinos WHERE id = ?', [row.parent_female_id]) : null,
-    db.all('SELECT id, name, species FROM dinos WHERE parent_male_id = ? OR parent_female_id = ?', [id, id]),
-    row.owner_id ? db.get('SELECT id, username FROM users WHERE id = ?', [row.owner_id]) : null,
+    row.parent_male_id ? db.get('SELECT id, name, species FROM dinos WHERE id = ? AND tribe_id = ?', [row.parent_male_id, tribeId]) : null,
+    row.parent_female_id ? db.get('SELECT id, name, species FROM dinos WHERE id = ? AND tribe_id = ?', [row.parent_female_id, tribeId]) : null,
+    db.all('SELECT id, name, species FROM dinos WHERE tribe_id = ? AND (parent_male_id = ? OR parent_female_id = ?)', [tribeId, id, id]),
+    row.owner_id ? db.get('SELECT id, username FROM users WHERE id = ? AND tribe_id = ?', [row.owner_id, tribeId]) : null,
   ]);
   return { ...parseStats(row), father, mother, children, ownerName: owner?.username || null };
 }
@@ -76,9 +80,29 @@ function validateInput(body) {
   };
 }
 
+/**
+ * Stellt sicher, dass Besitzer und Elterntiere zum EIGENEN Tribe gehoeren.
+ * Ohne diese Pruefung koennte ein Nutzer eine fremde Dino- oder Benutzer-ID
+ * als Vater/Mutter/Besitzer eintragen - damit entstuende eine Cross-Tribe-
+ * Referenz in der Datenbank, ueber die spaeter Daten sichtbar werden koennten.
+ */
+async function referenzenPruefen(db, tribeId, v, eigeneId = null) {
+  if (v.ownerId) {
+    const owner = await db.get('SELECT id FROM users WHERE id = ? AND tribe_id = ?', [v.ownerId, tribeId]);
+    if (!owner) throw badRequest('Besitzer gehört nicht zu diesem Tribe');
+  }
+  for (const [feld, wert] of [['parentMaleId', v.parentMaleId], ['parentFemaleId', v.parentFemaleId]]) {
+    if (!wert) continue;
+    if (eigeneId && Number(wert) === Number(eigeneId)) throw badRequest('Ein Dino kann nicht sein eigenes Elterntier sein');
+    const parent = await db.get('SELECT id FROM dinos WHERE id = ? AND tribe_id = ?', [wert, tribeId]);
+    if (!parent) throw badRequest(`Referenziertes Elterntier (${feld}) gehört nicht zu diesem Tribe`);
+  }
+}
+
 export async function createDino(db, tribeId, body, actorId) {
   const v = validateInput(body);
   return db.transaction(async (tx) => {
+    await referenzenPruefen(tx, tribeId, v);
     const inserted = await tx.get(
       `INSERT INTO dinos (tribe_id, name, species, sex, level, owner_id, server, map, location, generation,
                           mutations_male, mutations_female, parent_male_id, parent_female_id, status, stats, notes, created_by)
@@ -96,6 +120,7 @@ export async function updateDino(db, id, tribeId, body, actorId) {
   const nowIso = new Date().toISOString();
   return db.transaction(async (tx) => {
     await scopedDino(tx, id, tribeId);
+    await referenzenPruefen(tx, tribeId, v, id);
     await tx.run(
       `UPDATE dinos SET name=?, species=?, sex=?, level=?, owner_id=?, server=?, map=?, location=?, generation=?,
                         mutations_male=?, mutations_female=?, parent_male_id=?, parent_female_id=?, status=?, stats=?, notes=?, updated_at=?

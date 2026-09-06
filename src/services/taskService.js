@@ -44,9 +44,25 @@ function validateInput(body) {
   };
 }
 
+/**
+ * Der Zustaendige muss ein AKTIVES Mitglied desselben Tribes sein. Ohne diese
+ * Pruefung koennte ein Nutzer eine Benutzer-ID aus einem fremden Tribe eintragen -
+ * die Aufgabe waere dann quer zugewiesen und die daraus erzeugte Benachrichtigung
+ * ginge an einen tribefremden Empfaenger.
+ */
+async function assigneePruefen(db, tribeId, assigneeId) {
+  if (!assigneeId) return;
+  const user = await db.get(
+    "SELECT id FROM users WHERE id = ? AND tribe_id = ? AND status = 'active'",
+    [assigneeId, tribeId]
+  );
+  if (!user) throw badRequest('Zuständige Person gehört nicht zu diesem Tribe');
+}
+
 export async function createTask(db, tribeId, body, actorId) {
   const v = validateInput(body);
   return db.transaction(async (tx) => {
+    await assigneePruefen(tx, tribeId, v.assigneeId);
     const inserted = await tx.get(
       'INSERT INTO tasks (tribe_id, title, description, assignee_id, priority, status, due_date, created_by) VALUES (?,?,?,?,?,?,?,?) RETURNING *',
       [tribeId, v.title, v.description, v.assigneeId, v.priority, v.status, v.dueDate, actorId]
@@ -64,6 +80,7 @@ export async function updateTask(db, id, tribeId, body, actorId) {
   const nowIso = new Date().toISOString();
   return db.transaction(async (tx) => {
     const before = await scopedTask(tx, id, tribeId);
+    await assigneePruefen(tx, tribeId, v.assigneeId);
     await tx.run(
       'UPDATE tasks SET title=?, description=?, assignee_id=?, priority=?, status=?, due_date=?, updated_at=? WHERE id = ?',
       [v.title, v.description, v.assigneeId, v.priority, v.status, v.dueDate, nowIso, id]
