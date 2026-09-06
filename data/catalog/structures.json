@@ -3,65 +3,577 @@
     "source_note": "Namen gegen ark.wiki.gg (Structures/Building) recherchiert. Bewusst KEINE Mod-Inhalte (z.B. Structures Plus) vermischt - nur Vanilla-ARK:SA. Deckt die fünf Haupt-Bauserien (Thatch/Wood/Stone/Metal/Tek) mit ihrer vollen Bauteil-Reihe ab, plus eigenständige Kategorien (Storage, Crafting, Verteidigung, Beleuchtung, Gewächshaus). Adobe (Scorched-Earth-spezifische Sondervariante) bewusst ausgelassen, um die Haupt-Fünferserie nicht zu verwässern - über die Developer-Katalog-API jederzeit ergänzbar."
   },
   "tiers": [
-    { "key": "thatch", "de": "Reet", "en": "Thatch" },
-    { "key": "wood", "de": "Holz", "en": "Wood" },
-    { "key": "stone", "de": "Stein", "en": "Stone" },
-    { "key": "metal", "de": "Metall", "en": "Metal" },
-    { "key": "tek", "de": "Tek", "en": "Tek" }
+    {
+      "key": "thatch",
+      "de": "Reet",
+      "en": "Thatch",
+      "fr": "Chaume",
+      "es": "Paja"
+    },
+    {
+      "key": "wood",
+      "de": "Holz",
+      "en": "Wood",
+      "fr": "Bois",
+      "es": "Madera"
+    },
+    {
+      "key": "stone",
+      "de": "Stein",
+      "en": "Stone",
+      "fr": "Pierre",
+      "es": "Piedra"
+    },
+    {
+      "key": "metal",
+      "de": "Metall",
+      "en": "Metal",
+      "fr": "Métal",
+      "es": "Metal"
+    },
+    {
+      "key": "tek",
+      "de": "Tek",
+      "en": "Tek",
+      "fr": "Tek",
+      "es": "Tek"
+    }
   ],
   "pieces": [
-    { "key": "foundation", "de": "Fundament", "en": "Foundation" },
-    { "key": "triangle_foundation", "de": "Dreiecksfundament", "en": "Triangle Foundation" },
-    { "key": "fence_foundation", "de": "Zaunfundament", "en": "Fence Foundation" },
-    { "key": "wall", "de": "Wand", "en": "Wall" },
-    { "key": "sloped_wall", "de": "Schräge Wand", "en": "Sloped Wall" },
-    { "key": "doorframe", "de": "Türrahmen", "en": "Doorframe" },
-    { "key": "door", "de": "Tür", "en": "Door" },
-    { "key": "window", "de": "Fenster", "en": "Window" },
-    { "key": "windowframe", "de": "Fensterrahmen", "en": "Windowframe" },
-    { "key": "ceiling", "de": "Decke", "en": "Ceiling" },
-    { "key": "triangle_ceiling", "de": "Dreiecksdecke", "en": "Triangle Ceiling" },
-    { "key": "roof", "de": "Schrägdach", "en": "Sloped Roof" },
-    { "key": "pillar", "de": "Pfeiler", "en": "Pillar" },
-    { "key": "railing", "de": "Geländer", "en": "Railing" },
-    { "key": "ramp", "de": "Rampe", "en": "Ramp" },
-    { "key": "staircase", "de": "Treppenhaus", "en": "Staircase" },
-    { "key": "trapdoor", "de": "Falltür", "en": "Trapdoor" },
-    { "key": "hatchframe", "de": "Lukenrahmen", "en": "Hatchframe" },
-    { "key": "ladder", "de": "Leiter", "en": "Ladder" }
+    {
+      "key": "foundation",
+      "de": "Fundament",
+      "en": "Foundation",
+      "fr": "Fondation",
+      "es": "Cimiento",
+      "cat": "foundations"
+    },
+    {
+      "key": "triangle_foundation",
+      "de": "Dreiecksfundament",
+      "en": "Triangle Foundation",
+      "fr": "Fondation triangulaire",
+      "es": "Cimiento triangular",
+      "cat": "foundations"
+    },
+    {
+      "key": "fence_foundation",
+      "de": "Zaunfundament",
+      "en": "Fence Foundation",
+      "fr": "Fondation de clôture",
+      "es": "Cimiento de valla",
+      "cat": "foundations"
+    },
+    {
+      "key": "wall",
+      "de": "Wand",
+      "en": "Wall",
+      "fr": "Mur",
+      "es": "Muro",
+      "cat": "walls"
+    },
+    {
+      "key": "sloped_wall",
+      "de": "Schräge Wand",
+      "en": "Sloped Wall",
+      "fr": "Mur incliné",
+      "es": "Muro inclinado",
+      "cat": "walls"
+    },
+    {
+      "key": "doorframe",
+      "de": "Türrahmen",
+      "en": "Doorframe",
+      "fr": "Cadre de porte",
+      "es": "Marco de puerta",
+      "cat": "doors"
+    },
+    {
+      "key": "door",
+      "de": "Tür",
+      "en": "Door",
+      "fr": "Porte",
+      "es": "Puerta",
+      "cat": "doors"
+    },
+    {
+      "key": "window",
+      "de": "Fenster",
+      "en": "Window",
+      "fr": "Fenêtre",
+      "es": "Ventana",
+      "cat": "walls"
+    },
+    {
+      "key": "windowframe",
+      "de": "Fensterrahmen",
+      "en": "Windowframe",
+      "fr": "Cadre de fenêtre",
+      "es": "Marco de ventana",
+      "cat": "walls"
+    },
+    {
+      "key": "ceiling",
+      "de": "Decke",
+      "en": "Ceiling",
+      "fr": "Plafond",
+      "es": "Techo",
+      "cat": "ceilings"
+    },
+    {
+      "key": "triangle_ceiling",
+      "de": "Dreiecksdecke",
+      "en": "Triangle Ceiling",
+      "fr": "Plafond triangulaire",
+      "es": "Techo triangular",
+      "cat": "ceilings"
+    },
+    {
+      "key": "roof",
+      "de": "Schrägdach",
+      "en": "Sloped Roof",
+      "fr": "Toit incliné",
+      "es": "Tejado inclinado",
+      "cat": "roofs"
+    },
+    {
+      "key": "pillar",
+      "de": "Pfeiler",
+      "en": "Pillar",
+      "fr": "Pilier",
+      "es": "Pilar",
+      "cat": "foundations"
+    },
+    {
+      "key": "railing",
+      "de": "Geländer",
+      "en": "Railing",
+      "fr": "Rambarde",
+      "es": "Barandilla",
+      "cat": "walls"
+    },
+    {
+      "key": "ramp",
+      "de": "Rampe",
+      "en": "Ramp",
+      "fr": "Rampe",
+      "es": "Rampa",
+      "cat": "stairs"
+    },
+    {
+      "key": "staircase",
+      "de": "Treppenhaus",
+      "en": "Staircase",
+      "fr": "Escalier",
+      "es": "Escalera",
+      "cat": "stairs"
+    },
+    {
+      "key": "trapdoor",
+      "de": "Falltür",
+      "en": "Trapdoor",
+      "fr": "Trappe",
+      "es": "Trampilla",
+      "cat": "doors"
+    },
+    {
+      "key": "hatchframe",
+      "de": "Lukenrahmen",
+      "en": "Hatchframe",
+      "fr": "Cadre de trappe",
+      "es": "Marco de trampilla",
+      "cat": "doors"
+    },
+    {
+      "key": "ladder",
+      "de": "Leiter",
+      "en": "Ladder",
+      "fr": "Échelle",
+      "es": "Escalera de mano",
+      "cat": "stairs"
+    }
   ],
   "extra": [
-    ["storage_box", "Storage Box", "🧰"],
-    ["large_storage_box", "Large Storage Box", "🧰"],
-    ["vault", "Vault", "🔒"],
-    ["smithy", "Smithy", "🔨"],
-    ["mortar_and_pestle", "Mortar and Pestle", "🔨"],
-    ["fabricator", "Fabricator", "⚙️"],
-    ["chemistry_bench", "Chemistry Bench", "⚗️"],
-    ["industrial_forge", "Industrial Forge", "🔥"],
-    ["refining_forge", "Refining Forge", "🔥"],
-    ["industrial_cooker", "Industrial Cooker", "🍲"],
-    ["cooking_pot", "Cooking Pot", "🍲"],
-    ["compost_bin", "Compost Bin", "🌱"],
-    ["preserving_bin", "Preserving Bin", "🧊"],
-    ["refrigerator", "Refrigerator", "🧊"],
-    ["generator", "Electrical Generator", "🔌"],
-    ["tek_generator", "Tek Generator", "🔌"],
-    ["auto_turret", "Auto Turret", "🗼"],
-    ["heavy_auto_turret", "Heavy Auto Turret", "🗼"],
-    ["tek_turret", "Tek Turret", "🗼"],
-    ["plant_species_x", "Plant Species X", "🌱"],
-    ["dinosaur_gateway", "Dinosaur Gateway", "🚪"],
-    ["dinosaur_gate", "Dinosaur Gate", "🚪"],
-    ["behemoth_dinosaur_gateway", "Behemoth Dinosaur Gateway", "🚪"],
-    ["behemoth_dinosaur_gate", "Behemoth Dinosaur Gate", "🚪"],
-    ["standing_torch", "Standing Torch", "🔥"],
-    ["wall_torch", "Wall-Mounted Torch", "🔥"],
-    ["chandelier", "Chandelier", "💡"],
-    ["ceiling_lamp", "Ceiling Lamp", "💡"],
-    ["search_light", "Search Light", "💡"],
-    ["greenhouse_wall", "Greenhouse Wall", "🌿"],
-    ["greenhouse_ceiling", "Greenhouse Ceiling", "🌿"],
-    ["greenhouse_door", "Greenhouse Door", "🌿"]
+    {
+      "key": "storage_box",
+      "de": "Lagerbox",
+      "en": "Storage Box",
+      "fr": "Coffre",
+      "es": "Caja de almacenaje",
+      "emoji": "🧰",
+      "cat": "storage"
+    },
+    {
+      "key": "large_storage_box",
+      "de": "Große Lagerbox",
+      "en": "Large Storage Box",
+      "fr": "Grand coffre",
+      "es": "Caja grande",
+      "emoji": "🧰",
+      "cat": "storage"
+    },
+    {
+      "key": "vault",
+      "de": "Tresor",
+      "en": "Vault",
+      "fr": "Coffre-fort",
+      "es": "Bóveda",
+      "emoji": "🔒",
+      "cat": "storage"
+    },
+    {
+      "key": "smithy",
+      "de": "Schmiede",
+      "en": "Smithy",
+      "fr": "Forge",
+      "es": "Herrería",
+      "emoji": "🔨",
+      "cat": "crafting"
+    },
+    {
+      "key": "mortar_and_pestle",
+      "de": "Mörser und Stößel",
+      "en": "Mortar and Pestle",
+      "fr": "Mortier et pilon",
+      "es": "Mortero y maza",
+      "emoji": "🔨",
+      "cat": "crafting"
+    },
+    {
+      "key": "fabricator",
+      "de": "Fabrikator",
+      "en": "Fabricator",
+      "fr": "Fabricateur",
+      "es": "Fabricador",
+      "emoji": "⚙️",
+      "cat": "crafting"
+    },
+    {
+      "key": "chemistry_bench",
+      "de": "Chemietisch",
+      "en": "Chemistry Bench",
+      "fr": "Table de chimie",
+      "es": "Mesa de química",
+      "emoji": "⚗️",
+      "cat": "crafting"
+    },
+    {
+      "key": "industrial_forge",
+      "de": "Industrieofen",
+      "en": "Industrial Forge",
+      "fr": "Forge industrielle",
+      "es": "Fragua industrial",
+      "emoji": "🔥",
+      "cat": "crafting"
+    },
+    {
+      "key": "refining_forge",
+      "de": "Schmelzofen",
+      "en": "Refining Forge",
+      "fr": "Forge de raffinage",
+      "es": "Fragua de refinado",
+      "emoji": "🔥",
+      "cat": "crafting"
+    },
+    {
+      "key": "industrial_cooker",
+      "de": "Industriekocher",
+      "en": "Industrial Cooker",
+      "fr": "Cuiseur industriel",
+      "es": "Cocina industrial",
+      "emoji": "🍲",
+      "cat": "crafting"
+    },
+    {
+      "key": "cooking_pot",
+      "de": "Kochtopf",
+      "en": "Cooking Pot",
+      "fr": "Marmite",
+      "es": "Olla de cocina",
+      "emoji": "🍲",
+      "cat": "crafting"
+    },
+    {
+      "key": "compost_bin",
+      "de": "Komposter",
+      "en": "Compost Bin",
+      "fr": "Composteur",
+      "es": "Compostera",
+      "emoji": "🌱",
+      "cat": "crafting"
+    },
+    {
+      "key": "preserving_bin",
+      "de": "Konservierungsbox",
+      "en": "Preserving Bin",
+      "fr": "Bac de conservation",
+      "es": "Conservadora",
+      "emoji": "🧊",
+      "cat": "storage"
+    },
+    {
+      "key": "refrigerator",
+      "de": "Kühlschrank",
+      "en": "Refrigerator",
+      "fr": "Réfrigérateur",
+      "es": "Nevera",
+      "emoji": "🧊",
+      "cat": "storage"
+    },
+    {
+      "key": "generator",
+      "de": "Generator",
+      "en": "Electrical Generator",
+      "fr": "Générateur électrique",
+      "es": "Generador eléctrico",
+      "emoji": "🔌",
+      "cat": "power"
+    },
+    {
+      "key": "tek_generator",
+      "de": "Tek-Generator",
+      "en": "Tek Generator",
+      "fr": "Générateur Tek",
+      "es": "Generador Tek",
+      "emoji": "🔌",
+      "cat": "power"
+    },
+    {
+      "key": "auto_turret",
+      "de": "Automatikgeschütz",
+      "en": "Auto Turret",
+      "fr": "Tourelle automatique",
+      "es": "Torreta automática",
+      "emoji": "🗼",
+      "cat": "defense"
+    },
+    {
+      "key": "heavy_auto_turret",
+      "de": "Schweres Automatikgeschütz",
+      "en": "Heavy Auto Turret",
+      "fr": "Tourelle lourde",
+      "es": "Torreta pesada",
+      "emoji": "🗼",
+      "cat": "defense"
+    },
+    {
+      "key": "tek_turret",
+      "de": "Tek-Geschütz",
+      "en": "Tek Turret",
+      "fr": "Tourelle Tek",
+      "es": "Torreta Tek",
+      "emoji": "🗼",
+      "cat": "defense"
+    },
+    {
+      "key": "plant_species_x",
+      "de": "Pflanze Spezies X",
+      "en": "Plant Species X",
+      "fr": "Plante Espèce X",
+      "es": "Planta Especie X",
+      "emoji": "🌱",
+      "cat": "defense"
+    },
+    {
+      "key": "dinosaur_gateway",
+      "de": "Dino-Torrahmen",
+      "en": "Dinosaur Gateway",
+      "fr": "Portail à dinosaures",
+      "es": "Portal de dinosaurios",
+      "emoji": "🚪",
+      "cat": "gates"
+    },
+    {
+      "key": "dinosaur_gate",
+      "de": "Dino-Tor",
+      "en": "Dinosaur Gate",
+      "fr": "Porte à dinosaures",
+      "es": "Puerta de dinosaurios",
+      "emoji": "🚪",
+      "cat": "gates"
+    },
+    {
+      "key": "behemoth_dinosaur_gateway",
+      "de": "Behemoth-Torrahmen",
+      "en": "Behemoth Dinosaur Gateway",
+      "fr": "Portail Béhémoth",
+      "es": "Portal Behemoth",
+      "emoji": "🚪",
+      "cat": "gates"
+    },
+    {
+      "key": "behemoth_dinosaur_gate",
+      "de": "Behemoth-Tor",
+      "en": "Behemoth Dinosaur Gate",
+      "fr": "Porte Béhémoth",
+      "es": "Puerta Behemoth",
+      "emoji": "🚪",
+      "cat": "gates"
+    },
+    {
+      "key": "standing_torch",
+      "de": "Standfackel",
+      "en": "Standing Torch",
+      "fr": "Torche sur pied",
+      "es": "Antorcha de pie",
+      "emoji": "🔥",
+      "cat": "lighting"
+    },
+    {
+      "key": "wall_torch",
+      "de": "Wandfackel",
+      "en": "Wall-Mounted Torch",
+      "fr": "Torche murale",
+      "es": "Antorcha de pared",
+      "emoji": "🔥",
+      "cat": "lighting"
+    },
+    {
+      "key": "chandelier",
+      "de": "Kronleuchter",
+      "en": "Chandelier",
+      "fr": "Lustre",
+      "es": "Candelabro",
+      "emoji": "💡",
+      "cat": "lighting"
+    },
+    {
+      "key": "ceiling_lamp",
+      "de": "Deckenlampe",
+      "en": "Ceiling Lamp",
+      "fr": "Lampe de plafond",
+      "es": "Lámpara de techo",
+      "emoji": "💡",
+      "cat": "lighting"
+    },
+    {
+      "key": "search_light",
+      "de": "Suchscheinwerfer",
+      "en": "Search Light",
+      "fr": "Projecteur",
+      "es": "Reflector",
+      "emoji": "💡",
+      "cat": "lighting"
+    },
+    {
+      "key": "greenhouse_wall",
+      "de": "Gewächshauswand",
+      "en": "Greenhouse Wall",
+      "fr": "Mur de serre",
+      "es": "Muro de invernadero",
+      "emoji": "🌿",
+      "cat": "greenhouse"
+    },
+    {
+      "key": "greenhouse_ceiling",
+      "de": "Gewächshausdecke",
+      "en": "Greenhouse Ceiling",
+      "fr": "Plafond de serre",
+      "es": "Techo de invernadero",
+      "emoji": "🌿",
+      "cat": "greenhouse"
+    },
+    {
+      "key": "greenhouse_door",
+      "de": "Gewächshaustür",
+      "en": "Greenhouse Door",
+      "fr": "Porte de serre",
+      "es": "Puerta de invernadero",
+      "emoji": "🌿",
+      "cat": "greenhouse"
+    }
+  ],
+  "categories": [
+    {
+      "key": "foundations",
+      "de": "Fundamente",
+      "en": "Foundations",
+      "fr": "Fondations",
+      "es": "Cimientos"
+    },
+    {
+      "key": "walls",
+      "de": "Wände",
+      "en": "Walls",
+      "fr": "Murs",
+      "es": "Muros"
+    },
+    {
+      "key": "ceilings",
+      "de": "Decken",
+      "en": "Ceilings",
+      "fr": "Plafonds",
+      "es": "Techos"
+    },
+    {
+      "key": "roofs",
+      "de": "Dächer",
+      "en": "Roofs",
+      "fr": "Toits",
+      "es": "Tejados"
+    },
+    {
+      "key": "doors",
+      "de": "Türen",
+      "en": "Doors",
+      "fr": "Portes",
+      "es": "Puertas"
+    },
+    {
+      "key": "gates",
+      "de": "Tore",
+      "en": "Gates",
+      "fr": "Portails",
+      "es": "Portales"
+    },
+    {
+      "key": "stairs",
+      "de": "Treppen & Rampen",
+      "en": "Stairs & Ramps",
+      "fr": "Escaliers & rampes",
+      "es": "Escaleras y rampas"
+    },
+    {
+      "key": "storage",
+      "de": "Lagerung",
+      "en": "Storage",
+      "fr": "Stockage",
+      "es": "Almacenaje"
+    },
+    {
+      "key": "crafting",
+      "de": "Herstellung",
+      "en": "Crafting",
+      "fr": "Fabrication",
+      "es": "Fabricación"
+    },
+    {
+      "key": "defense",
+      "de": "Verteidigung",
+      "en": "Defense",
+      "fr": "Défense",
+      "es": "Defensa"
+    },
+    {
+      "key": "power",
+      "de": "Strom",
+      "en": "Power",
+      "fr": "Énergie",
+      "es": "Energía"
+    },
+    {
+      "key": "lighting",
+      "de": "Beleuchtung",
+      "en": "Lighting",
+      "fr": "Éclairage",
+      "es": "Iluminación"
+    },
+    {
+      "key": "greenhouse",
+      "de": "Gewächshaus",
+      "en": "Greenhouse",
+      "fr": "Serre",
+      "es": "Invernadero"
+    }
   ]
 }
