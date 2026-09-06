@@ -4,6 +4,8 @@ import { optionalString, requireEmail, parseIdParam, requirePassword } from '../
 import { requireActive, requireCsrf } from '../middleware/auth.js';
 import { getUserRoles } from '../services/authService.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
+import { randomToken } from '../lib/tokens.js';
+import { sendVerificationEmail } from '../services/mailService.js';
 import { validateImage, saveImageToDisk } from '../lib/imageUpload.js';
 import { audit } from '../services/auditService.js';
 import { config } from '../config.js';
@@ -53,7 +55,27 @@ export function buildUsersRouter(db) {
     if (body.personalVaultNumber !== undefined) {
       updates.personal_vault_number = optionalString(body.personalVaultNumber, 'personalVaultNumber', { max: 50 });
     }
-    if (body.email !== undefined) updates.email = body.email ? requireEmail(body.email) : null;
+    // E-Mail-Wechsel: der Bestaetigungsstatus MUSS zurueckgesetzt werden. Sonst
+    // koennte jemand seine bestaetigte Adresse gegen eine fremde tauschen und
+    // gaelte weiterhin als verifiziert - die Bestaetigung waere wertlos.
+    let neueBestaetigung = null;
+    if (body.email !== undefined) {
+      const neueEmail = body.email ? requireEmail(body.email) : null;
+      const bisherige = await db.get('SELECT email FROM users WHERE id = ?', [req.user.id]);
+      updates.email = neueEmail;
+      if (neueEmail && neueEmail !== bisherige?.email) {
+        const belegt = await db.get('SELECT id FROM users WHERE email = ? AND id != ?', [neueEmail, req.user.id]);
+        if (belegt) throw badRequest('Diese E-Mail-Adresse wird bereits verwendet');
+        neueBestaetigung = {
+          token: randomToken(24),
+          expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          email: neueEmail,
+        };
+        updates.email_verified = 0;
+        updates.email_verify_token = neueBestaetigung.token;
+        updates.email_verify_expires_at = neueBestaetigung.expires;
+      }
+    }
 
     const fields = Object.keys(updates);
     if (fields.length > 0) {
@@ -64,6 +86,17 @@ export function buildUsersRouter(db) {
         req.user.id,
       ]);
     }
+    // Bestaetigungsmail an die NEUE Adresse. Fehler hier duerfen die Aenderung
+    // nicht scheitern lassen - der Nutzer kann sie spaeter erneut anstossen.
+    if (neueBestaetigung) {
+      try {
+        const verifyUrl = `${config.publicUrl}/api/auth/verify-email?token=${neueBestaetigung.token}`;
+        await sendVerificationEmail({ to: neueBestaetigung.email, username: req.user.username, verifyUrl });
+      } catch (err) {
+        console.error('[EMAIL] Bestätigungsmail nach E-Mail-Wechsel fehlgeschlagen:', err.message);
+      }
+    }
+
     const updated = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
     sendJson(res, 200, { user: await serializeProfile(db, { ...updated, roles: req.user.roles }, req.user) });
   });
