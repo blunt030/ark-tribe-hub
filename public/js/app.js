@@ -41,10 +41,22 @@ function navItems() {
     { path: '/notifications', icon: '◔', label: t('nav.notifications'), badge: () => unreadCount },
   ];
 
-  // Geteilte Tribe-Werkzeuge (fuer ALLE aktiven Mitglieder, nicht nur Admin) -
-  // getrennt von der Admin-Gruppe unten, die bewusst nur Verwaltungsfunktionen zeigt.
+  // Geteilte Tribe-Werkzeuge. Bewusst NICHT mehr "!isDev": Ein Developer, der auch
+  // einem Tribe angehört, soll die Werkzeuge genauso sehen - sonst wären alle
+  // Module für ihn unsichtbar. Entscheidend ist allein, ob ein Tribe vorhanden ist,
+  // denn die Werkzeuge arbeiten alle tribe-bezogen.
   const tools = [];
-  if (!isDev && user.tribeId) {
+  if (user.tribeId) {
+    tools.push({ path: '/dinos', icon: '🦖', label: t('nav.dinos') });
+    tools.push({ path: '/servers', icon: '🗺️', label: t('nav.servers') });
+    tools.push({ path: '/tasks', icon: '✓', label: t('nav.tasks') });
+    tools.push({ path: '/inventory', icon: '📦', label: t('nav.inventory') });
+    tools.push({ path: '/voice', icon: '🎙️', label: t('nav.voice') });
+  } else if (isDev) {
+    // Developer haben plattformweite Rechte, aber KEINEN eigenen Tribe - die
+    // Werkzeuge arbeiten aber alle tribe-bezogen. Sie hier trotzdem zu zeigen ist
+    // besser als sie spurlos wegzulassen: der Developer sieht, dass es sie gibt,
+    // und die Seite erklärt dann, dass dafür ein Tribe-Konto nötig ist.
     tools.push({ path: '/dinos', icon: '🦖', label: t('nav.dinos') });
     tools.push({ path: '/servers', icon: '🗺️', label: t('nav.servers') });
     tools.push({ path: '/tasks', icon: '✓', label: t('nav.tasks') });
@@ -143,16 +155,51 @@ function buildShell() {
   // nicht je nach Rolle verschiebt. Wichtig: Das Profil bleibt immer erreichbar -
   // dort hängen Sprache und Abmelden. Admin- und Plattformbereiche werden auf der
   // Profilseite verlinkt, statt einen der fünf Plätze zu verdrängen.
+  // Mobile Leiste bewusst auf VIER feste Punkte begrenzt plus einen "Mehr"-Knopf.
+  // Vorher standen dort fünf Punkte mit langen deutschen Labels nebeneinander -
+  // auf schmalen Geräten wurde der letzte ("Mitteilungen") am rechten Rand
+  // abgeschnitten. Mit den neuen Modulen wären es zehn geworden, was gar nicht
+  // mehr in eine Zeile passt; alles Weitere liegt deshalb hinter "Mehr".
+  const bottomMain = main.slice(0, 4);
+  const bottomExtra = [...main.slice(4), ...tools, ...tribe, ...platform];
+
+  const bottomLink = (item) => {
+    const a = el('a', { href: '#' + item.path, dataset: { path: item.path } },
+      el('span.ico', { text: item.icon }),
+      el('span', { text: item.label })
+    );
+    const n = item.badge ? item.badge() : 0;
+    if (n > 0) a.append(el('span.count', { text: String(n) }));
+    return a;
+  };
+
+  const moreBtn = el('button.more-btn', { type: 'button' },
+    el('span.ico', { text: '⋯' }),
+    el('span', { text: t('nav.more') })
+  );
+  // Ungelesene Mitteilungen liegen jetzt hinter "Mehr" - der Zähler muss deshalb
+  // auch am "Mehr"-Knopf auftauchen, sonst würde man sie auf dem Handy übersehen.
+  if (unreadCount > 0) moreBtn.append(el('span.count', { text: String(unreadCount) }));
+
+  moreBtn.addEventListener('click', () => {
+    const sheet = el('div.sheet-bg', { onclick: (e) => { if (e.target === sheet) sheet.remove(); } },
+      el('div.sheet', {},
+        el('div.sheet-grip'),
+        ...bottomExtra.map((item) =>
+          el('a.sheet-item', { href: '#' + item.path, onclick: () => sheet.remove() },
+            el('span.ico', { text: item.icon }),
+            el('span', { text: item.label }),
+            item.badge && item.badge() > 0 ? el('span.count', { text: String(item.badge()) }) : null
+          )
+        )
+      )
+    );
+    document.getElementById('modal-root').append(sheet);
+  });
+
   const bottomnav = el('nav.bottomnav', {},
-    ...main.map((item) => {
-      const a = el('a', { href: '#' + item.path, dataset: { path: item.path } },
-        el('span.ico', { text: item.icon }),
-        el('span', { text: item.label })
-      );
-      const n = item.badge ? item.badge() : 0;
-      if (n > 0) a.append(el('span.count', { text: String(n) }));
-      return a;
-    })
+    ...bottomMain.map(bottomLink),
+    bottomExtra.length ? moreBtn : null
   );
 
   clear(root);
@@ -217,6 +264,20 @@ async function route() {
   window.scrollTo(0, 0);
 
   if (!match) { view.append(el('div.empty', {}, el('div.big', { text: '404' }))); return; }
+
+  // Tribe-Werkzeuge brauchen einen Tribe. Ein Developer hat plattformweite Rechte,
+  // aber kein eigenes Tribe-Konto - statt einer leeren oder kaputten Seite bekommt
+  // er hier eine klare Erklärung, warum das so ist und was zu tun ist.
+  const TRIBE_ONLY = /^\/(dinos|servers|tasks|inventory|voice)(\/|$)/;
+  if (TRIBE_ONLY.test(path) && !user.tribeId) {
+    view.append(
+      el('div.empty', {},
+        el('div.big', { text: t('tools.needs_tribe_title') }),
+        el('p', { text: t('tools.needs_tribe_body') })
+      )
+    );
+    return;
+  }
 
   const params = path.match(match.re).slice(1);
   try {
