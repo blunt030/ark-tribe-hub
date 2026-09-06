@@ -39,11 +39,17 @@ export async function register(db, { tribeSlug, username, email, password }) {
 
   const passwordHash = await hashPassword(password);
   const emailVerifyToken = email ? randomToken(24) : null;
+  // Bestaetigungslinks laufen nach 24 Stunden ab. Ein unbegrenzt gueltiger Token
+  // bleibt sonst dauerhaft in Postfaechern liegen und laesst sich spaeter noch
+  // einloesen - etwa wenn jemand anders Zugriff auf das Postfach bekommt.
+  const emailVerifyExpires = emailVerifyToken
+    ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    : null;
 
   const result = await db.transaction(async (tx) => {
     const insertResult = await tx.get(
-      `INSERT INTO users (tribe_id, username, email, password_hash, status, email_verify_token) VALUES (?,?,?,?, 'pending_approval', ?) RETURNING *`,
-      [tribe.id, username, email || null, passwordHash, emailVerifyToken]
+      `INSERT INTO users (tribe_id, username, email, password_hash, status, email_verify_token, email_verify_expires_at) VALUES (?,?,?,?, 'pending_approval', ?, ?) RETURNING *`,
+      [tribe.id, username, email || null, passwordHash, emailVerifyToken, emailVerifyExpires]
     );
     const user = insertResult;
 
@@ -162,10 +168,24 @@ export async function logout(db, sessionId) {
 /** Bestätigt eine E-Mail-Adresse anhand des Tokens aus der Bestätigungsmail. */
 export async function verifyEmail(db, token) {
   if (!token) return { ok: false, reason: 'missing_token' };
-  const user = await db.get('SELECT id, username, email_verified FROM users WHERE email_verify_token = ?', [token]);
+  const user = await db.get(
+    'SELECT id, username, email_verified, email_verify_expires_at FROM users WHERE email_verify_token = ?',
+    [token]
+  );
   if (!user) return { ok: false, reason: 'invalid_token' };
   if (user.email_verified) return { ok: true, username: user.username, alreadyVerified: true };
-  await db.run('UPDATE users SET email_verified = 1, email_verify_token = NULL WHERE id = ?', [user.id]);
+
+  // Abgelaufene Links ablehnen. Bestandskonten ohne gesetzte Ablaufzeit (aus der
+  // Zeit vor dieser Migration) bleiben bewusst gueltig, damit niemand ausgesperrt wird.
+  if (user.email_verify_expires_at && new Date(user.email_verify_expires_at) < new Date()) {
+    return { ok: false, reason: 'expired_token' };
+  }
+
+  // Token nach erfolgreicher Bestaetigung entfernen -> nur einmal verwendbar.
+  await db.run(
+    'UPDATE users SET email_verified = 1, email_verify_token = NULL, email_verify_expires_at = NULL WHERE id = ?',
+    [user.id]
+  );
   return { ok: true, username: user.username, alreadyVerified: false };
 }
 
