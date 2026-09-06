@@ -86,15 +86,37 @@ export function buildAdminRouter(db) {
     const id = parseIdParam(req.params.id);
     const tribeId = effectiveTribeId(req);
     const body = await readJsonBody(req);
-    if (typeof body.breederCrafter !== 'boolean') throw badRequest('Feld "breederCrafter" (boolean) fehlt');
+    // Vergebbar sind ausschliesslich TRIBE-Rollen. "developer" ist eine
+    // plattformweite Rolle und darf hier bewusst NICHT gesetzt werden - sonst
+    // koennte sich ein Tribe-Admin ueber einen praeparierten Request selbst zum
+    // Plattform-Developer machen.
+    const VERGEBBAR = { breederCrafter: 'breeder_crafter', admin: 'admin' };
+    const gesetzt = Object.keys(VERGEBBAR).filter((k) => typeof body[k] === 'boolean');
+    if (!gesetzt.length) throw badRequest('Mindestens ein Rollenfeld (breederCrafter, admin) als true/false angeben');
 
     await db.transaction(async (tx) => {
       await scopedMember(tx, id, tribeId);
-      const role = await tx.get(`SELECT id FROM roles WHERE key = 'breeder_crafter'`);
-      if (body.breederCrafter) {
-        await tx.run('INSERT INTO user_roles (user_id, role_id) VALUES (?,?) ON CONFLICT(user_id, role_id) DO NOTHING', [id, role.id]);
-      } else {
-        await tx.run('DELETE FROM user_roles WHERE user_id = ? AND role_id = ?', [id, role.id]);
+
+      // Schutz: Der letzte Admin eines Tribes darf sich die Rolle nicht selbst
+      // entziehen - der Tribe waere sonst dauerhaft ohne Verwaltung.
+      if (body.admin === false) {
+        const adminZahl = await tx.get(
+          `SELECT COUNT(*) AS c FROM user_roles ur
+           JOIN roles r ON r.id = ur.role_id
+           JOIN users u ON u.id = ur.user_id
+           WHERE r.key = 'admin' AND u.tribe_id = ? AND u.status = 'active'`,
+          [tribeId]
+        );
+        if (Number(adminZahl.c) <= 1) throw badRequest('Der letzte Admin des Tribes kann die Rolle nicht abgeben');
+      }
+
+      for (const feld of gesetzt) {
+        const role = await tx.get('SELECT id FROM roles WHERE key = ?', [VERGEBBAR[feld]]);
+        if (body[feld]) {
+          await tx.run('INSERT INTO user_roles (user_id, role_id) VALUES (?,?) ON CONFLICT(user_id, role_id) DO NOTHING', [id, role.id]);
+        } else {
+          await tx.run('DELETE FROM user_roles WHERE user_id = ? AND role_id = ?', [id, role.id]);
+        }
       }
       await audit(tx, {
         tribeId,
@@ -102,7 +124,7 @@ export function buildAdminRouter(db) {
         action: 'role_changed',
         targetType: 'user',
         targetId: id,
-        meta: { breederCrafter: body.breederCrafter },
+        meta: Object.fromEntries(gesetzt.map((k) => [k, body[k]])),
       });
     });
     sendJson(res, 200, { roles: await getUserRoles(db, id) });
