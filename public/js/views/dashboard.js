@@ -51,13 +51,17 @@ export async function renderDashboard(mount, ctx) {
   const claimedByMe = all.filter((o) => o.assigned_to === user.id && !['completed', 'cancelled'].includes(o.status));
   const urgent = openAll.filter((o) => o.priority === 'urgent');
 
+  // Alle Kennzahlen für ALLE Rollen sichtbar. Vorher sahen normale Mitglieder
+  // weder offene noch dringende Aufträge - gerade "Dringend" ist aber für jeden
+  // im Tribe die wichtigste Information. Die Karten sind auf dem Desktop dafür
+  // kompakter (siehe .grid.stats im CSS), damit mehr nebeneinander passt.
   const stats = [];
+  stats.push(stat(unclaimed.length, t('dash.open_jobs'), 'accent-gold'));
+  stats.push(stat(urgent.length, t('dash.urgent'), urgent.length ? 'accent-red' : ''));
   if (isBreeder || isAdmin || isDev) {
-    stats.push(stat(unclaimed.length, t('dash.open_jobs'), 'accent-gold'));
     stats.push(stat(claimedByMe.length, t('dash.mine')));
-    stats.push(stat(urgent.length, t('dash.urgent'), 'accent-red'));
   } else {
-    stats.push(stat(mine.filter((o) => !['completed', 'cancelled'].includes(o.status)).length, t('dash.active'), 'accent-gold'));
+    stats.push(stat(mine.filter((o) => !['completed', 'cancelled'].includes(o.status)).length, t('dash.active')));
     stats.push(stat(mine.filter((o) => o.status === 'completed').length, t('dash.done'), 'accent-green'));
   }
   stats.push(stat(unread, t('dash.unread'), unread > 0 ? 'accent-blue' : ''));

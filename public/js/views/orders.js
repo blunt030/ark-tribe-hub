@@ -415,6 +415,25 @@ export async function renderOrderDetail(mount, ctx, id) {
         },
       }));
     }
+    // Endgültiges Löschen - anders als Stornieren auch bei bereits
+    // abgeschlossenen/stornierten Bestellungen möglich, damit ein Admin wirklich
+    // aufräumen kann. Die Berechtigung wird zusätzlich serverseitig geprüft.
+    if (isOwner || isAdmin) {
+      actions.push(el('button.btn.danger', {
+        text: t('order.delete'),
+        onclick: async () => {
+          const ok = await confirmDialog({
+            title: t('order.delete_confirm_t'),
+            body: t('order.delete_confirm_b'),
+            confirmLabel: t('common.delete'),
+            danger: true,
+          });
+          if (!ok) return;
+          try { await api.deleteOrder(id); toast(t('order.deleted')); go('/orders'); }
+          catch (err) { toast(err.message, 'err'); }
+        },
+      }));
+    }
     if (actions.length) mount.append(el('div.chips', { style: 'margin-bottom:6px' }, ...actions));
 
     mount.append(
