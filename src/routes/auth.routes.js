@@ -13,6 +13,9 @@ function publicUser(user) {
     status: user.status,
     roles: user.roles,
     avatarPath: user.avatar_path,
+    // Tribe-Name fuer die Kopfzeile (Punkt 19). Wird von der Session-Aufloesung
+    // mitgeliefert; bleibt undefined, wenn kein Tribe vorhanden ist (Developer).
+    tribeName: user.tribe_name || null,
   };
 }
 
