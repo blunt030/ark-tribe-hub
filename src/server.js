@@ -96,6 +96,24 @@ function buildUploadsRouter(db) {
     const ext = path.extname(filename).slice(1).toLowerCase();
     const idPart = path.basename(filename, path.extname(filename));
 
+    // ---- Zugriffskontrolle fuer tribe-gebundene Bilder -----------------------
+    // Avatare und Katalogbilder (items) sind bewusst plattformweit sichtbar.
+    // Dino- und Markerbilder gehoeren dagegen EINEM Tribe. Ohne die folgende
+    // Pruefung koennte jeder angemeldete Nutzer durch simples Hochzaehlen der
+    // Zahl im Dateinamen die Bilder fremder Tribes abrufen (IDOR), obwohl die
+    // zugehoerigen API-Endpunkte sauber abgesichert sind.
+    if (subdir === 'dinos' || subdir === 'markers') {
+      if (!/^\d+$/.test(idPart)) throw notFound('Datei nicht gefunden');
+      const istDeveloper = req.user.roles.includes('developer');
+      if (!istDeveloper) {
+        const tabelle = subdir === 'dinos' ? 'dinos' : 'map_markers';
+        const besitzer = await db.get(`SELECT tribe_id FROM ${tabelle} WHERE id = ?`, [idPart]);
+        // Auch bei "nicht vorhanden" bewusst 404 - so laesst sich ueber die
+        // Antwort nicht herausfinden, ob eine fremde ID existiert.
+        if (!besitzer || besitzer.tribe_id !== req.user.tribe_id) throw notFound('Datei nicht gefunden');
+      }
+    }
+
     if (db.kind === 'postgres') {
       // Kein lokales Dateisystem verfügbar -> Bild kommt als Blob aus der DB.
       const table = subdir === 'avatars' ? 'users' : subdir === 'dinos' ? 'dinos' : subdir === 'markers' ? 'map_markers' : 'items';
