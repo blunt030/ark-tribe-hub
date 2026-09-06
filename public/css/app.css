@@ -697,6 +697,13 @@ textarea { resize: vertical; min-height: 74px; }
 @media (max-width: 899px) {
   .sidebar { display: none; }
   .main { margin-left: 0; }
+  /* WICHTIG: Auch die eingeklappte Variante muss mobil auf 0 - sonst wirkt der
+     am Desktop gesetzte (und in localStorage gemerkte) Zustand auf dem Handy
+     weiter und schiebt den gesamten Inhalt 68px nach rechts aus dem Bild. */
+  .app:has(.sidebar.collapsed) .main { margin-left: 0; }
+  /* Seitenabstand mobil deutlich kleiner - 30px links und rechts sind auf einem
+     390px-Display fast ein Sechstel der Breite. */
+  .content { padding: 16px 14px 90px; }
   .topbar {
     display: flex;
     align-items: center;
@@ -795,6 +802,8 @@ textarea { resize: vertical; min-height: 74px; }
 }
 /* Eingeklappte Seitenleiste: nur das Logo bleibt sichtbar. */
 .sidebar.collapsed .brand-ident { display: none; }
+/* In der mobilen Topbar ebenfalls sichtbar - dort sitzt das Logo. */
+.topbar .brand-ident { display: block; }
 /* Mobil steckt der Block in der Topbar - dort kompakter, damit nichts drueckt. */
 @media (max-width: 900px) {
   .brand-ident .bi-tribe { font-size: .86rem; }
