@@ -16,6 +16,18 @@ export async function renderNotifications(mount, ctx) {
   mount.append(
     el('div.page-head', {},
       el('div', {}, el('h1', { text: t('notif.title') })),
+      el('div.chips', {},
+      notifications.some((n) => n.is_read)
+        ? el('button.btn', {
+            text: t('notif.clear_read'),
+            onclick: async (e) => {
+              e.target.disabled = true;
+              await api.clearReadNotifications();
+              await refreshBadges();
+              go('/notifications', true);
+            },
+          })
+        : null,
       notifications.some((n) => !n.is_read)
         ? el('button.btn', {
             text: t('notif.read_all'),
@@ -27,6 +39,7 @@ export async function renderNotifications(mount, ctx) {
             },
           })
         : null
+      )
     )
   );
 
@@ -47,7 +60,18 @@ export async function renderNotifications(mount, ctx) {
                       go('/orders/' + n.payload.orderId);
                     },
                   })
-                : null
+                : null,
+              el('button.btn.sm.ghost', {
+                text: '✕',
+                title: t('common.delete'),
+                onclick: async () => {
+                  try {
+                    await api.deleteNotification(n.id);
+                    await refreshBadges();
+                    go('/notifications', true);
+                  } catch (err) { toast(err.message, 'err'); }
+                },
+              })
             )
           )
         )
