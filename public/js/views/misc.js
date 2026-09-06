@@ -350,6 +350,7 @@ export async function renderMembers(mount, ctx) {
 
   function memberRow(m) {
     const isBreeder = m.roles.includes('breeder_crafter');
+  const istAdmin = (m.roles || []).includes('admin');
     return el('div.row', {},
       el('div.grow', {},
         el('div.rt', { text: m.username }),
@@ -361,6 +362,16 @@ export async function renderMembers(mount, ctx) {
         onclick: async (e) => {
           e.target.disabled = true;
           try { await api.setBreeder(m.id, !isBreeder); toast(t('admin.role_saved')); await reload(); }
+          catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
+        },
+      }),
+      // Adminrechte vergeben/entziehen. Der Server prüft zusätzlich, dass der
+      // letzte Admin sich die Rolle nicht selbst entziehen kann.
+      el('button.btn.sm' + (istAdmin ? '.primary' : ''), {
+        text: t('admin.make_admin'),
+        onclick: async (e) => {
+          e.target.disabled = true;
+          try { await api.setTribeAdmin(m.id, !istAdmin); toast(t('admin.role_saved')); await reload(); }
           catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
         },
       }),
