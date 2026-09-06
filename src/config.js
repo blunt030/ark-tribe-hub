@@ -82,6 +82,13 @@ export const config = {
   },
   // Empfänger für Plattform-Benachrichtigungen (z.B. neue Registrierung).
   adminNotificationEmail: process.env.ADMIN_NOTIFICATION_EMAIL || 'support.arkhub@gmail.com',
+  // Versandweg über eine HTTPS-API statt SMTP. Notwendig, weil Render im
+  // kostenlosen Tarif seit dem 26.09.2025 ausgehende SMTP-Verbindungen auf den
+  // Ports 25/465/587 sperrt - jeder SMTP-Versuch endet dort in ETIMEDOUT,
+  // unabhängig von Zugangsdaten. Eine HTTPS-API (Port 443) ist davon nicht
+  // betroffen. Ist kein Schlüssel gesetzt, wird weiterhin SMTP verwendet
+  // (funktioniert lokal und in bezahlten Tarifen unverändert).
+  brevoApiKey: process.env.BREVO_API_KEY || null,
   corsOrigins: (process.env.CORS_ORIGINS || '')
     .split(',')
     .map((s) => s.trim())
