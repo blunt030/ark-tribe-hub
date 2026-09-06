@@ -149,6 +149,8 @@ export const api = {
   disableMember: (id, tribeId) => call('PATCH', `/api/admin/members/${id}/disable` + (tribeId ? `?tribeId=${tribeId}` : '')),
   setBreeder: (id, on, tribeId) =>
     call('PATCH', `/api/admin/members/${id}/roles` + (tribeId ? `?tribeId=${tribeId}` : ''), { breederCrafter: on }),
+  setTribeAdmin: (id, on, tribeId) =>
+    call('PATCH', `/api/admin/members/${id}/roles` + (tribeId ? `?tribeId=${tribeId}` : ''), { admin: on }),
   auditLogs: () => call('GET', '/api/admin/audit-logs'),
 
   // News

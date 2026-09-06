@@ -176,7 +176,7 @@ export function newsTicker(items) {
   // lange ewig brauchen. Die Wiederholung kommt aus animation-iteration-count:
   // infinite im CSS, zusammen mit der doppelt eingefuegten Inhaltsliste - dadurch
   // gibt es keinen sichtbaren Sprung beim Neustart.
-  const duration = Math.max(10, Math.min(38, totalChars * 0.11));
+  const duration = Math.max(14, Math.min(52, totalChars * 0.16));
   track.style.animationDuration = duration + 's';
 
   // Bewusst KEIN Anhalten bei Mauszeiger/Beruehrung: das Band soll ununterbrochen
