@@ -2,7 +2,10 @@ import { badRequest, notFound } from '../lib/http.js';
 import { audit } from './auditService.js';
 
 export const DINO_SEX = ['male', 'female', 'unknown'];
-export const DINO_STATUS = ['active', 'dead', 'traded', 'lost'];
+// Zuchtstatus statt Inventarstatus: Die Dino-Datenbank ist bewusst KEIN
+// vollstaendiges Tierinventar, sondern ein Werkzeug fuer Zuchttiere und Top-Dinos.
+// "verstorben/getauscht/verloren" waren Inventar-Denke und sind bewusst entfallen.
+export const DINO_STATUS = ['active', 'breeding', 'paused', 'reserve'];
 
 async function scopedDino(db, id, tribeId) {
   const row = await db.get('SELECT * FROM dinos WHERE id = ? AND tribe_id = ?', [id, tribeId]);

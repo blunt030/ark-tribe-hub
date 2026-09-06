@@ -49,8 +49,50 @@ async function getTransporter() {
  *
  * WICHTIG: loggt niemals Passwort/App-Passwort/SMTP-Credentials, nur Host/Port/User.
  */
+/**
+ * Versand über die Brevo-HTTPS-API. Wird bevorzugt, sobald BREVO_API_KEY gesetzt
+ * ist - siehe Begründung in config.js (Render sperrt SMTP im Gratis-Tarif).
+ * Nutzt fetch(), also keine zusätzliche Abhängigkeit.
+ */
+async function sendViaHttpApi({ to, subject, text }) {
+  const empfaenger = String(to).split(',').map((e) => ({ email: e.trim() })).filter((e) => e.email);
+  const absender = (config.smtp.from || config.adminNotificationEmail || '').match(/<(.+)>/)?.[1]
+    || config.smtp.from || config.adminNotificationEmail;
+  try {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': config.brevoApiKey, 'Content-Type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({
+        sender: { email: absender, name: 'ARK Tribe Hub' },
+        to: empfaenger,
+        subject,
+        textContent: text,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      // Antworttext mitloggen, aber NIEMALS den API-Schlüssel.
+      const details = await res.text().catch(() => '');
+      console.error(`[EMAIL] sendMail failed (HTTPS-API): HTTP ${res.status} ${details.slice(0, 300)}`);
+      return { sent: false, reason: `http_${res.status}` };
+    }
+    const data = await res.json().catch(() => ({}));
+    console.log(`[EMAIL] sendMail success (HTTPS-API) - messageId: ${data.messageId || '(keine)'}`);
+    return { sent: true, via: 'https_api' };
+  } catch (err) {
+    console.error(`[EMAIL] sendMail failed (HTTPS-API): ${err.name} ${err.message}`);
+    return { sent: false, reason: `api_error: ${err.message}` };
+  }
+}
+
 export async function sendMail({ to, subject, text }) {
   console.log(`[EMAIL] sendMail gestartet - An: ${to} | Betreff: ${subject}`);
+
+  // Bevorzugt HTTPS-API, weil SMTP in gehosteten Gratis-Umgebungen blockiert sein kann.
+  if (config.brevoApiKey) {
+    console.log('[EMAIL] Versandweg: HTTPS-API (SMTP wird umgangen)');
+    return sendViaHttpApi({ to, subject, text });
+  }
   let transporter;
   try {
     transporter = await getTransporter();
