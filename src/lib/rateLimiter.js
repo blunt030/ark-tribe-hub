@@ -32,8 +32,35 @@ export function createRateLimiter({ windowMs, max }) {
   };
 }
 
-export function clientIp(req) {
-  // Kein Reverse-Proxy in dieser V1 vorgesehen; falls später hinter einem
-  // vertrauenswürdigen Proxy betrieben, hier gezielt X-Forwarded-For auswerten.
-  return req.socket?.remoteAddress || 'unknown';
+/**
+ * Ermittelt die echte Client-IP - auch hinter einem Reverse-Proxy wie Render.
+ *
+ * Ohne diese Auswertung sieht die Anwendung nur die IP des Proxys. Dann teilen
+ * sich ALLE Besucher dasselbe Limit, und ein Einzelner koennte mit vielen
+ * Login-Versuchen absichtlich saemtliche Nutzer aussperren.
+ *
+ * Sicherheitsrelevant ist, WELCHEN Eintrag aus X-Forwarded-For man nimmt:
+ * Der Header ist eine Liste, an die jeder Proxy hinten anhaengt. Ein Angreifer
+ * kann einen eigenen Header mitschicken - dessen erfundene Werte stehen dann
+ * LINKS. Der Proxy haengt die tatsaechliche Absender-IP rechts an. Deshalb wird
+ * hier von RECHTS gezaehlt und genau so viele Eintraege uebersprungen, wie es
+ * vertrauenswuerdige Proxys gibt (TRUSTED_PROXY_HOPS, bei Render = 1).
+ * Blind den linken Wert zu nehmen waere eine Einladung zum Faelschen.
+ *
+ * Ist kein Proxy konfiguriert (lokal), wird der Header bewusst ignoriert.
+ */
+export function clientIp(req, trustedHops = Number(process.env.TRUSTED_PROXY_HOPS ?? 0)) {
+  const direkt = req.socket?.remoteAddress || 'unknown';
+  if (!trustedHops) return direkt;
+
+  const roh = req.headers?.['x-forwarded-for'];
+  if (!roh) return direkt;
+
+  const kette = String(roh).split(',').map((x) => x.trim()).filter(Boolean);
+  if (!kette.length) return direkt;
+
+  // Von rechts: der letzte Eintrag wurde vom naechsten Proxy gesetzt und ist
+  // vertrauenswuerdig; bei mehreren Hops entsprechend weiter nach links.
+  const index = kette.length - trustedHops;
+  return kette[index] || kette[0] || direkt;
 }
