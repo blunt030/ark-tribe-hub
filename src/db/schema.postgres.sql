@@ -297,3 +297,43 @@ CREATE TABLE IF NOT EXISTS task_comments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
+
+CREATE TABLE IF NOT EXISTS inventory (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  item_id INTEGER NOT NULL REFERENCES items(id),
+  location TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 0,
+  min_quantity INTEGER NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+  updated_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+  UNIQUE(tribe_id, item_id, location)
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_tribe ON inventory(tribe_id, location);
+
+-- Voice-Chat: bewusst nur eine Präsenz-/Verwaltungsschicht, keine echte
+-- Audioübertragung (siehe schema.sql für die ausführliche Begründung).
+CREATE TABLE IF NOT EXISTS voice_channels (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  name TEXT NOT NULL,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_channels_tribe ON voice_channels(tribe_id);
+
+CREATE TABLE IF NOT EXISTS voice_participants (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  channel_id INTEGER NOT NULL REFERENCES voice_channels(id) ON DELETE CASCADE,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  is_muted INTEGER NOT NULL DEFAULT 0,
+  joined_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+  UNIQUE(channel_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_participants_channel ON voice_participants(channel_id);

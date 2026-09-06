@@ -287,3 +287,45 @@ CREATE TABLE IF NOT EXISTS task_comments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
+
+CREATE TABLE IF NOT EXISTS inventory (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  item_id INTEGER NOT NULL REFERENCES items(id),
+  location TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 0,
+  min_quantity INTEGER NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  UNIQUE(tribe_id, item_id, location)
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_tribe ON inventory(tribe_id, location);
+
+-- Voice-Chat: bewusst nur eine Präsenz-/Verwaltungsschicht (wer ist in welchem Raum,
+-- wer ist stumm) - KEINE echte Audioübertragung. Das wäre eine eigene, große
+-- Infrastruktur (WebRTC, Signaling-Server, STUN/TURN) und war laut Auftrag auch nur
+-- als architektonische Grundlage für später gefordert, nicht als fertige Funktion.
+CREATE TABLE IF NOT EXISTS voice_channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  name TEXT NOT NULL,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_channels_tribe ON voice_channels(tribe_id);
+
+CREATE TABLE IF NOT EXISTS voice_participants (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel_id INTEGER NOT NULL REFERENCES voice_channels(id) ON DELETE CASCADE,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id),
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  is_muted INTEGER NOT NULL DEFAULT 0,
+  joined_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  UNIQUE(channel_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_participants_channel ON voice_participants(channel_id);
