@@ -7,8 +7,37 @@ async function scopedChannel(db, id, tribeId) {
   return row;
 }
 
+/** Kanaele, die jeder Tribe standardmaessig bekommt (Punkt 26). */
+export const STANDARD_KANAELE = ['Meeting', 'VC1', 'VC2', 'VC3', 'AFK'];
+
+/**
+ * Legt die Standardkanaele an, sobald ein Tribe zum ersten Mal den Voice-Bereich
+ * oeffnet. Bewusst hier statt im Seed: so bekommen auch bereits bestehende Tribes
+ * die Kanaele, ohne dass eine Migration noetig ist. Laeuft nur einmal - sobald
+ * ein Kanal existiert, wird nichts mehr angelegt (auch nicht, wenn jemand alle
+ * Standardkanaele absichtlich geloescht hat).
+ */
+async function standardkanaeleSicherstellen(db, tribeId) {
+  const vorhanden = await db.get('SELECT COUNT(*) AS c FROM voice_channels WHERE tribe_id = ?', [tribeId]);
+  if (Number(vorhanden.c) > 0) return;
+  for (const name of STANDARD_KANAELE) {
+    await db.run('INSERT INTO voice_channels (tribe_id, name) VALUES (?,?)', [tribeId, name]);
+  }
+  console.log(`[VOICE] Standardkanäle für Tribe ${tribeId} angelegt`);
+}
+
 export async function listChannels(db, tribeId) {
+  await standardkanaeleSicherstellen(db, tribeId);
+  // Standardkanaele in fester Reihenfolge zuerst, eigene danach alphabetisch.
   const channels = await db.all('SELECT * FROM voice_channels WHERE tribe_id = ? ORDER BY name', [tribeId]);
+  channels.sort((a, b) => {
+    const ia = STANDARD_KANAELE.indexOf(a.name);
+    const ib = STANDARD_KANAELE.indexOf(b.name);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.name.localeCompare(b.name);
+  });
   const withParticipants = [];
   for (const ch of channels) {
     const participants = await db.all(

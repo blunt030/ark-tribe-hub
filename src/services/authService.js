@@ -18,7 +18,14 @@ export async function getUserRoles(db, userId) {
 }
 
 async function loadFullUser(db, userId) {
-  const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+  // Tribe-Name gleich mitladen: die Kopfzeile zeigt ihn neben dem Logo an
+  // (Punkt 19), sonst waere dafuer bei jedem Seitenaufruf eine Extra-Abfrage nötig.
+  const user = await db.get(
+    `SELECT u.*, t.name AS tribe_name FROM users u
+     LEFT JOIN tribes t ON t.id = u.tribe_id
+     WHERE u.id = ?`,
+    [userId]
+  );
   if (!user) return null;
   return { ...user, roles: await getUserRoles(db, userId) };
 }
@@ -127,7 +134,14 @@ export async function login(db, { identifier, password, ip, userAgent }) {
     throw unauthorized('Zu viele fehlgeschlagene Anmeldeversuche. Bitte in 15 Minuten erneut versuchen.');
   }
 
-  const user = await db.get(`SELECT * FROM users WHERE lower(username) = ? OR lower(email) = ?`, [normalized, normalized]);
+  // Tribe-Name mitladen, damit die Kopfzeile ihn direkt nach dem Anmelden zeigt
+  // (ohne JOIN kaeme hier null und der Name erschiene erst nach einem Neuladen).
+  const user = await db.get(
+    `SELECT u.*, t.name AS tribe_name FROM users u
+     LEFT JOIN tribes t ON t.id = u.tribe_id
+     WHERE lower(u.username) = ? OR lower(u.email) = ?`,
+    [normalized, normalized]
+  );
 
   const ok = user ? await verifyPassword(password, user.password_hash) : false;
 
