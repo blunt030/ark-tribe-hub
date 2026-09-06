@@ -5,6 +5,18 @@
  * global an/aus.
  */
 export async function notify(db, { userId, tribeId, type, payload }) {
+  // Zweite Verteidigungslinie: der Empfaenger MUSS zum angegebenen Tribe gehoeren.
+  // Die aufrufenden Services pruefen das bereits, aber ein Fehler dort wuerde
+  // sonst still eine tribefremde Benachrichtigung erzeugen. Lieber hier hart
+  // abbrechen als eine falsche Zustellung.
+  if (tribeId) {
+    const empfaenger = await db.get('SELECT id FROM users WHERE id = ? AND tribe_id = ?', [userId, tribeId]);
+    if (!empfaenger) {
+      console.error(`[NOTIFY] Abgebrochen: Empfänger ${userId} gehört nicht zu Tribe ${tribeId} (Typ: ${type})`);
+      return null;
+    }
+  }
+
   const pref = await db.get('SELECT enabled FROM notification_preferences WHERE user_id = ? AND type = ?', [userId, type]);
   if (pref && Number(pref.enabled) === 0) return null;
 
@@ -54,4 +66,20 @@ export async function setPreferences(db, userId, updates) {
     }
     return getPreferences(tx, userId);
   });
+}
+
+/**
+ * Loescht eine einzelne Benachrichtigung. Der Filter auf user_id ist die
+ * eigentliche Berechtigungspruefung: niemand kann fremde Meldungen entfernen,
+ * auch nicht mit geratener ID.
+ */
+export async function remove(db, notificationId, userId) {
+  const res = await db.run('DELETE FROM notifications WHERE id = ? AND user_id = ?', [notificationId, userId]);
+  return res.changes > 0;
+}
+
+/** Entfernt alle bereits gelesenen Meldungen - zum Aufraeumen des Posteingangs. */
+export async function removeAllRead(db, userId) {
+  const res = await db.run('DELETE FROM notifications WHERE user_id = ? AND is_read = 1', [userId]);
+  return res.changes || 0;
 }
