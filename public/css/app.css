@@ -233,7 +233,14 @@ a:hover { text-decoration: underline; }
 }
 
 .grid { display: grid; gap: 14px; }
-.grid.stats { grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); }
+/* Kompaktere Kennzahlen: seit alle Rollen alle Werte sehen, passen mehr Karten
+   nebeneinander statt sie in die naechste Zeile zu druecken. */
+.grid.stats { grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); }
+@media (min-width: 900px) {
+  .stat { padding: 11px 13px; }
+  .stat .n { font-size: 1.6rem; }
+  .stat .l { font-size: .78rem; }
+}
 .grid.cols2 { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 /* auto-fill statt auto-fit: eine einzelne Bestellkarte behaelt so ihre normale
    Spaltenbreite, statt sich ueber den ganzen Bildschirm zu ziehen. */
@@ -475,12 +482,12 @@ textarea { resize: vertical; min-height: 74px; }
   color: #fff;
   font-family: var(--ff-display);
   font-weight: 700;
-  font-size: .8rem;
+  font-size: .92rem;
   letter-spacing: .05em;
-  padding: 0 14px;
+  padding: 0 18px;
   white-space: nowrap;
 }
-.nt-track-wrap { flex: 1; overflow: hidden; position: relative; min-height: 40px; }
+.nt-track-wrap { flex: 1; overflow: hidden; position: relative; min-height: 56px; }
 .nt-track {
   display: flex;
   align-items: center;
@@ -494,8 +501,7 @@ textarea { resize: vertical; min-height: 74px; }
   animation-iteration-count: infinite;
   padding: 0 28px;
 }
-.nt-track.paused { animation-play-state: paused; }
-.nt-item { font-size: .9rem; color: var(--text); }
+.nt-item { font-size: 1.05rem; color: var(--text); }
 .nt-item.urgent { color: var(--st-unavailable); font-weight: 600; }
 .nt-item.high { color: var(--orange); font-weight: 600; }
 .nt-sep { color: var(--faint); }
@@ -508,8 +514,9 @@ textarea { resize: vertical; min-height: 74px; }
   .nt-track-wrap { overflow-x: auto; }
 }
 @media (max-width: 899px) {
-  .news-ticker .nt-label { font-size: .72rem; padding: 0 10px; }
-  .nt-item { font-size: .84rem; }
+  .news-ticker .nt-label { font-size: .8rem; padding: 0 12px; }
+  .nt-item { font-size: .95rem; }
+  .nt-track-wrap { min-height: 48px; }
 }
 
 /* ---------- Auth-Seite ---------------------------------------------------- */
