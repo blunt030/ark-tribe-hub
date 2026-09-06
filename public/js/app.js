@@ -36,7 +36,6 @@ function navItems() {
   const main = [
     { path: '/', icon: '◈', label: t('nav.dashboard') },
     { path: '/orders/new', icon: '＋', label: t('nav.new'), primary: true },
-    { path: '/orders', icon: '☰', label: t('nav.orders') },
     { path: '/profile', icon: '◐', label: t('nav.profile') },
     { path: '/notifications', icon: '◔', label: t('nav.notifications'), badge: () => unreadCount },
   ];
@@ -102,6 +101,13 @@ function buildShell() {
         'aria-label': t('nav.dashboard'),
         onclick: () => go('/'),
       }, el('img', { src: '/assets/logo.png', alt: 'ARK Tribe Hub', width: '42', height: '42' })),
+      // Tribe und eigener Rang direkt neben dem Logo (Punkt 19). Beides kommt aus
+      // der aktuellen Sitzung, nichts fest verdrahtet. Beim eingeklappten
+      // Seitenmenue wird der Block per CSS ausgeblendet.
+      el('div.brand-ident', {},
+        el('div.bi-tribe', { text: user.tribeName || t('nav.group.platform') }),
+        el('div.bi-role', { text: (user.roles || []).map((r) => t('role.' + r)).join(', ') })
+      ),
       el('button.sidebar-toggle', {
         title: t('nav.collapse'),
         'aria-label': t('nav.collapse'),
@@ -114,7 +120,7 @@ function buildShell() {
     ),
     el('nav.nav', {},
       ...main.map(navLink),
-      ...(tools.length ? [el('div.nav-group-label', { text: t('nav.group.tools') }), ...tools.map(navLink)] : []),
+      ...tools.map(navLink),
       ...(tribe.length ? [el('div.nav-group-label', { text: t('nav.group.tribe') }), ...tribe.map(navLink)] : []),
       ...(platform.length ? [el('div.nav-group-label', { text: t('nav.group.platform') }), ...platform.map(navLink)] : [])
     ),
