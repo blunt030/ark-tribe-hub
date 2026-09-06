@@ -85,8 +85,24 @@ async function sendViaHttpApi({ to, subject, text }) {
   }
 }
 
+/**
+ * Maskiert Empfängeradressen für Logs. Produktionslogs sollen nachvollziehbar
+ * bleiben ("ging die Mail raus?"), aber keine vollständigen personenbezogenen
+ * Adressen enthalten. Aus "max.mustermann@freenet.de" wird "ma***@freenet.de".
+ */
+function maskiere(adressen) {
+  return String(adressen)
+    .split(',')
+    .map((a) => {
+      const [lokal, domain] = a.trim().split('@');
+      if (!domain) return '***';
+      return `${lokal.slice(0, 2)}***@${domain}`;
+    })
+    .join(', ');
+}
+
 export async function sendMail({ to, subject, text }) {
-  console.log(`[EMAIL] sendMail gestartet - An: ${to} | Betreff: ${subject}`);
+  console.log(`[EMAIL] sendMail gestartet - An: ${maskiere(to)} | Betreff: ${subject}`);
 
   // Bevorzugt HTTPS-API, weil SMTP in gehosteten Gratis-Umgebungen blockiert sein kann.
   if (config.brevoApiKey) {

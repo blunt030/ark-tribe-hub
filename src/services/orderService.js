@@ -277,6 +277,31 @@ export async function updateItemStatus(db, orderId, orderItemId, newStatus, user
   });
 }
 
+/**
+ * Löscht eine Bestellung endgültig (inkl. Positionen und Kommentaren).
+ *
+ * Abgrenzung zum Stornieren: Stornieren behält die Bestellung als Beleg im
+ * System, Löschen entfernt sie ganz - gedacht für Fehleingaben und Aufräumen.
+ * Rechte bewusst wie beim Stornieren: der Ersteller darf seine eigene Bestellung
+ * löschen, ein Admin alle innerhalb SEINES Tribes (getScopedOrder erzwingt das
+ * serverseitig), ein Developer plattformweit gemäß bestehendem Rollenmodell.
+ */
+export async function deleteOrder(db, orderId, user) {
+  return db.transaction(async (tx) => {
+    const order = await getScopedOrder(tx, orderId, user);
+    const isOwner = order.member_id === user.id;
+    const isStaff = user.roles.includes('admin') || user.roles.includes('developer');
+    if (!isOwner && !isStaff) throw forbidden('Nur der Ersteller oder ein Admin kann diese Bestellung löschen');
+
+    // Abhängige Daten zuerst entfernen: order_items und Kommentare hängen per
+    // Fremdschlüssel an der Bestellung.
+    await tx.run('DELETE FROM order_comments WHERE order_id = ?', [orderId]);
+    await tx.run('DELETE FROM order_items WHERE order_id = ?', [orderId]);
+    await tx.run('DELETE FROM orders WHERE id = ?', [orderId]);
+    await audit(tx, { tribeId: order.tribe_id, actorId: user.id, action: 'order_deleted', targetType: 'order', targetId: orderId });
+  });
+}
+
 export async function cancelOrder(db, orderId, user) {
   return db.transaction(async (tx) => {
     const order = await getScopedOrder(tx, orderId, user);
