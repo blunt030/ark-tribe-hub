@@ -61,15 +61,15 @@ export async function renderNewOrder(mount, ctx) {
   const { go } = ctx;
   const chosen = []; // { itemId, name, emoji, product_type, quantity }
   let priority = 'normal';
-  let renderToken = 0; // schützt vor überholten Antworten: Kategorie-Vorschau und Suche
+  let renderToken = 0; // schützt vor überholten Antworten: Gruppen-Vorschau und Suche
                         // laufen beide asynchron - ohne das hier könnte eine spät
-                        // eintreffende Kategorie-Antwort eine bereits aktuellere
+                        // eintreffende Gruppen-Antwort eine bereits aktuellere
                         // Sucheingabe wieder überschreiben.
 
   const chosenBox = el('div.list');
   const resultsBox = el('div.picker-results');
-  const typeChips = el('div.chips', { style: 'margin-top:10px' });
-  const habitatChips = el('div.chips', { style: 'margin-top:8px' });
+  const accBox = el('div.acc');
+  const habitatChips = el('div.chips.habitats', { style: 'margin-top:10px' });
   const search = el('input', {
     type: 'search',
     placeholder: t('order.search_items'),
@@ -133,22 +133,17 @@ export async function renderNewOrder(mount, ctx) {
     }
   }
 
-  // Zwei Ebenen, wie im Katalog-Dokument gefordert: oben Produkttyp
-  // (Kreaturen/Eier/Embryos/Sättel/Strukturen/Sonstiges), bei "Kreaturen"
-  // zusätzlich der Lebensraum als zweite Ebene (Land/Wasser/Fliegend/Sonstige).
-  // Silhouetten statt Emojis: das bisherige Sattel-Emoji zeigte einen STUHL,
-  // was mit einem Reitsattel nichts zu tun hat.
-  const PRODUCT_TYPES = [
-    { key: 'creature', art: 'creature' },
-    { key: 'egg', art: 'egg' },
-    { key: 'embryo', art: 'embryo' },
-    { key: 'saddle', art: 'saddle' },
-    { key: 'structure', art: 'structure' },
-    { key: 'resource', art: 'structure' },
-  ];
-  let creatureCategories = [];
-  let activeProductType = 'creature';
-  let activeHabitatId = null;
+  /* ------------------------------------------------------------------------ */
+  /* Aufklappbare Gruppen statt einer langen Reihe von Reitern.                */
+  /*                                                                          */
+  /* Vorher standen alle sechs Produkttypen als gleichwertige Knöpfe nebenein- */
+  /* ander, darunter eine zweite Reihe für Lebensraum bzw. Baustufe. Auf dem   */
+  /* Handy brach diese Doppelreihe um und war kaum zu treffen. Jetzt gibt es   */
+  /* drei fachliche Gruppen (Kreaturen / Strukturen / Sättel) plus Sonstiges,  */
+  /* jede mit ihren Unterpunkten - "Sonstiges" bleibt bewusst erhalten, sonst  */
+  /* wären Katalogeinträge wie Werkzeuge oder Ressourcen nicht mehr            */
+  /* erreichbar.                                                              */
+  /* ------------------------------------------------------------------------ */
 
   // Land/Wasser/Flieger/Sonstige gilt nicht nur für Kreaturen, sondern genauso für
   // deren Eier/Embryos/Sättel (die haben in der Datenbank dieselbe Kategorie wie
@@ -156,60 +151,95 @@ export async function renderNewOrder(mount, ctx) {
   // Nur Strukturen und Sonstiges haben keinen Lebensraum-Bezug.
   const HABITAT_AWARE_TYPES = ['creature', 'egg', 'embryo', 'saddle'];
 
+  // Die Baustufe steckt als Präfix im Schlüssel ("metal_wall"), es braucht also
+  // keine zusätzliche Backend-Abfrage. "Sonstiges" fängt alles ab, was zu keiner
+  // der fünf Bauserien gehört (Lagerbox, Schmiede, Geschütze ...).
+  const BAUSTUFEN = ['thatch', 'wood', 'stone', 'metal', 'tek', 'other'];
+
+  const GRUPPEN = [
+    {
+      key: 'creatures',
+      art: 'creature',
+      label: () => t('order.group.creatures'),
+      entries: [
+        { key: 'creature', art: 'creature', label: () => t('catalog.tab.creature'), types: ['creature'] },
+        { key: 'eggs', art: 'egg', label: () => t('order.sub.eggs'), types: ['egg', 'embryo'] },
+      ],
+    },
+    {
+      key: 'structures',
+      art: 'structure',
+      label: () => t('order.group.structures'),
+      entries: BAUSTUFEN.map((stufe) => ({
+        key: 'structure_' + stufe,
+        art: 'structure',
+        label: () => t('order.tier.' + stufe),
+        types: ['structure'],
+        tier: stufe,
+      })),
+    },
+    {
+      key: 'saddles',
+      art: 'saddle',
+      label: () => t('order.group.saddles'),
+      entries: [{ key: 'saddle', art: 'saddle', label: () => t('catalog.tab.saddle'), types: ['saddle'] }],
+    },
+    {
+      key: 'other',
+      art: 'structure',
+      label: () => t('order.group.other'),
+      entries: [{ key: 'resource', art: 'structure', label: () => t('catalog.tab.resource'), types: ['resource'] }],
+    },
+  ];
+
+  let creatureCategories = [];
+  let offeneGruppe = 'creatures';
+  let activeEntry = GRUPPEN[0].entries[0];
+  let activeHabitatId = null;
+
+  const istLebensraumFaehig = (entry) => entry.types.every((pt) => HABITAT_AWARE_TYPES.includes(pt));
+
   async function loadResults() {
     const myToken = ++renderToken;
+    const entry = activeEntry;
     resultsBox.replaceChildren(spinner());
     try {
-      const query = { productType: activeProductType };
-      if (HABITAT_AWARE_TYPES.includes(activeProductType) && activeHabitatId) query.categoryId = activeHabitatId;
-      let { items } = await api.items(query);
+      // Ein Eintrag kann mehrere Produkttypen bündeln ("Eier & Embryos"). Die
+      // Listen werden zusammengeführt und über die ID entdoppelt.
+      const listen = await Promise.all(
+        entry.types.map((pt) => {
+          const query = { productType: pt };
+          if (HABITAT_AWARE_TYPES.includes(pt) && activeHabitatId) query.categoryId = activeHabitatId;
+          return api.items(query).then((r) => r.items).catch(() => []);
+        })
+      );
       if (myToken !== renderToken) return; // eine neuere Anfrage (Suche o.ä.) lief inzwischen los
 
-      // Baustufe clientseitig filtern: die Stufe steckt als Präfix im Schlüssel
-      // ("metal_wall"). "Sonstiges" fängt alles ab, was zu keiner der fünf
-      // Bauserien gehört (Lagerbox, Schmiede, Geschütze ...).
-      if (activeProductType === 'structure' && activeBaustufe) {
-        const stufen = ['thatch', 'wood', 'stone', 'metal', 'tek'];
+      const gesehen = new Set();
+      let items = [];
+      for (const liste of listen) {
+        for (const it of liste) {
+          if (gesehen.has(it.id)) continue;
+          gesehen.add(it.id);
+          items.push(it);
+        }
+      }
+
+      if (entry.tier) {
+        const stufen = BAUSTUFEN.filter((s) => s !== 'other');
         items = items.filter((i) => {
           const praefix = String(i.key || '').split('_')[0];
-          return activeBaustufe === 'sonstige' ? !stufen.includes(praefix) : praefix === activeBaustufe;
+          return entry.tier === 'other' ? !stufen.includes(praefix) : praefix === entry.tier;
         });
       }
+
+      items.sort((a, b) => String(a.name).localeCompare(String(b.name)));
       renderResults(items, t('order.no_items'));
     } catch { /* still scheitern lassen, UI bleibt bedienbar */ }
   }
 
-  // Bau-Stufen als zweite Ebene bei Strukturen - analog zu den Lebensräumen bei
-  // Kreaturen. Die Stufe steckt im Schlüssel ("metal_wall"), es braucht also
-  // keine zusätzliche Backend-Abfrage.
-  const BAUSTUFEN = [
-    { key: 'thatch', label: 'Stroh' },
-    { key: 'wood', label: 'Holz' },
-    { key: 'stone', label: 'Stein' },
-    { key: 'metal', label: 'Metall' },
-    { key: 'tek', label: 'Tek' },
-    { key: 'sonstige', label: 'Sonstiges' },
-  ];
-  let activeBaustufe = null;
-
   function drawHabitatChips() {
-    // Strukturen: Untermenü mit den Baustufen statt der Lebensräume.
-    if (activeProductType === 'structure') {
-      habitatChips.replaceChildren(
-        el('button.btn.sm' + (activeBaustufe === null ? '.primary' : ''), {
-          text: t('common.all'),
-          onclick: () => { activeBaustufe = null; drawHabitatChips(); loadResults(); },
-        }),
-        ...BAUSTUFEN.map((b) =>
-          el('button.btn.sm' + (activeBaustufe === b.key ? '.primary' : ''), {
-            text: b.label,
-            onclick: () => { activeBaustufe = b.key; drawHabitatChips(); loadResults(); },
-          })
-        )
-      );
-      return;
-    }
-    if (!HABITAT_AWARE_TYPES.includes(activeProductType) || creatureCategories.length === 0) {
+    if (!istLebensraumFaehig(activeEntry) || creatureCategories.length === 0) {
       habitatChips.replaceChildren();
       return;
     }
@@ -227,24 +257,52 @@ export async function renderNewOrder(mount, ctx) {
     );
   }
 
-  function drawTypeChips() {
-    typeChips.replaceChildren(
-      ...PRODUCT_TYPES.map((pt) =>
-        el('button.btn.sm.with-icon' + (activeProductType === pt.key ? '.primary' : ''), {
-          onclick: () => {
-            activeProductType = pt.key;
-            activeHabitatId = null;
-            activeBaustufe = null;
-            drawTypeChips();
-            drawHabitatChips();
-            loadResults();
+  function waehleEintrag(entry) {
+    activeEntry = entry;
+    activeHabitatId = null;
+    search.value = '';
+    drawAcc();
+    drawHabitatChips();
+    loadResults();
+  }
+
+  function drawAcc() {
+    accBox.replaceChildren(
+      ...GRUPPEN.map((g) => {
+        const offen = offeneGruppe === g.key;
+        return el('div.acc-group' + (offen ? '.open' : ''), { dataset: { group: g.key } },
+          el('button.acc-head', {
+            type: 'button',
+            'aria-expanded': offen ? 'true' : 'false',
+            onclick: () => {
+              // Kopfzeile öffnet die Gruppe UND wählt ihren ersten Unterpunkt aus,
+              // damit sofort Ergebnisse dastehen statt einer leeren Fläche.
+              if (offeneGruppe === g.key) { offeneGruppe = null; drawAcc(); return; }
+              offeneGruppe = g.key;
+              waehleEintrag(g.entries[0]);
+            },
           },
-        }, itemIcon(pt.art, 16), el('span', { text: t('catalog.tab.' + pt.key) }))
-      )
+            itemIcon(g.art, 18),
+            el('span.acc-title', { text: g.label() }),
+            el('span.acc-caret', { text: offen ? '▾' : '▸' })
+          ),
+          el('div.acc-body', {},
+            ...g.entries.map((e) =>
+              el('button.acc-item' + (activeEntry.key === e.key ? '.on' : ''), {
+                type: 'button',
+                onclick: () => { offeneGruppe = g.key; waehleEintrag(e); },
+              },
+                itemIcon(e.art, 16),
+                el('span', { text: e.label() })
+              )
+            )
+          )
+        );
+      })
     );
   }
 
-  drawTypeChips();
+  drawAcc();
   loadResults();
   // Lebensraum-Kategorien einmalig laden (nur die vier Kreaturen-Lebensräume,
   // "structures" ist keine Kreaturen-Unterkategorie).
@@ -258,7 +316,7 @@ export async function renderNewOrder(mount, ctx) {
     clearTimeout(searchTimer);
     const q = search.value.trim();
     if (!q) {
-      // Suche geleert -> zurück zur aktuell gewählten Produkttyp-/Lebensraum-Ansicht.
+      // Suche geleert -> zurück zur aktuell gewählten Gruppe/Unterebene.
       loadResults();
       return;
     }
@@ -311,10 +369,10 @@ export async function renderNewOrder(mount, ctx) {
     ),
     el('div.card', {},
       el('div.field', {},
-        el('label', { for: 'item-search', text: t('order.add_item') }),
+        el('label', { for: 'item-search', text: t('order.what') }),
         search
       ),
-      typeChips,
+      accBox,
       habitatChips,
       resultsBox
     ),
