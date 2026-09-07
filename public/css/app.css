@@ -831,3 +831,128 @@ textarea { resize: vertical; min-height: 74px; }
 /* Filterknopf mit Symbol + Text nebeneinander. */
 .btn.with-icon { display: inline-flex; align-items: center; gap: 6px; }
 .btn.with-icon .item-icon { color: currentColor; }
+
+/* =========================================================================
+   Redesign: aufklappbare Gruppen, Kacheln, Aktivitaeten, Schnellzugriff
+   Gemeinsam genutzt von "Neue Bestellung", Profil und Startseite.
+   ========================================================================= */
+
+/* ---------- Aufklappbare Gruppen (Akkordeon) ------------------------------ */
+
+.acc { display: grid; gap: 8px; margin-top: 12px; }
+.acc-group {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  overflow: hidden;
+}
+.acc-head {
+  width: 100%;
+  display: flex; align-items: center; gap: 9px;
+  padding: 11px 12px;
+  background: none; border: 0; cursor: pointer;
+  color: var(--text);
+  font-family: var(--ff-display);
+  font-size: .98rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+  text-align: left;
+}
+.acc-head:hover { background: rgba(212, 175, 55, .06); }
+.acc-head .acc-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.acc-head .acc-caret { color: var(--faint); font-size: .8rem; }
+.acc-group.open .acc-head { color: var(--gold); }
+.acc-group.open .acc-head .item-icon { color: var(--gold); }
+
+.acc-body { display: none; }
+.acc-group.open .acc-body {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 2px 8px 9px;
+  border-top: 1px solid var(--line-soft);
+}
+.acc-item {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 10px;
+  background: none; border: 1px solid transparent; border-radius: var(--radius-sm);
+  color: var(--muted); font-size: .9rem; text-align: left; cursor: pointer;
+}
+.acc-item:hover { background: var(--panel); color: var(--text); }
+.acc-item.on { border-color: var(--gold-dim); color: var(--gold); background: rgba(212, 175, 55, .07); }
+.acc-item.on .item-icon { color: var(--gold); }
+
+/* ---------- Kacheln (Startseite, Profiluebersicht) ------------------------ */
+
+.tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.tile {
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.tile .t-head {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--ff-display); font-weight: 700;
+  font-size: .84rem; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted);
+}
+.tile .t-val { font-family: var(--ff-display); font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
+.tile .t-sub { font-size: .82rem; color: var(--muted); overflow-wrap: anywhere; }
+.tile .t-link {
+  margin-top: auto; align-self: flex-start;
+  background: none; border: 0; padding: 4px 0;
+  color: var(--gold); font-size: .84rem; cursor: pointer;
+}
+.tile .t-link:hover { text-decoration: underline; }
+
+/* ---------- Aktivitaeten-Verlauf ------------------------------------------ */
+
+.feed { display: flex; flex-direction: column; gap: 0; }
+.feed-item {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 9px 0; border-bottom: 1px solid var(--line-soft);
+}
+.feed-item:last-child { border-bottom: 0; }
+.feed-item .fi-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--st-available); flex: none; margin-top: 6px;
+}
+.feed-item.unread .fi-dot { background: var(--gold); }
+.feed-item .fi-body { min-width: 0; }
+.feed-item .fi-text { font-size: .9rem; overflow-wrap: anywhere; }
+.feed-item .fi-time { font-size: .76rem; color: var(--faint); }
+
+/* ---------- Schnellzugriff ------------------------------------------------ */
+
+.quick { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
+.quick-btn {
+  min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 12px 6px;
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  color: var(--text); font-size: .8rem; cursor: pointer;
+  text-align: center;
+}
+.quick-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+.quick-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+/* ---------- Konto- und Sicherheitszeilen (Profil) ------------------------- */
+
+.link-row {
+  width: 100%;
+  display: flex; align-items: center; gap: 9px;
+  padding: 11px 2px;
+  background: none; border: 0; border-bottom: 1px solid var(--line-soft);
+  color: var(--text); font-size: .92rem; text-align: left; cursor: pointer;
+}
+.link-row:last-child { border-bottom: 0; }
+.link-row:hover { color: var(--gold); }
+.link-row .lr-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.link-row .lr-caret { color: var(--faint); }
+.sec-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 2px; font-size: .9rem;
+}
+.sec-row .sec-state { margin-left: auto; font-weight: 600; }
+.sec-row .sec-state.ok { color: var(--st-available); }
+.sec-row .sec-state.warn { color: var(--st-unavailable); }
