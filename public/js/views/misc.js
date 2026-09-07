@@ -98,13 +98,29 @@ export async function renderProfile(mount, ctx) {
   const { user, onSignOut, reloadUser, go } = ctx;
   mount.append(spinner());
 
-  const [{ user: me }, tribe, { preferences }] = await Promise.all([
+  // Kennzahlen fuer "Meine Uebersicht". Alles einzeln abgesichert: das
+  // Developer-Konto gehoert keinem Tribe an, Aufgaben und Bestand antworten
+  // dort mit einem Fehler - die Seite darf daran nicht scheitern.
+  const [{ user: me }, tribe, { preferences }, ordersRes, tasksRes, invRes, notifRes] = await Promise.all([
     api.profile(),
     api.myTribe().catch(() => null),
     api.notifPrefs(),
+    api.orders('all').catch(() => ({ orders: [] })),
+    api.tasks().catch(() => ({ tasks: [] })),
+    api.inventory().catch(() => ({ items: [] })),
+    api.notifications().catch(() => ({ notifications: [] })),
   ]);
 
   mount.replaceChildren();
+
+  const meineBestellungen = ordersRes.orders.filter((o) => o.member_id === me.id).length;
+  const meineAufgaben = tasksRes.tasks.filter(
+    (tk) => tk.assignee_id === me.id && !['done', 'cancelled'].includes(tk.status)
+  ).length;
+  const bestandEintraege = invRes.items.length;
+  const mitteilungen = notifRes.notifications.length;
+
+  /* ---------------------------------------------------------------- Felder */
 
   const server = el('input', { type: 'text', value: me.server || '', id: 'p-server' });
   const map = el('input', { type: 'text', value: me.map || '', id: 'p-map' });
@@ -146,9 +162,6 @@ export async function renderProfile(mount, ctx) {
   const pwCurrentInput = el('input', { type: 'password', autocomplete: 'current-password', id: 'pw-cur' });
   const pwNewInput = el('input', { type: 'password', autocomplete: 'new-password', id: 'pw-new' });
   const pwRepeatInput = el('input', { type: 'password', autocomplete: 'new-password', id: 'pw-rep' });
-  const pwCurrent = el('div.field', {}, el('label', { for: 'pw-cur', text: t('pw.current') }), pwCurrentInput);
-  const pwNew = el('div.field', {}, el('label', { for: 'pw-new', text: t('pw.new') }), pwNewInput);
-  const pwRepeat = el('div.field', {}, el('label', { for: 'pw-rep', text: t('pw.repeat') }), pwRepeatInput);
   const pwSaveBtn = el('button.btn.primary', { text: t('pw.save') });
   pwSaveBtn.addEventListener('click', async () => {
     if (pwNewInput.value !== pwRepeatInput.value) { toast(t('pw.mismatch'), 'err'); return; }
@@ -160,6 +173,21 @@ export async function renderProfile(mount, ctx) {
       toast(t('pw.changed'));
     } catch (err) { toast(err.message, 'err'); }
     finally { pwSaveBtn.disabled = false; }
+  });
+
+  // E-Mail-Wechsel. Das Backend setzt dabei den Bestätigungsstatus zurück und
+  // verschickt eine neue Bestätigungsmail - der Sicherheitsbereich unten zeigt
+  // danach entsprechend "noch nicht bestätigt".
+  const emailInput = el('input', { type: 'email', value: me.email || '', id: 'p-email', autocomplete: 'email' });
+  const emailSaveBtn = el('button.btn.primary', { text: t('profile.save') });
+  emailSaveBtn.addEventListener('click', async () => {
+    emailSaveBtn.disabled = true;
+    try {
+      const res = await api.updateProfile({ email: emailInput.value.trim() });
+      toast(t('profile.email_saved'));
+      if (res?.user) setzeSicherheitszustand(res.user.emailVerified);
+    } catch (err) { toast(err.message, 'err'); }
+    finally { emailSaveBtn.disabled = false; }
   });
 
   // Einstellungen -> Benachrichtigungen: jede Art einzeln schaltbar, plus
@@ -198,12 +226,111 @@ export async function renderProfile(mount, ctx) {
     }
   };
 
+  /* ------------------------------------------------- Aufklappbare Bereiche */
+
+  // Jeder Konto-Bereich ist ein eigenes Feld, das erst auf Klick erscheint.
+  // Vorher standen Passwortfelder und Profildaten dauerhaft untereinander -
+  // auf dem Handy war das eine sehr lange Rolle.
+  function panel(...kinder) {
+    return el('div.panel', { style: 'display:none;margin:4px 0 10px' }, ...kinder);
+  }
+  function toggle(panelNode) {
+    const auf = panelNode.style.display === 'none';
+    panelNode.style.display = auf ? 'block' : 'none';
+    if (auf) panelNode.scrollIntoView({ block: 'nearest' });
+  }
+  function linkRow(label, panelNode, symbol) {
+    return el('button.link-row', {
+      type: 'button',
+      onclick: () => toggle(panelNode),
+    },
+      symbol ? el('span', { text: symbol }) : null,
+      el('span.lr-label', { text: label }),
+      el('span.lr-caret', { text: '→' })
+    );
+  }
+
+  const editPanel = panel(
+    el('div', { style: 'margin-bottom:10px' },
+      el('button.btn.sm', { text: t('profile.upload'), onclick: () => fileInput.click() }),
+      fileInput
+    ),
+    el('div.field', {}, el('label', { for: 'p-server', text: t('profile.server') }), server),
+    el('div.field', {}, el('label', { for: 'p-map', text: t('profile.map') }), map),
+    el('div.field', {}, el('label', { for: 'p-vault', text: t('profile.vault') }), vault),
+    el('p.hint', { text: t('profile.visibility'), style: 'margin:-6px 0 14px' }),
+    saveBtn
+  );
+  const pwPanel = panel(
+    el('p.hint', { style: 'margin:0 0 10px', text: t('pw.hint') }),
+    el('div.field', {}, el('label', { for: 'pw-cur', text: t('pw.current') }), pwCurrentInput),
+    el('div.field', {}, el('label', { for: 'pw-new', text: t('pw.new') }), pwNewInput),
+    el('div.field', {}, el('label', { for: 'pw-rep', text: t('pw.repeat') }), pwRepeatInput),
+    pwSaveBtn
+  );
+  const emailPanel = panel(
+    el('div.field', {}, el('label', { for: 'p-email', text: t('profile.email') }), emailInput),
+    emailSaveBtn
+  );
+
+  // Sicherheitszeile: wird nach einem E-Mail-Wechsel direkt aktualisiert.
+  const secState = el('span.sec-state');
+  function setzeSicherheitszustand(verified) {
+    secState.className = 'sec-state ' + (verified ? 'ok' : 'warn');
+    secState.textContent = verified ? '✓' : '✕';
+    secLabel.textContent = verified ? t('profile.email_verified') : t('profile.email_unverified');
+  }
+  const secLabel = el('span.lr-label');
+  setzeSicherheitszustand(Boolean(me.emailVerified));
+
+  /* ------------------------------------------------------ Benachrichtigungen */
+
+  const letzteMeldungen = notifRes.notifications.slice(0, 5);
+  const notifBody = el('div.acc-body', {},
+    letzteMeldungen.length
+      ? el('div.feed', {},
+          ...letzteMeldungen.map((n) =>
+            el('div.feed-item' + (n.is_read ? '' : '.unread'), {},
+              el('span.fi-dot'),
+              el('div.fi-body', {},
+                el('div.fi-text', { text: t('n.' + n.type) }),
+                el('div.fi-time', { text: timeAgo(n.created_at) })
+              )
+            )
+          )
+        )
+      : el('p.hint', { style: 'padding:4px 0', text: t('profile.no_notifications') }),
+    el('button.t-link', { type: 'button', text: t('profile.show_all') + ' →', onclick: () => go('/notifications') })
+  );
+  const notifGruppe = el('div.acc-group.open', {},
+    el('button.acc-head', {
+      type: 'button',
+      'aria-expanded': 'true',
+      onclick: (e) => {
+        const gruppe = e.currentTarget.parentElement;
+        const offen = gruppe.classList.toggle('open');
+        e.currentTarget.setAttribute('aria-expanded', offen ? 'true' : 'false');
+        e.currentTarget.querySelector('.acc-caret').textContent = offen ? '▾' : '▸';
+      },
+    },
+      el('span', { text: '🔔' }),
+      el('span.acc-title', { text: t('profile.notifications') }),
+      el('span.acc-caret', { text: '▾' })
+    ),
+    notifBody
+  );
+
+  /* ------------------------------------------------------------- Aufbau */
+
   mount.append(
     el('div.page-head', {}, el('div', {}, el('h1', { text: t('profile.title') }))),
+
+    // Mein Profil
+    el('div.section-title', {}, '👤 ' + t('profile.my_profile')),
     el('div.card', {},
-      el('div', { style: 'display:flex;gap:16px;align-items:center;margin-bottom:18px' },
+      el('div', { style: 'display:flex;gap:16px;align-items:center' },
         avatarImg,
-        el('div', {},
+        el('div', { style: 'min-width:0' },
           el('div', { style: 'font-family:var(--ff-display);font-size:1.3rem;font-weight:700', text: me.username }),
           el('div', { style: 'color:var(--muted);font-size:.86rem', text: tribe?.tribe?.name || '—' }),
           el('div.chips', { style: 'margin-top:7px' },
@@ -211,16 +338,42 @@ export async function renderProfile(mount, ctx) {
           )
         )
       ),
-      el('button.btn.sm', { text: t('profile.upload'), onclick: () => fileInput.click() }),
-      fileInput
+      el('div', { style: 'margin-top:12px' }, linkRow(t('profile.edit'), editPanel, '✏️')),
+      editPanel
     ),
-    el('div.card', { style: 'margin-top:14px' },
-      el('div.field', {}, el('label', { for: 'p-server', text: t('profile.server') }), server),
-      el('div.field', {}, el('label', { for: 'p-map', text: t('profile.map') }), map),
-      el('div.field', {}, el('label', { for: 'p-vault', text: t('profile.vault') }), vault),
-      el('p.hint', { text: t('profile.visibility'), style: 'margin:-6px 0 14px' }),
-      saveBtn
+
+    // Meine Übersicht
+    el('div.section-title', {}, '📊 ' + t('profile.overview')),
+    el('div.tiles', {},
+      uebersichtKachel(meineBestellungen, t('profile.cnt.orders')),
+      uebersichtKachel(meineAufgaben, t('profile.cnt.tasks')),
+      uebersichtKachel(bestandEintraege, t('profile.cnt.inventory')),
+      uebersichtKachel(mitteilungen, t('profile.cnt.notifications'))
     ),
+
+    // Benachrichtigungen (aufklappbar)
+    el('div.acc', { style: 'margin-top:16px' }, notifGruppe),
+
+    // Konto
+    el('div.section-title', {}, '⚙️ ' + t('profile.account')),
+    el('div.card', {},
+      linkRow(t('profile.edit'), editPanel, '✏️'),
+      linkRow(t('pw.title'), pwPanel, '🔑'),
+      pwPanel,
+      linkRow(t('profile.email_change'), emailPanel, '✉️'),
+      emailPanel
+    ),
+
+    // Sicherheit
+    el('div.section-title', {}, '🛡️ ' + t('profile.security')),
+    el('div.card', {},
+      el('div.sec-row', {}, el('span', { text: '✉️' }), secLabel, secState),
+      el('div', { style: 'margin-top:12px' },
+        el('button.btn.danger', { text: t('auth.logout'), onclick: onSignOut })
+      )
+    ),
+
+    // Sprache
     el('div.card', { style: 'margin-top:14px' },
       el('div.field', {}, el('label', { text: t('profile.language') }),
         el('div.chips', {},
@@ -233,12 +386,9 @@ export async function renderProfile(mount, ctx) {
         )
       )
     ),
-    el('div.section-title', { style: 'margin-top:22px' }, '⚙️ ' + t('profile.settings')),
-    el('div.card', {},
-      el('div', { style: 'font-weight:600;margin-bottom:4px', text: '🔑 ' + t('pw.title') }),
-      el('p', { style: 'color:var(--muted);font-size:.86rem;margin:0 0 12px', text: t('pw.hint') }),
-      pwCurrent, pwNew, pwRepeat, pwSaveBtn
-    ),
+
+    // Benachrichtigungseinstellungen (bleiben bewusst offen sichtbar - sie
+    // gehoeren zu den Einstellungen, nicht zum Posteingang oben)
     el('div.card', { style: 'margin-top:14px' },
       el('div', { style: 'font-weight:600;margin-bottom:4px', text: '🔔 ' + t('notif.settings') }),
       el('p', { style: 'color:var(--muted);font-size:.86rem;margin:0 0 12px', text: t('notif.settings_hint') }),
@@ -249,10 +399,15 @@ export async function renderProfile(mount, ctx) {
       prefList,
       el('div', { style: 'margin-top:14px' }, prefSaveBtn)
     ),
-    adminLinks(user, go),
-    el('div', { style: 'margin-top:18px' },
-      el('button.btn.danger', { text: t('auth.logout'), onclick: onSignOut })
-    )
+
+    adminLinks(user, go)
+  );
+}
+
+function uebersichtKachel(n, label) {
+  return el('div.tile', {},
+    el('div.t-val', { text: String(n) }),
+    el('div.t-sub', { text: label })
   );
 }
 

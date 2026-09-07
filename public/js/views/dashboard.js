@@ -1,12 +1,17 @@
-import { el, spinner, orderCard, emptyState, statusBadge, priorityBadge, newsTicker } from '../ui.js';
+import { el, spinner, orderCard, emptyState, newsTicker } from '../ui.js';
+import { itemIcon } from '../icons.js';
 import { t, timeAgo } from '../i18n.js';
 import { api } from '../api.js';
 
 /**
- * Ein Dashboard, das sich nach den Rollen richtet. Ein Benutzer kann mehrere
- * Rollen gleichzeitig haben (z. B. Admin + Breeder/Crafter) – dann werden die
- * passenden Abschnitte untereinander gezeigt, statt ihn zu zwingen, zwischen
- * getrennten Ansichten zu wechseln.
+ * Startseite nach dem Entwurf: Begruessung, Kacheln mit den wichtigsten Zahlen
+ * (offene Bestellungen, eigene Aufgaben, Ungelesenes), Aktivitaetsverlauf,
+ * Tribe- und Serverkachel sowie Schnellzugriff. Darunter weiterhin die
+ * rollenabhaengigen Bestelllisten - ein Breeder/Crafter arbeitet genau daraus.
+ *
+ * Ein Benutzer kann mehrere Rollen gleichzeitig haben (z. B. Admin +
+ * Breeder/Crafter) - dann werden die passenden Abschnitte untereinander gezeigt,
+ * statt ihn zwischen getrennten Ansichten wechseln zu lassen.
  */
 export async function renderDashboard(mount, ctx) {
   const { user, go } = ctx;
@@ -15,12 +20,18 @@ export async function renderDashboard(mount, ctx) {
   const isDev = user.roles.includes('developer');
   const isAdmin = user.roles.includes('admin');
   const isBreeder = user.roles.includes('breeder_crafter');
+  // Das Developer-Konto gehoert keinem Tribe an - Aufgaben, Bestand und Server
+  // werden dort erst gar nicht abgefragt, statt einen Fehler zu verschlucken.
+  const hatTribe = Boolean(user.tribeId) && !isDev;
 
-  const [orders, notifications, members, newsRes] = await Promise.all([
+  const [orders, notifications, members, newsRes, tasksRes, serversRes, tribeRes] = await Promise.all([
     api.orders().catch(() => ({ orders: [] })),
     api.notifications().catch(() => ({ notifications: [] })),
     isAdmin && !isDev ? api.members().catch(() => ({ members: [] })) : Promise.resolve({ members: [] }),
     api.news().catch(() => ({ news: [] })),
+    hatTribe ? api.tasks().catch(() => ({ tasks: [] })) : Promise.resolve({ tasks: [] }),
+    hatTribe ? api.servers().catch(() => ({ servers: [] })) : Promise.resolve({ servers: [] }),
+    hatTribe ? api.myTribe().catch(() => null) : Promise.resolve(null),
   ]);
 
   const all = orders.orders;
@@ -34,41 +45,143 @@ export async function renderDashboard(mount, ctx) {
 
   const sub = isDev ? 'dash.sub_dev' : isAdmin ? 'dash.sub_admin' : isBreeder ? 'dash.sub_breeder' : 'dash.sub_member';
 
+  // --- Begruessung ---------------------------------------------------------
+  // Der Name bleibt in der h1: sie ist die Ueberschrift der Seite, und genau
+  // daran erkennt man beim Anmelden sofort, mit welchem Konto man drin ist.
   mount.append(
     el('div.page-head', {},
       el('div', {},
-        el('h1', { text: t('dash.welcome', { name: user.username }) }),
+        el('h1', { text: t('dash.welcome_back', { name: user.username }) }),
         el('p', { text: t(sub) })
       ),
       el('button.btn.primary', { text: '+ ' + t('order.new'), onclick: () => go('/orders/new') })
     )
   );
 
-  // --- Kennzahlen, je nach Rolle unterschiedlich zusammengesetzt ------------
   const mine = all.filter((o) => o.member_id === user.id);
   const openAll = all.filter((o) => !['completed', 'cancelled'].includes(o.status));
   const unclaimed = openAll.filter((o) => !o.assigned_to);
   const claimedByMe = all.filter((o) => o.assigned_to === user.id && !['completed', 'cancelled'].includes(o.status));
   const urgent = openAll.filter((o) => o.priority === 'urgent');
 
-  // Alle Kennzahlen für ALLE Rollen sichtbar. Vorher sahen normale Mitglieder
-  // weder offene noch dringende Aufträge - gerade "Dringend" ist aber für jeden
-  // im Tribe die wichtigste Information. Die Karten sind auf dem Desktop dafür
-  // kompakter (siehe .grid.stats im CSS), damit mehr nebeneinander passt.
-  const stats = [];
-  stats.push(stat(unclaimed.length, t('dash.open_jobs'), 'accent-gold'));
-  stats.push(stat(urgent.length, t('dash.urgent'), urgent.length ? 'accent-red' : ''));
-  if (isBreeder || isAdmin || isDev) {
-    stats.push(stat(claimedByMe.length, t('dash.mine')));
-  } else {
-    stats.push(stat(mine.filter((o) => !['completed', 'cancelled'].includes(o.status)).length, t('dash.active')));
-    stats.push(stat(mine.filter((o) => o.status === 'completed').length, t('dash.done'), 'accent-green'));
+  // Zugewiesene Aufgaben MUESSEN beim Zustaendigen auftauchen - vorher gab es
+  // dafuer auf der Startseite keinen Platz, man musste die Aufgabenseite oeffnen
+  // und selbst suchen.
+  const meineAufgaben = tasksRes.tasks.filter(
+    (tk) => tk.assignee_id === user.id && !['done', 'cancelled'].includes(tk.status)
+  );
+
+  // --- Kacheln -------------------------------------------------------------
+  mount.append(
+    el('div.tiles', {},
+      kachel({
+        icon: 'structure',
+        head: t('dash.tile.orders'),
+        value: openAll.length,
+        sub: t('dash.orders_n', { n: openAll.length }),
+        link: t('dash.show'),
+        onclick: () => go('/orders'),
+      }),
+      hatTribe
+        ? kachel({
+            icon: 'creature',
+            head: t('dash.tile.tasks'),
+            value: meineAufgaben.length,
+            sub: t('dash.tasks_open_n', { n: meineAufgaben.length }),
+            link: t('dash.show'),
+            onclick: () => go('/tasks'),
+          })
+        : null,
+      kachel({
+        icon: 'egg',
+        head: t('dash.unread'),
+        value: unread,
+        sub: t('nav.notifications'),
+        link: t('dash.show'),
+        onclick: () => go('/notifications'),
+      }),
+      urgent.length
+        ? kachel({
+            icon: 'saddle',
+            head: t('dash.urgent'),
+            value: urgent.length,
+            sub: t('dash.orders_n', { n: urgent.length }),
+            link: t('dash.show'),
+            onclick: () => go('/orders'),
+          })
+        : null
+    )
+  );
+
+  // --- Meine Aufgaben ------------------------------------------------------
+  if (meineAufgaben.length) {
+    mount.append(el('div.section-title', {}, t('dash.tile.tasks'), el('span.c', { text: meineAufgaben.length })));
+    mount.append(
+      el('div.list', {},
+        ...meineAufgaben.slice(0, 5).map((tk) =>
+          el('div.row', { style: 'cursor:pointer', role: 'button', tabindex: '0', onclick: () => go('/tasks/' + tk.id) },
+            el('div.grow', {},
+              el('div.rt', { text: tk.title }),
+              el('div.rs', {
+                text: [t('task.status.' + tk.status), tk.due_date ? t('task.due') + ' ' + tk.due_date : null]
+                  .filter(Boolean).join(' · '),
+              })
+            )
+          )
+        )
+      )
+    );
   }
-  stats.push(stat(unread, t('dash.unread'), unread > 0 ? 'accent-blue' : ''));
-  if (isAdmin && !isDev) {
-    stats.push(stat(pendingMembers.length, t('dash.pending_members'), pendingMembers.length ? 'accent-red' : ''));
+
+  // --- Aktivitaeten --------------------------------------------------------
+  // Speist sich aus den eigenen Mitteilungen: genau dort steht, wer eine
+  // Bestellung angelegt hat, was zugewiesen und was erledigt wurde.
+  const aktivitaeten = notifications.notifications.slice(0, 6);
+  mount.append(el('div.section-title', {}, t('dash.activities')));
+  mount.append(
+    el('div.card', {},
+      aktivitaeten.length
+        ? el('div.feed', {},
+            ...aktivitaeten.map((n) =>
+              el('div.feed-item' + (n.is_read ? '' : '.unread'), {},
+                el('span.fi-dot'),
+                el('div.fi-body', {},
+                  el('div.fi-text', { text: t('n.' + n.type) }),
+                  el('div.fi-time', { text: timeAgo(n.created_at) })
+                )
+              )
+            )
+          )
+        : el('p.hint', { style: 'padding:4px 0', text: t('dash.no_activities') })
+    )
+  );
+
+  // --- Tribe und Server ----------------------------------------------------
+  if (hatTribe) {
+    const server = serversRes.servers[0];
+    mount.append(
+      el('div.tiles', { style: 'margin-top:16px' },
+        kachel({
+          icon: 'creature',
+          head: t('dash.tribe'),
+          value: tribeRes?.tribe?.name || '—',
+          // Die Mitgliederzahl steht nur Admins zur Verfuegung; erfunden wird
+          // hier nichts. Wer sie nicht abrufen darf, sieht stattdessen die Rolle.
+          sub: isAdmin ? t('dash.members_n', { n: members.members.length }) : t('role.' + user.roles[0]),
+          link: isAdmin ? t('dash.show') : null,
+          onclick: isAdmin ? () => go('/members') : null,
+        }),
+        kachel({
+          icon: 'structure',
+          head: t('dash.server'),
+          value: server?.map || '—',
+          sub: server?.name || t('dash.no_server'),
+          link: t('dash.show'),
+          onclick: () => go('/servers'),
+        })
+      )
+    );
   }
-  mount.append(el('div.grid.stats', {}, ...stats));
 
   // --- Hinweis für Admins: wartende Mitglieder -----------------------------
   if (isAdmin && pendingMembers.length > 0) {
@@ -108,11 +221,37 @@ export async function renderDashboard(mount, ctx) {
       ? el('div.grid.cols2', {}, ...recentMine.map((o) => orderCard(o, (id) => go('/orders/' + id))))
       : emptyState(t('orders.none'), t('orders.none_sub'))
   );
+
+  // --- Schnellzugriff ------------------------------------------------------
+  const schnell = [['/orders/new', t('order.new'), 'egg'], ['/orders', t('nav.orders'), 'structure']];
+  if (hatTribe) {
+    schnell.push(
+      ['/tasks', t('nav.tasks'), 'creature'],
+      ['/inventory', t('nav.inventory'), 'structure'],
+      ['/servers', t('nav.servers'), 'structure'],
+      ['/voice', t('nav.voice'), 'saddle']
+    );
+  }
+  schnell.push(['/profile', t('nav.profile'), 'creature']);
+
+  mount.append(
+    el('div.section-title', {}, t('dash.quick')),
+    el('div.quick', {},
+      ...schnell.map(([pfad, label, art]) =>
+        el('button.quick-btn', { type: 'button', onclick: () => go(pfad) },
+          itemIcon(art, 20),
+          el('span', { text: label })
+        )
+      )
+    )
+  );
 }
 
-function stat(n, label, accent = '') {
-  return el('div.stat' + (accent ? '.' + accent : ''), {},
-    el('div.n', { text: String(n) }),
-    el('div.l', { text: label })
+function kachel({ icon, head, value, sub, link, onclick }) {
+  return el('div.tile', {},
+    el('div.t-head', {}, itemIcon(icon, 15), el('span', { text: head })),
+    el('div.t-val', { text: String(value) }),
+    sub ? el('div.t-sub', { text: sub }) : null,
+    link && onclick ? el('button.t-link', { type: 'button', text: link + ' →', onclick }) : null
   );
 }
