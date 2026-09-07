@@ -36,6 +36,11 @@ async function serializeProfile(db, target, requester) {
   }
   if (requester.id === target.id) {
     out.email = target.email;
+    // Der Sicherheitsbereich im Profil zeigt an, ob die Adresse bestaetigt ist.
+    // Bewusst nur fuer den Benutzer selbst - ob eine fremde Adresse bestaetigt
+    // wurde, geht niemanden sonst etwas an. Es ist ein reines Ja/Nein, das
+    // Bestaetigungs-Token bleibt wie bisher aussen vor.
+    out.emailVerified = Boolean(Number(target.email_verified));
   }
   return out;
 }
