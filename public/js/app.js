@@ -281,18 +281,26 @@ async function route() {
   const match = ROUTES.find((r) => r.re.test(path));
 
   const view = document.getElementById('view') || buildShell();
-  view.replaceChildren();
+  // Jeder Seitenaufruf bekommt einen EIGENEN Container. Views laden ihre Daten
+  // asynchron nach und schreiben erst danach in ihren Container. Ohne diese
+  // Trennung schrieben zwei schnell aufeinanderfolgende Aufrufe in denselben
+  // Knoten: der spaetere leerte ihn, der fruehere haengte sein Ergebnis
+  // hinterher hinein - je nach Reihenfolge blieb die Seite leer oder zeigte
+  // Inhalte der vorherigen Seite. Ein abgeloester Container faellt beim
+  // naechsten replaceChildren einfach heraus.
+  const seite = el('div.view-page');
+  view.replaceChildren(seite);
   markActive(path);
   window.scrollTo(0, 0);
 
-  if (!match) { view.append(el('div.empty', {}, el('div.big', { text: '404' }))); return; }
+  if (!match) { seite.append(el('div.empty', {}, el('div.big', { text: '404' }))); return; }
 
   // Tribe-Werkzeuge brauchen einen Tribe. Ein Developer hat plattformweite Rechte,
   // aber kein eigenes Tribe-Konto - statt einer leeren oder kaputten Seite bekommt
   // er hier eine klare Erklärung, warum das so ist und was zu tun ist.
   const TRIBE_ONLY = /^\/(dinos|servers|tasks|inventory|voice)(\/|$)/;
   if (TRIBE_ONLY.test(path) && !user.tribeId) {
-    view.append(
+    seite.append(
       el('div.empty', {},
         el('div.big', { text: t('tools.needs_tribe_title') }),
         el('p', { text: t('tools.needs_tribe_body') })
@@ -303,9 +311,9 @@ async function route() {
 
   const params = path.match(match.re).slice(1);
   try {
-    await match.view(view, ctx(), ...params);
+    await match.view(seite, ctx(), ...params);
   } catch (err) {
-    view.replaceChildren(
+    seite.replaceChildren(
       el('div.empty', {},
         el('div.big', { text: err instanceof ApiError ? err.message : t('common.error') })
       )
