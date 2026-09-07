@@ -174,8 +174,16 @@ function buildShell() {
   // auf schmalen Geräten wurde der letzte ("Mitteilungen") am rechten Rand
   // abgeschnitten. Mit den neuen Modulen wären es zehn geworden, was gar nicht
   // mehr in eine Zeile passt; alles Weitere liegt deshalb hinter "Mehr".
-  const bottomMain = main.slice(0, 4);
-  const bottomExtra = [...main.slice(4), ...tools, ...tribe, ...platform];
+  // Mobil bewusst nur DREI feste Punkte: Startseite, Neue Bestellung, Profil.
+  // Alles Weitere - inklusive "Offene Bestellungen" - liegt hinter "Mehr", damit
+  // unten nichts gedrängt wirkt.
+  const MOBIL_FEST = ['/', '/orders/new', '/profile'];
+  const bottomMain = MOBIL_FEST.map((p) => main.find((m) => m.path === p)).filter(Boolean);
+  const bottomExtra = [
+    ...main.filter((m) => !MOBIL_FEST.includes(m.path)),
+    { path: '/orders', icon: '☰', label: t('nav.orders') },
+    ...tools, ...tribe, ...platform,
+  ];
 
   const bottomLink = (item) => {
     const a = el('a', { href: '#' + item.path, dataset: { path: item.path } },
