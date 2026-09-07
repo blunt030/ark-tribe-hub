@@ -1,5 +1,5 @@
 import { el, spinner, orderCard, orderTitle, emptyState, statusBadge, priorityBadge, typeTag, toast, confirmDialog } from '../ui.js';
-import { iconFuerItem, itemIcon } from '../icons.js';
+import { iconFuerItem, itemIcon, itemBild } from '../icons.js';
 import { t, timeAgo } from '../i18n.js';
 import { api, ApiError } from '../api.js';
 
@@ -116,9 +116,7 @@ export async function renderNewOrder(mount, ctx) {
         search.focus();
       },
     },
-      it.image_path
-        ? el('img', { src: '/uploads/' + it.image_path, alt: '', style: 'width:28px;height:28px;object-fit:cover;border-radius:4px;flex:0 0 28px' })
-        : el('span.icon-box', { style: 'width:28px;height:28px;flex:0 0 28px' }, iconFuerItem(it)),
+      itemBild(it, 28),
       el('span.pt', { text: it.name }),
       typeTag(it.product_type)
     );
@@ -494,9 +492,7 @@ export async function renderOrderDetail(mount, ctx, id) {
       el('div.list', {},
         ...order.items.map((it) => {
           const statusText = el('div.rs', {}, el('span.dot.s-' + it.status), ' ' + t('istatus.' + it.status));
-          const thumb = it.image_path
-            ? el('img', { src: '/uploads/' + it.image_path, alt: '', style: 'width:36px;height:36px;object-fit:cover;border-radius:6px;flex:0 0 36px' })
-            : el('span.icon-box', { style: 'width:36px;height:36px;flex:0 0 36px' }, iconFuerItem(it));
+          const thumb = itemBild(it, 36);
           const row = el('div.row', {},
             thumb,
             el('div.grow', {},
