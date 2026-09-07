@@ -75,3 +75,64 @@ export function iconFuerItem(item) {
   if (kat.includes('water')) return itemIcon('water');
   return itemIcon('creature');
 }
+
+/* ==========================================================================
+ * Mitgelieferte Kreaturenbilder
+ * ==========================================================================
+ * Für einen Teil der Kreaturen liegen gezeichnete Bilder unter
+ * /assets/creatures/<key>.jpg im Projekt. Sie werden automatisch verwendet,
+ * ohne dass jemand sie einzeln hochladen muss.
+ *
+ * Rangfolge der Darstellung:
+ *   1. individuell hochgeladenes Bild (image_path)  -> hat immer Vorrang
+ *   2. mitgeliefertes Bild aus dieser Liste
+ *   3. gezeichnete Silhouette als Platzhalter
+ */
+const MITGELIEFERT = new Set([
+  'carcharodontosaurus', 'rex', 'argentavis', 'wyvern', 'giganotosaurus',
+  'therizinosaurus', 'brontosaurus', 'spinosaurus', 'direwolf', 'managarmr',
+  'ankylosaurus', 'triceratops', 'pteranodon', 'doedicurus', 'beelzebufo',
+  'otter', 'baryonyx', 'kaprosuchus', 'dimorphodon', 'basilosaurus',
+]);
+
+/**
+ * Liefert den Pfad zu einem mitgelieferten Bild - oder null.
+ * Eier, Embryos und Sättel greifen auf das Bild der Basiskreatur zurück
+ * ("rex_egg" -> "rex"), damit auch sie ein passendes Motiv zeigen.
+ */
+export function mitgeliefertesBild(item) {
+  const key = String(item.key || '');
+  if (MITGELIEFERT.has(key)) return `/assets/creatures/${key}.jpg`;
+  const basis = key.replace(/_(egg|embryo|saddle)$/, '');
+  if (basis !== key && MITGELIEFERT.has(basis)) return `/assets/creatures/${basis}.jpg`;
+  return null;
+}
+
+/**
+ * Zentrale Anzeige für einen Katalogeintrag: liefert entweder ein <img> (eigenes
+ * oder mitgeliefertes Bild) oder die Silhouette. Alle Listen nutzen diese eine
+ * Funktion, damit die Rangfolge überall gleich ist.
+ */
+export function itemBild(item, groesse = 32) {
+  const stil = `width:${groesse}px;height:${groesse}px;object-fit:cover;border-radius:6px;flex:0 0 ${groesse}px`;
+  if (item.image_path) {
+    const img = document.createElement('img');
+    img.src = '/uploads/' + item.image_path;
+    img.alt = '';
+    img.setAttribute('style', stil);
+    return img;
+  }
+  const fertig = mitgeliefertesBild(item);
+  if (fertig) {
+    const img = document.createElement('img');
+    img.src = fertig;
+    img.alt = '';
+    img.setAttribute('style', stil);
+    return img;
+  }
+  const box = document.createElement('span');
+  box.className = 'icon-box';
+  box.setAttribute('style', `width:${groesse}px;height:${groesse}px;flex:0 0 ${groesse}px`);
+  box.append(iconFuerItem(item));
+  return box;
+}
