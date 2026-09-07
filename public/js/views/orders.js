@@ -164,13 +164,53 @@ export async function renderNewOrder(mount, ctx) {
     try {
       const query = { productType: activeProductType };
       if (HABITAT_AWARE_TYPES.includes(activeProductType) && activeHabitatId) query.categoryId = activeHabitatId;
-      const { items } = await api.items(query);
+      let { items } = await api.items(query);
       if (myToken !== renderToken) return; // eine neuere Anfrage (Suche o.ä.) lief inzwischen los
+
+      // Baustufe clientseitig filtern: die Stufe steckt als Präfix im Schlüssel
+      // ("metal_wall"). "Sonstiges" fängt alles ab, was zu keiner der fünf
+      // Bauserien gehört (Lagerbox, Schmiede, Geschütze ...).
+      if (activeProductType === 'structure' && activeBaustufe) {
+        const stufen = ['thatch', 'wood', 'stone', 'metal', 'tek'];
+        items = items.filter((i) => {
+          const praefix = String(i.key || '').split('_')[0];
+          return activeBaustufe === 'sonstige' ? !stufen.includes(praefix) : praefix === activeBaustufe;
+        });
+      }
       renderResults(items, t('order.no_items'));
     } catch { /* still scheitern lassen, UI bleibt bedienbar */ }
   }
 
+  // Bau-Stufen als zweite Ebene bei Strukturen - analog zu den Lebensräumen bei
+  // Kreaturen. Die Stufe steckt im Schlüssel ("metal_wall"), es braucht also
+  // keine zusätzliche Backend-Abfrage.
+  const BAUSTUFEN = [
+    { key: 'thatch', label: 'Stroh' },
+    { key: 'wood', label: 'Holz' },
+    { key: 'stone', label: 'Stein' },
+    { key: 'metal', label: 'Metall' },
+    { key: 'tek', label: 'Tek' },
+    { key: 'sonstige', label: 'Sonstiges' },
+  ];
+  let activeBaustufe = null;
+
   function drawHabitatChips() {
+    // Strukturen: Untermenü mit den Baustufen statt der Lebensräume.
+    if (activeProductType === 'structure') {
+      habitatChips.replaceChildren(
+        el('button.btn.sm' + (activeBaustufe === null ? '.primary' : ''), {
+          text: t('common.all'),
+          onclick: () => { activeBaustufe = null; drawHabitatChips(); loadResults(); },
+        }),
+        ...BAUSTUFEN.map((b) =>
+          el('button.btn.sm' + (activeBaustufe === b.key ? '.primary' : ''), {
+            text: b.label,
+            onclick: () => { activeBaustufe = b.key; drawHabitatChips(); loadResults(); },
+          })
+        )
+      );
+      return;
+    }
     if (!HABITAT_AWARE_TYPES.includes(activeProductType) || creatureCategories.length === 0) {
       habitatChips.replaceChildren();
       return;
@@ -196,6 +236,7 @@ export async function renderNewOrder(mount, ctx) {
           onclick: () => {
             activeProductType = pt.key;
             activeHabitatId = null;
+            activeBaustufe = null;
             drawTypeChips();
             drawHabitatChips();
             loadResults();
