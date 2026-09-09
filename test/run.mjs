@@ -129,7 +129,7 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
   });
 
   await t.test('6. Registrierung erzeugt "pending_approval", kein direkter Zugriff', async () => {
-    const r = await anon.post('/api/auth/register', { tribeSlug: 'oao', username: 'Neuling', password: 'Testpass123!' });
+    const r = await anon.post('/api/auth/register', { tribeSlug: 'oao', username: 'Neuling', email: 'neuling@example.test', password: 'Testpass123!' });
     assert.equal(r.status, 201);
     assert.equal(r.json.user.status, 'pending_approval');
     pendingUserId = r.json.user.id;
@@ -202,7 +202,7 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
   });
 
   await t.test('14. XYZ-Admin registrieren, Rolle vergeben, per Developer freischalten (fremder Tribe-Kontext)', async () => {
-    const reg = await anon.post('/api/auth/register', { tribeSlug: 'xyz', username: 'XYZ Admin', password: 'Testpass123!' });
+    const reg = await anon.post('/api/auth/register', { tribeSlug: 'xyz', username: 'XYZ Admin', email: 'xyz-admin@example.test', password: 'Testpass123!' });
     assert.equal(reg.status, 201);
     xyzAdminId = reg.json.user.id;
     const roleRes = await dev.patch(`/api/developer/users/${xyzAdminId}/roles`, { roles: ['member', 'admin'] });
@@ -211,7 +211,7 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
     assert.equal(approve.status, 200);
     assert.equal((await xyzAdmin.login('XYZ Admin', 'Testpass123!')).status, 200);
 
-    const regMember = await anon.post('/api/auth/register', { tribeSlug: 'xyz', username: 'XYZ Member', password: 'Testpass123!' });
+    const regMember = await anon.post('/api/auth/register', { tribeSlug: 'xyz', username: 'XYZ Member', email: 'xyz-member@example.test', password: 'Testpass123!' });
     await dev.patch(`/api/admin/members/${regMember.json.user.id}/approve?tribeId=${xyzTribeId}`);
     assert.equal((await xyzMember.login('XYZ Member', 'Testpass123!')).status, 200);
   });
@@ -246,7 +246,7 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
 
   await t.test('19. Zweiter, echter Breeder kann eine bereits übernommene Bestellung nicht doppelt übernehmen', async () => {
     // "OaO Breeder2" anlegen: Developer vergibt Rolle direkt und schaltet frei.
-    const reg = await anon.post('/api/auth/register', { tribeSlug: 'oao', username: 'OaO Breeder2', password: 'Testpass123!' });
+    const reg = await anon.post('/api/auth/register', { tribeSlug: 'oao', username: 'OaO Breeder2', email: 'oao-breeder2@example.test', password: 'Testpass123!' });
     const id2 = reg.json.user.id;
     await dev.patch(`/api/developer/users/${id2}/roles`, { roles: ['member', 'breeder_crafter'] });
     await oaoAdmin.patch(`/api/admin/members/${id2}/approve`);
@@ -405,7 +405,7 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
     await oaoBreeder.post(`/api/orders/${oid}/claim`);
 
     // Ein ANDERER Breeder darf den Status nicht ändern ...
-    const reg = await anon.post('/api/auth/register', { tribeSlug: 'oao', username: 'OaO Breeder3', password: 'Testpass123!' });
+    const reg = await anon.post('/api/auth/register', { tribeSlug: 'oao', username: 'OaO Breeder3', email: 'oao-breeder3@example.test', password: 'Testpass123!' });
     await dev.patch(`/api/developer/users/${reg.json.user.id}/roles`, { roles: ['member', 'breeder_crafter'] });
     await oaoAdmin.patch(`/api/admin/members/${reg.json.user.id}/approve`);
     const breeder3 = makeClient(base);
