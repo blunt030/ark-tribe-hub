@@ -29,7 +29,8 @@ def free_port():
 PORT = free_port()
 BASE = f"http://localhost:{PORT}"
 PW = "ChangeMe123!"
-SHOTS = "/home/claude/shots"
+SHOTS = os.environ.get("ATH_SHOTS", os.path.join(PROJECT, "..", "ui-shots"))
+os.makedirs(SHOTS, exist_ok=True)
 
 results = []
 
@@ -367,8 +368,8 @@ def run():
         # ------------------------------------------------- Dino-Datenbank (neues Modul)
         print("\n[6c] Dino-Datenbank: anlegen, in Liste sehen, oeffnen, bearbeiten")
         sign_in(page, "OaO Breeder")
-        check("Werkzeuge-Gruppe mit Dino-Datenbank in der Navigation sichtbar",
-              lambda: expect(page.locator('.sidebar [data-path="/dinos"]')).to_have_count(1))
+        check("Werkzeuge-Gruppe mit Allianzen in der Navigation sichtbar",
+              lambda: expect(page.locator('.sidebar [data-path="/alliances"]')).to_have_count(1))
         page.goto(BASE + "/#/dinos/new", wait_until="networkidle")
         page.wait_for_selector('input[required]', timeout=15000)
         name_input = page.locator(".card").first.locator('input[type="text"]').first
@@ -635,7 +636,7 @@ def run():
         mobile.locator(".more-btn").click()
         mobile.wait_for_selector(".sheet", timeout=15000)
         check("Mobil: 'Mehr'-Menue macht die neuen Module erreichbar",
-              lambda: expect(mobile.locator(".sheet-item", has_text="Dino-Datenbank")).to_have_count(1))
+              lambda: expect(mobile.locator(".sheet-item", has_text="Allianzen")).to_have_count(1))
         mobile.locator(".sheet-bg").click(position={"x": 5, "y": 5})
         mobile.wait_for_timeout(300)
 

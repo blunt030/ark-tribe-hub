@@ -2,6 +2,7 @@ import { el, spinner, orderCard, emptyState, newsTicker } from '../ui.js';
 import { itemIcon } from '../icons.js';
 import { t, timeAgo } from '../i18n.js';
 import { api } from '../api.js';
+import { chatMessage } from './community.js';
 
 /**
  * Startseite nach dem Entwurf: Begruessung, Kacheln mit den wichtigsten Zahlen
@@ -20,18 +21,18 @@ export async function renderDashboard(mount, ctx) {
   const isDev = user.roles.includes('developer');
   const isAdmin = user.roles.includes('admin');
   const isBreeder = user.roles.includes('breeder_crafter');
-  // Das Developer-Konto gehoert keinem Tribe an - Aufgaben, Bestand und Server
-  // werden dort erst gar nicht abgefragt, statt einen Fehler zu verschlucken.
-  const hatTribe = Boolean(user.tribeId) && !isDev;
+  // Tribe-Inhalte hängen vom tatsächlichen Tribe-Kontext ab, auch bei Developern.
+  const hatTribe = Boolean(user.tribeId);
 
-  const [orders, notifications, members, newsRes, tasksRes, serversRes, tribeRes] = await Promise.all([
+  const [orders, notifications, members, newsRes, tasksRes, serversRes, tribeRes, chatRes] = await Promise.all([
     api.orders().catch(() => ({ orders: [] })),
     api.notifications().catch(() => ({ notifications: [] })),
-    isAdmin && !isDev ? api.members().catch(() => ({ members: [] })) : Promise.resolve({ members: [] }),
+    isAdmin && hatTribe ? api.members().catch(() => ({ members: [] })) : Promise.resolve({ members: [] }),
     api.news().catch(() => ({ news: [] })),
     hatTribe ? api.tasks().catch(() => ({ tasks: [] })) : Promise.resolve({ tasks: [] }),
     hatTribe ? api.servers().catch(() => ({ servers: [] })) : Promise.resolve({ servers: [] }),
     hatTribe ? api.myTribe().catch(() => null) : Promise.resolve(null),
+    hatTribe ? api.chatMessages({ limit: 3 }).catch(() => null) : Promise.resolve(null),
   ]);
 
   const all = orders.orders;
@@ -156,6 +157,13 @@ export async function renderDashboard(mount, ctx) {
     )
   );
 
+  if (hatTribe) {
+    mount.append(el('div.section-title', {}, t('nav.chat') + ' · General'),
+      el('div.card', {}, ...(chatRes?.messages || []).map(chatMessage),
+        chatRes && !chatRes.messages.length ? el('p.hint', { text: t('chat.empty') }) : null,
+        el('button.btn', { text: t('dash.show'), onclick: () => go('/chat') })));
+  }
+
   // --- Tribe und Server ----------------------------------------------------
   if (hatTribe) {
     const server = serversRes.servers[0];
@@ -174,7 +182,7 @@ export async function renderDashboard(mount, ctx) {
         kachel({
           icon: 'structure',
           head: t('dash.server'),
-          value: server?.map || '—',
+          value: server?.map_name || '—',
           sub: server?.name || t('dash.no_server'),
           link: t('dash.show'),
           onclick: () => go('/servers'),
@@ -229,7 +237,9 @@ export async function renderDashboard(mount, ctx) {
       ['/tasks', t('nav.tasks'), 'creature'],
       ['/inventory', t('nav.inventory'), 'structure'],
       ['/servers', t('nav.servers'), 'structure'],
-      ['/voice', t('nav.voice'), 'saddle']
+      ['/voice', t('nav.voice'), 'saddle'],
+      ['/chat', t('nav.chat'), 'egg'],
+      ['/alliances', t('nav.alliances'), 'creature']
     );
   }
   schnell.push(['/profile', t('nav.profile'), 'creature']);

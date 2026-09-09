@@ -12,6 +12,7 @@ import { renderDinos, renderDinoForm, renderDinoDetail } from './views/dinos.js'
 import { renderServers, renderServerDetail } from './views/servers.js';
 import { renderTasks, renderTaskForm, renderTaskDetail } from './views/tasks.js';
 import { renderInventory } from './views/inventory.js';
+import { renderAlliances, renderChat } from './views/community.js';
 import { renderVoice } from './views/voice.js';
 
 const root = document.getElementById('root');
@@ -46,7 +47,8 @@ function navItems() {
   // denn die Werkzeuge arbeiten alle tribe-bezogen.
   const tools = [];
   if (user.tribeId) {
-    tools.push({ path: '/dinos', icon: '🦖', label: t('nav.dinos') });
+    tools.push({ path: '/alliances', icon: '🤝', label: t('nav.alliances') });
+    tools.push({ path: '/chat', icon: '☏', label: t('nav.chat') });
     tools.push({ path: '/servers', icon: '🗺️', label: t('nav.servers') });
     tools.push({ path: '/tasks', icon: '✓', label: t('nav.tasks') });
     tools.push({ path: '/inventory', icon: '📦', label: t('nav.inventory') });
@@ -56,7 +58,8 @@ function navItems() {
     // Werkzeuge arbeiten aber alle tribe-bezogen. Sie hier trotzdem zu zeigen ist
     // besser als sie spurlos wegzulassen: der Developer sieht, dass es sie gibt,
     // und die Seite erklärt dann, dass dafür ein Tribe-Konto nötig ist.
-    tools.push({ path: '/dinos', icon: '🦖', label: t('nav.dinos') });
+    tools.push({ path: '/alliances', icon: '🤝', label: t('nav.alliances') });
+    tools.push({ path: '/chat', icon: '☏', label: t('nav.chat') });
     tools.push({ path: '/servers', icon: '🗺️', label: t('nav.servers') });
     tools.push({ path: '/tasks', icon: '✓', label: t('nav.tasks') });
     tools.push({ path: '/inventory', icon: '📦', label: t('nav.inventory') });
@@ -243,6 +246,8 @@ function markActive(path) {
 /* -------------------------------------------------------------------------- */
 
 const ROUTES = [
+  { re: /^\/alliances$/, view: renderAlliances },
+  { re: /^\/chat$/, view: renderChat },
   { re: /^\/$/, view: renderDashboard },
   { re: /^\/orders$/, view: renderOrders },
   { re: /^\/orders\/new$/, view: renderNewOrder },
@@ -298,7 +303,7 @@ async function route() {
   // Tribe-Werkzeuge brauchen einen Tribe. Ein Developer hat plattformweite Rechte,
   // aber kein eigenes Tribe-Konto - statt einer leeren oder kaputten Seite bekommt
   // er hier eine klare Erklärung, warum das so ist und was zu tun ist.
-  const TRIBE_ONLY = /^\/(dinos|servers|tasks|inventory|voice)(\/|$)/;
+  const TRIBE_ONLY = /^\/(dinos|servers|tasks|inventory|voice|alliances|chat)(\/|$)/;
   if (TRIBE_ONLY.test(path) && !user.tribeId) {
     seite.append(
       el('div.empty', {},

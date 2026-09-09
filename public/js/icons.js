@@ -80,7 +80,7 @@ export function iconFuerItem(item) {
  * Mitgelieferte Kreaturenbilder
  * ==========================================================================
  * Für einen Teil der Kreaturen liegen gezeichnete Bilder unter
- * /assets/creatures/<key>.jpg im Projekt. Sie werden automatisch verwendet,
+ * /assets/<key>.jpg im Projekt. Sie werden automatisch verwendet,
  * ohne dass jemand sie einzeln hochladen muss.
  *
  * Rangfolge der Darstellung:
@@ -102,9 +102,9 @@ const MITGELIEFERT = new Set([
  */
 export function mitgeliefertesBild(item) {
   const key = String(item.key || '');
-  if (MITGELIEFERT.has(key)) return `/assets/creatures/${key}.jpg`;
+  if (MITGELIEFERT.has(key)) return `/assets/${key}.jpg`;
   const basis = key.replace(/_(egg|embryo|saddle)$/, '');
-  if (basis !== key && MITGELIEFERT.has(basis)) return `/assets/creatures/${basis}.jpg`;
+  if (basis !== key && MITGELIEFERT.has(basis)) return `/assets/${basis}.jpg`;
   return null;
 }
 
@@ -114,25 +114,20 @@ export function mitgeliefertesBild(item) {
  * Funktion, damit die Rangfolge überall gleich ist.
  */
 export function itemBild(item, groesse = 32) {
-  const stil = `width:${groesse}px;height:${groesse}px;object-fit:cover;border-radius:6px;flex:0 0 ${groesse}px`;
-  if (item.image_path) {
-    const img = document.createElement('img');
-    img.src = '/uploads/' + item.image_path;
-    img.alt = '';
-    img.setAttribute('style', stil);
-    return img;
-  }
-  const fertig = mitgeliefertesBild(item);
-  if (fertig) {
-    const img = document.createElement('img');
-    img.src = fertig;
-    img.alt = '';
-    img.setAttribute('style', stil);
-    return img;
-  }
   const box = document.createElement('span');
   box.className = 'icon-box';
-  box.setAttribute('style', `width:${groesse}px;height:${groesse}px;flex:0 0 ${groesse}px`);
-  box.append(iconFuerItem(item));
+  box.style.cssText = `width:${groesse}px;height:${groesse}px;flex:0 0 ${groesse}px`;
+  const sources = [item.image_path ? '/uploads/' + item.image_path : null, mitgeliefertesBild(item)].filter(Boolean);
+  const next = () => {
+    const src = sources.shift();
+    if (!src) { box.replaceChildren(iconFuerItem(item)); return; }
+    const img = document.createElement('img');
+    img.alt = '';
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:6px';
+    img.addEventListener('error', next, { once: true });
+    img.src = src;
+    box.replaceChildren(img);
+  };
+  next();
   return box;
 }

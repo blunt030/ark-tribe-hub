@@ -46,6 +46,12 @@ async function call(method, path, body) {
 const withLang = (path) => path + (path.includes('?') ? '&' : '?') + 'lang=' + getLang();
 
 export const api = {
+  alliances: () => call('GET', '/api/alliances'),
+  createAlliance: b => call('POST', '/api/alliances', b),
+  updateAlliance: (id,b) => call('PATCH', '/api/alliances/' + id, b),
+  deleteAlliance: id => call('DELETE', '/api/alliances/' + id),
+  chatMessages: (q = {}) => call('GET', '/api/chat/messages?' + new URLSearchParams(q)),
+  sendChatMessage: body => call('POST', '/api/chat/messages', { body }),
   // Auth
   register: (b) => call('POST', '/api/auth/register', b),
   login: (b) => call('POST', '/api/auth/login', b),

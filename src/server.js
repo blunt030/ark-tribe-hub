@@ -1,4 +1,6 @@
 import http from 'node:http';
+import { pathToFileURL } from 'node:url';
+import { buildCommunityRouter } from './routes/community.routes.js';
 import path from 'node:path';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 
@@ -177,6 +179,7 @@ export async function createApp(dbPath, options = {}) {
     buildTaskRouter(db),
     buildInventoryRouter(db),
     buildVoiceRouter(db),
+    buildCommunityRouter(db),
     buildUploadsRouter(db),
   ];
   for (const sub of subRouters) router.routes.push(...sub.routes);
@@ -230,7 +233,7 @@ export async function startServer(dbPath, port, options = {}) {
 }
 
 // Direkter CLI-Aufruf: `npm run dev` / `npm start`
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   startServer(config.dbPath, config.port)
     .then(({ port }) => {
       console.log(`🦖 ARK Tribe Hub Backend läuft auf http://localhost:${port}`);

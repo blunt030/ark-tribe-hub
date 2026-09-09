@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { PGlite } from '@electric-sql/pglite';
+
+test('PostgreSQL engine: additive schema migration, CRUD, constraints and retention', async t => {
+  const db = new PGlite();
+  t.after(() => db.close());
+  const schema = readFileSync(new URL('../src/db/schema.postgres.sql', import.meta.url), 'utf8');
+  const oldSchema = schema.split('-- Additive, idempotent tables')[0];
+  await db.exec(oldSchema);
+  const { rows: [tribe] } = await db.query("INSERT INTO tribes (slug,name) VALUES ('test','Preserved tribe') RETURNING id");
+  const { rows: [user] } = await db.query("INSERT INTO users (tribe_id,username,password_hash,status) VALUES ($1,'Tester','test-only','active') RETURNING id",[tribe.id]);
+  await db.exec(schema);
+  await db.exec(schema);
+  assert.equal((await db.query('SELECT name FROM tribes WHERE id=$1',[tribe.id])).rows[0].name,'Preserved tribe');
+  const { rows: [relation] } = await db.query('INSERT INTO tribe_relationships (tribe_id,name,relationship,server,map,created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',[tribe.id,'Friends','alliance','EU','The Island',user.id]);
+  assert.equal(relation.relationship,'alliance');
+  await db.query('UPDATE tribe_relationships SET relationship=$1 WHERE id=$2 AND tribe_id=$3 RETURNING *',['friend',relation.id,tribe.id]);
+  const now = new Date().toISOString();
+  const { rows: [message] } = await db.query('INSERT INTO tribe_messages (tribe_id,author_id,body,created_at) VALUES ($1,$2,$3,$4) RETURNING id,author_id,body,created_at',[tribe.id,user.id,'Hello',now]);
+  assert.equal(message.body,'Hello');
+  assert.equal((await db.query('SELECT COUNT(*) AS n FROM tribe_messages WHERE tribe_id=$1 AND author_id=$2 AND created_at >= $3',[tribe.id,user.id,now])).rows[0].n,1);
+  assert.equal((await db.query('SELECT id FROM tribe_messages WHERE tribe_id=$1 AND id > $2 ORDER BY id ASC LIMIT $3',[tribe.id,0,50])).rows[0].id,message.id);
+  await assert.rejects(db.query('INSERT INTO tribe_messages (tribe_id,body,created_at) VALUES ($1,$2,$3)',[tribe.id,'x'.repeat(2001),now]));
+  await assert.rejects(db.query('INSERT INTO tribe_messages (tribe_id,body,created_at) VALUES ($1,$2,$3)',[999999,'foreign',now]));
+  await db.query('DELETE FROM users WHERE id=$1',[user.id]);
+  assert.equal((await db.query('SELECT author_id FROM tribe_messages')).rows[0].author_id,null);
+  assert.equal((await db.query('DELETE FROM tribe_relationships WHERE id=$1 AND tribe_id=$2 RETURNING id',[relation.id,tribe.id])).rows[0].id,relation.id);
+});

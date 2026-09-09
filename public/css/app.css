@@ -956,3 +956,29 @@ textarea { resize: vertical; min-height: 74px; }
 .sec-row .sec-state { margin-left: auto; font-weight: 600; }
 .sec-row .sec-state.ok { color: var(--st-available); }
 .sec-row .sec-state.warn { color: var(--st-unavailable); }
+
+/* Tribe relationships and General chat */
+.chat-older[hidden] { display:none; }
+.community-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:16px; }
+.relationship { border-left:4px solid; overflow-wrap:anywhere; min-width:0; }
+.relationship.alliance { border-left-color:#60a5fa; }
+.relationship.friend { border-left-color:#4ade80; }
+.relationship.enemy { border-left-color:#f87171; }
+.relationship.alliance .relationship-label { color:#60a5fa; }
+.relationship.friend .relationship-label { color:#4ade80; }
+.relationship.enemy .relationship-label { color:#f87171; }
+.relationship h2 { font-size:20px; margin:10px 0; }
+.relationship-label { font-weight:700; font-size:13px; }
+.community-form { max-width:620px; margin-bottom:20px; }
+.community-form .field { display:grid; gap:6px; margin:14px 0; }
+.community-form input,.community-form select { width:100%; min-width:0; }
+.community-form .actions,.relationship .actions,.chat-composer .actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.chat-log { max-height:52vh; max-height:52dvh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; margin:16px 0; }
+.chat-message { padding:14px 0; border-bottom:1px solid #ffffff18; min-width:0; overflow-wrap:anywhere; }
+.chat-meta { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; }
+.chat-meta time { font-size:12px; opacity:.65; }
+.chat-message p { white-space:pre-wrap; margin:8px 0 0; }
+.chat-composer { display:grid; gap:10px; min-width:0; }
+.chat-composer textarea { width:100%; min-width:0; resize:vertical; font-size:16px; }
+.chat-composer .actions { justify-content:space-between; }
+@media(max-width:480px) { .community-list { grid-template-columns:minmax(0,1fr); } .community-form input,.community-form select { font-size:16px; } }
