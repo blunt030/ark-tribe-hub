@@ -330,3 +330,26 @@ CREATE TABLE IF NOT EXISTS voice_participants (
 );
 
 CREATE INDEX IF NOT EXISTS idx_voice_participants_channel ON voice_participants(channel_id);
+
+-- Additive, idempotent tables, also installed when an existing database opens.
+CREATE TABLE IF NOT EXISTS tribe_relationships (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  relationship TEXT NOT NULL CHECK (relationship IN ('alliance', 'friend', 'enemy')),
+  server TEXT NOT NULL,
+  map TEXT NOT NULL,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_relationships_tribe ON tribe_relationships(tribe_id, name);
+CREATE TABLE IF NOT EXISTS tribe_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id) ON DELETE CASCADE,
+  author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  body TEXT NOT NULL CHECK (length(body) BETWEEN 1 AND 2000),
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_messages_tribe_id ON tribe_messages(tribe_id, id);
+CREATE INDEX IF NOT EXISTS idx_messages_rate ON tribe_messages(tribe_id, author_id, created_at);
