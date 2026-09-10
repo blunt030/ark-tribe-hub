@@ -52,7 +52,8 @@ const PUBLIC_DIR = path.join(config.rootDir, 'public');
  *
  * Die Content-Security-Policy wird hier gelockert: Die globale Policy ist
  * "default-src 'none'" (richtig für eine reine API), das Frontend braucht aber
- * eigene Skripte, Styles, Bilder und die Google-Fonts-Schriften.
+ * eigene Skripte, Styles und Bilder. Externe Schriftanbieter werden bewusst nicht
+ * mehr geladen, damit beim Seitenaufruf keine Browserdaten dorthin fließen.
  */
 function serveStatic(req, res) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return false;
@@ -73,7 +74,7 @@ function serveStatic(req, res) {
   const data = readFileSync(finalPath);
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; connect-src 'self'"
+    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'"
   );
   res.writeHead(200, {
     'Content-Type': STATIC_MIME[ext] || 'application/octet-stream',
