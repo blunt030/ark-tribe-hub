@@ -8,6 +8,7 @@ import { api } from '../api.js';
 
 export async function renderNotifications(mount, ctx) {
   const { go, refreshBadges } = ctx;
+  mount.classList.add('notifications-page');
   mount.append(spinner());
 
   const { notifications } = await api.notifications();
@@ -18,7 +19,7 @@ export async function renderNotifications(mount, ctx) {
       el('div', {}, el('h1', { text: t('notif.title') })),
       el('div.chips', {},
       notifications.some((n) => n.is_read)
-        ? el('button.btn', {
+        ? el('button.btn.sm.ghost', {
             text: t('notif.clear_read'),
             onclick: async (e) => {
               e.target.disabled = true;
@@ -29,7 +30,7 @@ export async function renderNotifications(mount, ctx) {
           })
         : null,
       notifications.some((n) => !n.is_read)
-        ? el('button.btn', {
+        ? el('button.btn.sm.ghost', {
             text: t('notif.read_all'),
             onclick: async (e) => {
               e.target.disabled = true;
