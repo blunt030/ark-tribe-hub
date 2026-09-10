@@ -102,7 +102,7 @@ try:
           document.body.append(a);
           await new Promise(r=>setTimeout(r,700));
           const bundled=a.querySelector('img');
-          const loaded=!!bundled?.naturalWidth && bundled.src.endsWith('/assets/rex.jpg');
+          const loaded=!!bundled?.naturalWidth && bundled.src.endsWith('/assets/rex.png');
           bundled.dispatchEvent(new Event('error'));
           const svg=!!a.querySelector('svg'); a.remove(); return {loaded,svg};
         }''')
