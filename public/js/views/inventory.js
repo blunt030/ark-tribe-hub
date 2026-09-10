@@ -1,5 +1,4 @@
 import { el, spinner, emptyState, toast, confirmDialog } from '../ui.js';
-import { iconFuerItem, itemBild } from '../icons.js';
 import { t } from '../i18n.js';
 import { api } from '../api.js';
 
@@ -31,7 +30,6 @@ export async function renderInventory(mount, ctx) {
               el('div.list', {},
                 ...rows.map((i) =>
                   el('div.row', {},
-                    itemBild(i, 32),
                     el('div.grow', {},
                       el('div.rt', { text: i.item_name }),
                       el('div.rs', { text: `${t('inv.qty')}: ${i.quantity} / ${t('inv.min')}: ${i.min_quantity}` })

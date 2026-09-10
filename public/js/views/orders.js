@@ -1,5 +1,5 @@
 import { el, spinner, orderCard, orderTitle, emptyState, statusBadge, priorityBadge, typeTag, toast, confirmDialog } from '../ui.js';
-import { iconFuerItem, itemIcon, itemBild } from '../icons.js';
+import { itemIcon, itemBild } from '../icons.js';
 import { t, timeAgo } from '../i18n.js';
 import { api, ApiError } from '../api.js';
 
@@ -20,7 +20,7 @@ export async function renderOrders(mount, ctx) {
       const filtered = scope === 'mine' ? orders.filter((o) => o.member_id === user.id) : orders;
       listBox.replaceChildren(
         filtered.length
-          ? el('div.grid.cols2', {}, ...filtered.map((o) => orderCard(o, (id) => go('/orders/' + id))))
+          ? el('div.grid.cols2', {}, ...filtered.map((o) => orderCard(o, (id) => go('/orders/' + id), { showImages: true })))
           : emptyState(t('orders.none'), scope === 'open' ? t('orders.none_sub') : null)
       );
     } catch (err) {
