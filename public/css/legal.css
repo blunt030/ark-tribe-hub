@@ -1,0 +1,50 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0d10;
+  --panel: #12161c;
+  --raised: #1a1e23;
+  --line: #2a323c;
+  --text: #e6e6e6;
+  --muted: #a0a9b4;
+  --gold: #d4af37;
+  --blue: #55cfff;
+}
+
+* { box-sizing: border-box; }
+html { min-height: 100%; }
+body {
+  min-height: 100%;
+  margin: 0;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(212,175,55,.08), transparent 34rem),
+    var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.65;
+}
+a { color: var(--blue); }
+a:hover { color: #9fe4ff; }
+.legal-shell { width: min(900px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 56px; }
+.legal-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.legal-brand { display: flex; align-items: center; gap: 12px; color: var(--text); text-decoration: none; font-weight: 750; letter-spacing: .02em; }
+.legal-brand img { width: 42px; height: 42px; object-fit: contain; }
+.legal-back { color: var(--muted); text-decoration: none; }
+.legal-card { background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line); border-radius: 14px; padding: clamp(20px, 4vw, 42px); box-shadow: 0 22px 60px rgba(0,0,0,.22); }
+h1, h2 { line-height: 1.2; letter-spacing: -.015em; }
+h1 { margin: 0 0 8px; font-size: clamp(1.8rem, 5vw, 2.7rem); }
+h2 { margin: 32px 0 8px; font-size: 1.18rem; color: #f0d77e; }
+p, li { color: var(--muted); }
+strong { color: var(--text); }
+.legal-lead { margin: 0 0 28px; font-size: 1.02rem; }
+.legal-warning { padding: 14px 16px; margin: 20px 0; border: 1px solid #8c7326; border-left: 4px solid var(--gold); border-radius: 9px; background: rgba(212,175,55,.08); color: #f3e5b3; }
+.legal-nav { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 34px; padding-top: 20px; border-top: 1px solid var(--line); font-size: .9rem; }
+.legal-nav a { color: var(--muted); }
+.legal-meta { color: #6f7a86; font-size: .8rem; margin-top: 28px; }
+ul { padding-left: 22px; }
+code { color: #f0d77e; background: var(--raised); padding: 2px 5px; border-radius: 4px; }
+@media (max-width: 560px) {
+  .legal-shell { width: min(100% - 22px, 900px); padding-top: 14px; }
+  .legal-top { align-items: flex-start; }
+  .legal-back { font-size: .86rem; }
+}
+
