@@ -1,4 +1,5 @@
 import { t, timeAgo } from './i18n.js';
+import { itemBild } from './icons.js';
 
 /** Kleiner DOM-Helfer. el('div.card', {onclick}, kinder...) */
 export function el(spec, props = {}, ...children) {
@@ -109,10 +110,10 @@ export function orderTitle(order) {
  * Bestellkarte. Zeigt laut Spezifikation Benutzer + Tribe im Kopf statt einer
  * Bestellnummer, die Positionen mit ihrem Einzelstatus und keine Teilmengen.
  */
-export function orderCard(order, onOpen) {
+export function orderCard(order, onOpen, { showImages = false } = {}) {
   const items = order.items.map((it) =>
     el('div.line-item', {},
-      el('span.dot.s-' + it.status),
+      showImages ? itemBild(it, 36) : el('span.dot.s-' + it.status),
       el('span.li-name', { text: `${it.emoji ? it.emoji + ' ' : ''}${it.item_name}` }),
       el('span.li-qty', { text: '× ' + it.quantity })
     )
