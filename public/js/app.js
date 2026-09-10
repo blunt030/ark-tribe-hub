@@ -143,6 +143,11 @@ function buildShell() {
         )
       ),
       el('button.btn.sm.ghost.logout-btn', { title: t('auth.logout'), onclick: signOut }, el('span', { text: t('auth.logout') })),
+      el('nav.legal-links', { 'aria-label': t('footer.legal') },
+        el('a', { href: '/impressum.html', text: t('footer.imprint') }),
+        el('a', { href: '/datenschutz.html', text: t('footer.privacy') }),
+        el('a', { href: '/nutzungsbedingungen.html', text: t('footer.terms') })
+      ),
       el('p', { style: 'color:var(--faint);font-size:.7rem;margin:0', text: t('footer.by') })
     )
   );
