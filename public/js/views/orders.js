@@ -68,7 +68,7 @@ export async function renderNewOrder(mount, ctx) {
 
   const chosenBox = el('div.list');
   const resultsBox = el('div.picker-results');
-  const accBox = el('div.acc');
+  const accBox = el('div.acc.order-groups');
   const habitatChips = el('div.chips.habitats', { style: 'margin-top:10px' });
   const search = el('input', {
     type: 'search',
@@ -116,7 +116,7 @@ export async function renderNewOrder(mount, ctx) {
         search.focus();
       },
     },
-      itemBild(it, 28),
+      itemBild(it, 40),
       el('span.pt', { text: it.name }),
       typeTag(it.product_type)
     );
@@ -161,6 +161,7 @@ export async function renderNewOrder(mount, ctx) {
       key: 'creatures',
       art: 'creature',
       label: () => t('order.group.creatures'),
+      hint: () => t('order.group.creatures_hint'),
       entries: [
         { key: 'creature', art: 'creature', label: () => t('catalog.tab.creature'), types: ['creature'] },
         { key: 'eggs', art: 'egg', label: () => t('order.sub.eggs'), types: ['egg', 'embryo'] },
@@ -170,6 +171,7 @@ export async function renderNewOrder(mount, ctx) {
       key: 'structures',
       art: 'structure',
       label: () => t('order.group.structures'),
+      hint: () => t('order.group.structures_hint'),
       entries: BAUSTUFEN.map((stufe) => ({
         key: 'structure_' + stufe,
         art: 'structure',
@@ -182,12 +184,14 @@ export async function renderNewOrder(mount, ctx) {
       key: 'saddles',
       art: 'saddle',
       label: () => t('order.group.saddles'),
+      hint: () => t('order.group.saddles_hint'),
       entries: [{ key: 'saddle', art: 'saddle', label: () => t('catalog.tab.saddle'), types: ['saddle'] }],
     },
     {
       key: 'other',
       art: 'structure',
       label: () => t('order.group.other'),
+      hint: () => t('order.group.other_hint'),
       entries: [{ key: 'resource', art: 'structure', label: () => t('catalog.tab.resource'), types: ['resource'] }],
     },
   ];
@@ -283,7 +287,10 @@ export async function renderNewOrder(mount, ctx) {
             },
           },
             itemIcon(g.art, 18),
-            el('span.acc-title', { text: g.label() }),
+            el('span.acc-copy', {},
+              el('span.acc-title', { text: g.label() }),
+              el('span.acc-hint', { text: g.hint() })
+            ),
             el('span.acc-caret', { text: offen ? '▾' : '▸' })
           ),
           el('div.acc-body', {},
@@ -550,7 +557,7 @@ export async function renderOrderDetail(mount, ctx, id) {
       el('div.list', {},
         ...order.items.map((it) => {
           const statusText = el('div.rs', {}, el('span.dot.s-' + it.status), ' ' + t('istatus.' + it.status));
-          const thumb = itemBild(it, 36);
+          const thumb = itemBild(it, 44);
           const row = el('div.row', {},
             thumb,
             el('div.grow', {},
