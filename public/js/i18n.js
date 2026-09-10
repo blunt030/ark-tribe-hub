@@ -15,6 +15,8 @@ const STRINGS = {
     'order.what': 'Was möchtest du bestellen?',
     'order.group.creatures': 'Kreaturen', 'order.group.structures': 'Strukturen',
     'order.group.saddles': 'Sättel', 'order.group.other': 'Sonstiges',
+    'order.group.creatures_hint': 'Kreaturen, Eier und Embryos', 'order.group.structures_hint': 'Bauteile nach Materialstufe',
+    'order.group.saddles_hint': 'Reitsättel nach Kreatur', 'order.group.other_hint': 'Ressourcen und Sonderteile',
     'order.sub.eggs': 'Eier & Embryos',
     'order.tier.thatch': 'Stroh', 'order.tier.wood': 'Holz', 'order.tier.stone': 'Stein',
     'order.tier.metal': 'Metall', 'order.tier.tek': 'Tek', 'order.tier.other': 'Sonstiges',
@@ -208,7 +210,8 @@ const STRINGS = {
     'common.offline': 'Keine Verbindung zum Server.',
     'time.now': 'gerade eben', 'time.min': 'vor {n} Min.', 'time.hour': 'vor {n} Std.',
     'time.day': 'vor {n} Tg.',
-    'footer.by': 'Erstellt von Blunt',
+    'footer.by': 'Erstellt von Blunt', 'footer.legal': 'Rechtliches', 'footer.imprint': 'Impressum',
+    'footer.privacy': 'Datenschutz', 'footer.terms': 'Nutzung',
   },
 
   en: {
@@ -216,6 +219,8 @@ const STRINGS = {
     'order.what': 'What would you like to order?',
     'order.group.creatures': 'Creatures', 'order.group.structures': 'Structures',
     'order.group.saddles': 'Saddles', 'order.group.other': 'Other',
+    'order.group.creatures_hint': 'Creatures, eggs and embryos', 'order.group.structures_hint': 'Building parts by material tier',
+    'order.group.saddles_hint': 'Riding saddles by creature', 'order.group.other_hint': 'Resources and special items',
     'order.sub.eggs': 'Eggs & embryos',
     'order.tier.thatch': 'Thatch', 'order.tier.wood': 'Wood', 'order.tier.stone': 'Stone',
     'order.tier.metal': 'Metal', 'order.tier.tek': 'Tek', 'order.tier.other': 'Other',
@@ -409,7 +414,8 @@ const STRINGS = {
     'common.offline': 'No connection to the server.',
     'time.now': 'just now', 'time.min': '{n} min ago', 'time.hour': '{n} h ago',
     'time.day': '{n} d ago',
-    'footer.by': 'Created by Blunt',
+    'footer.by': 'Created by Blunt', 'footer.legal': 'Legal', 'footer.imprint': 'Imprint',
+    'footer.privacy': 'Privacy', 'footer.terms': 'Terms',
   },
 
   fr: {
@@ -417,6 +423,8 @@ const STRINGS = {
     'order.what': 'Que souhaites-tu commander ?',
     'order.group.creatures': 'Créatures', 'order.group.structures': 'Structures',
     'order.group.saddles': 'Selles', 'order.group.other': 'Autres',
+    'order.group.creatures_hint': 'Créatures, œufs et embryons', 'order.group.structures_hint': 'Éléments par niveau de matériau',
+    'order.group.saddles_hint': 'Selles par créature', 'order.group.other_hint': 'Ressources et objets spéciaux',
     'order.sub.eggs': 'Œufs et embryons',
     'order.tier.thatch': 'Paille', 'order.tier.wood': 'Bois', 'order.tier.stone': 'Pierre',
     'order.tier.metal': 'Métal', 'order.tier.tek': 'Tek', 'order.tier.other': 'Autres',
@@ -610,7 +618,8 @@ const STRINGS = {
     'common.offline': 'Pas de connexion au serveur.',
     'time.now': "à l'instant", 'time.min': 'il y a {n} min', 'time.hour': 'il y a {n} h',
     'time.day': 'il y a {n} j',
-    'footer.by': 'Créé par Blunt',
+    'footer.by': 'Créé par Blunt', 'footer.legal': 'Mentions légales', 'footer.imprint': 'Mentions',
+    'footer.privacy': 'Confidentialité', 'footer.terms': 'Conditions',
   },
 
   es: {
@@ -618,6 +627,8 @@ const STRINGS = {
     'order.what': '¿Qué quieres pedir?',
     'order.group.creatures': 'Criaturas', 'order.group.structures': 'Estructuras',
     'order.group.saddles': 'Sillas', 'order.group.other': 'Otros',
+    'order.group.creatures_hint': 'Criaturas, huevos y embriones', 'order.group.structures_hint': 'Piezas por nivel de material',
+    'order.group.saddles_hint': 'Sillas por criatura', 'order.group.other_hint': 'Recursos y objetos especiales',
     'order.sub.eggs': 'Huevos y embriones',
     'order.tier.thatch': 'Paja', 'order.tier.wood': 'Madera', 'order.tier.stone': 'Piedra',
     'order.tier.metal': 'Metal', 'order.tier.tek': 'Tek', 'order.tier.other': 'Otros',
@@ -811,7 +822,8 @@ const STRINGS = {
     'common.offline': 'Sin conexión con el servidor.',
     'time.now': 'ahora mismo', 'time.min': 'hace {n} min', 'time.hour': 'hace {n} h',
     'time.day': 'hace {n} d',
-    'footer.by': 'Creado por Blunt',
+    'footer.by': 'Creado por Blunt', 'footer.legal': 'Legal', 'footer.imprint': 'Aviso legal',
+    'footer.privacy': 'Privacidad', 'footer.terms': 'Condiciones',
   },
 };
 

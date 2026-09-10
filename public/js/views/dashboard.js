@@ -1,5 +1,4 @@
 import { el, spinner, orderCard, emptyState, newsTicker } from '../ui.js';
-import { itemIcon } from '../icons.js';
 import { t, timeAgo } from '../i18n.js';
 import { api } from '../api.js';
 import { chatMessage } from './community.js';
@@ -76,7 +75,6 @@ export async function renderDashboard(mount, ctx) {
   mount.append(
     el('div.tiles', {},
       kachel({
-        icon: 'structure',
         head: t('dash.tile.orders'),
         value: openAll.length,
         sub: t('dash.orders_n', { n: openAll.length }),
@@ -85,7 +83,6 @@ export async function renderDashboard(mount, ctx) {
       }),
       hatTribe
         ? kachel({
-            icon: 'creature',
             head: t('dash.tile.tasks'),
             value: meineAufgaben.length,
             sub: t('dash.tasks_open_n', { n: meineAufgaben.length }),
@@ -94,7 +91,6 @@ export async function renderDashboard(mount, ctx) {
           })
         : null,
       kachel({
-        icon: 'egg',
         head: t('dash.unread'),
         value: unread,
         sub: t('nav.notifications'),
@@ -103,7 +99,6 @@ export async function renderDashboard(mount, ctx) {
       }),
       urgent.length
         ? kachel({
-            icon: 'saddle',
             head: t('dash.urgent'),
             value: urgent.length,
             sub: t('dash.orders_n', { n: urgent.length }),
@@ -170,7 +165,6 @@ export async function renderDashboard(mount, ctx) {
     mount.append(
       el('div.tiles', { style: 'margin-top:16px' },
         kachel({
-          icon: 'creature',
           head: t('dash.tribe'),
           value: tribeRes?.tribe?.name || '—',
           // Die Mitgliederzahl steht nur Admins zur Verfuegung; erfunden wird
@@ -180,7 +174,6 @@ export async function renderDashboard(mount, ctx) {
           onclick: isAdmin ? () => go('/members') : null,
         }),
         kachel({
-          icon: 'structure',
           head: t('dash.server'),
           value: server?.map_name || '—',
           sub: server?.name || t('dash.no_server'),
@@ -231,25 +224,24 @@ export async function renderDashboard(mount, ctx) {
   );
 
   // --- Schnellzugriff ------------------------------------------------------
-  const schnell = [['/orders/new', t('order.new'), 'egg'], ['/orders', t('nav.orders'), 'structure']];
+  const schnell = [['/orders/new', t('order.new')], ['/orders', t('nav.orders')]];
   if (hatTribe) {
     schnell.push(
-      ['/tasks', t('nav.tasks'), 'creature'],
-      ['/inventory', t('nav.inventory'), 'structure'],
-      ['/servers', t('nav.servers'), 'structure'],
-      ['/voice', t('nav.voice'), 'saddle'],
-      ['/chat', t('nav.chat'), 'egg'],
-      ['/alliances', t('nav.alliances'), 'creature']
+      ['/tasks', t('nav.tasks')],
+      ['/inventory', t('nav.inventory')],
+      ['/servers', t('nav.servers')],
+      ['/voice', t('nav.voice')],
+      ['/chat', t('nav.chat')],
+      ['/alliances', t('nav.alliances')]
     );
   }
-  schnell.push(['/profile', t('nav.profile'), 'creature']);
+  schnell.push(['/profile', t('nav.profile')]);
 
   mount.append(
     el('div.section-title', {}, t('dash.quick')),
     el('div.quick', {},
-      ...schnell.map(([pfad, label, art]) =>
+      ...schnell.map(([pfad, label]) =>
         el('button.quick-btn', { type: 'button', onclick: () => go(pfad) },
-          itemIcon(art, 20),
           el('span', { text: label })
         )
       )
@@ -257,9 +249,9 @@ export async function renderDashboard(mount, ctx) {
   );
 }
 
-function kachel({ icon, head, value, sub, link, onclick }) {
+function kachel({ head, value, sub, link, onclick }) {
   return el('div.tile', {},
-    el('div.t-head', {}, itemIcon(icon, 15), el('span', { text: head })),
+    el('div.t-head', {}, el('span', { text: head })),
     el('div.t-val', { text: String(value) }),
     sub ? el('div.t-sub', { text: sub }) : null,
     link && onclick ? el('button.t-link', { type: 'button', text: link + ' →', onclick }) : null

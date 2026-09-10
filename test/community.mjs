@@ -95,12 +95,12 @@ test('Community APIs: permissions, isolation, persistence and rate limits', asyn
     assert.equal((await admin('DELETE','/api/alliances/'+allianceId)).status,200);
     assert.deepEqual((await member('GET','/api/alliances')).alliances,[]);
   });
-  await t.test('Bundled images are real JPEG responses',async()=>{
+  await t.test('Bundled images are real PNG responses',async()=>{
     const source=readFileSync(new URL('../public/js/icons.js',import.meta.url),'utf8');
     const keys=[...source.match(/const MITGELIEFERT = new Set\(\[([\s\S]*?)\]/)[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
     for(const key of keys) {
-      const res=await fetch(base()+'/assets/'+key+'.jpg'); assert.equal(res.headers.get('content-type'),'image/jpeg');
-      const bytes=new Uint8Array(await res.arrayBuffer()); assert.equal(bytes[0],255); assert.equal(bytes[1],216);
+      const res=await fetch(base()+'/assets/'+key+'.png'); assert.equal(res.headers.get('content-type'),'image/png');
+      const bytes=new Uint8Array(await res.arrayBuffer()); assert.equal(bytes[0],137); assert.equal(bytes[1],80);
     }
   });
 });

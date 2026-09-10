@@ -79,8 +79,8 @@ export function iconFuerItem(item) {
 /* ==========================================================================
  * Mitgelieferte Kreaturenbilder
  * ==========================================================================
- * Für einen Teil der Kreaturen liegen gezeichnete Bilder unter
- * /assets/<key>.jpg im Projekt. Sie werden automatisch verwendet,
+ * Für einen Teil der Kreaturen liegen freigestellte Bilder unter
+ * /assets/<key>.png im Projekt. Sie werden automatisch verwendet,
  * ohne dass jemand sie einzeln hochladen muss.
  *
  * Rangfolge der Darstellung:
@@ -89,10 +89,9 @@ export function iconFuerItem(item) {
  *   3. gezeichnete Silhouette als Platzhalter
  */
 const MITGELIEFERT = new Set([
-  'carcharodontosaurus', 'rex', 'argentavis', 'wyvern', 'giganotosaurus',
-  'therizinosaurus', 'brontosaurus', 'spinosaurus', 'direwolf', 'managarmr',
-  'ankylosaurus', 'triceratops', 'pteranodon', 'doedicurus', 'beelzebufo',
-  'otter', 'baryonyx', 'kaprosuchus', 'dimorphodon', 'basilosaurus',
+  'rex', 'argentavis', 'giganotosaurus', 'brontosaurus', 'direwolf',
+  'managarmr', 'ankylosaurus', 'dimorphodon', 'doedicurus', 'baryonyx',
+  'kaprosuchus', 'basilosaurus',
 ]);
 
 /**
@@ -102,9 +101,9 @@ const MITGELIEFERT = new Set([
  */
 export function mitgeliefertesBild(item) {
   const key = String(item.key || '');
-  if (MITGELIEFERT.has(key)) return `/assets/${key}.jpg`;
+  if (MITGELIEFERT.has(key)) return `/assets/${key}.png`;
   const basis = key.replace(/_(egg|embryo|saddle)$/, '');
-  if (basis !== key && MITGELIEFERT.has(basis)) return `/assets/${basis}.jpg`;
+  if (basis !== key && MITGELIEFERT.has(basis)) return `/assets/${basis}.png`;
   return null;
 }
 
@@ -120,10 +119,15 @@ export function itemBild(item, groesse = 32) {
   const sources = [item.image_path ? '/uploads/' + item.image_path : null, mitgeliefertesBild(item)].filter(Boolean);
   const next = () => {
     const src = sources.shift();
-    if (!src) { box.replaceChildren(iconFuerItem(item)); return; }
+    if (!src) {
+      box.classList.add('icon-placeholder');
+      box.replaceChildren(iconFuerItem(item));
+      return;
+    }
     const img = document.createElement('img');
     img.alt = '';
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:6px';
+    img.className = 'catalog-image';
+    img.addEventListener('load', () => box.classList.remove('icon-placeholder'), { once: true });
     img.addEventListener('error', next, { once: true });
     img.src = src;
     box.replaceChildren(img);

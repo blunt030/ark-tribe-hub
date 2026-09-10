@@ -1,5 +1,4 @@
 import { el, spinner, emptyState, toast, confirmDialog, fileToBase64 } from '../ui.js';
-import { iconFuerItem, itemBild } from '../icons.js';
 import { t, timeAgo, LANGS, getLang, setLang } from '../i18n.js';
 import { api } from '../api.js';
 
@@ -9,6 +8,7 @@ import { api } from '../api.js';
 
 export async function renderNotifications(mount, ctx) {
   const { go, refreshBadges } = ctx;
+  mount.classList.add('notifications-page');
   mount.append(spinner());
 
   const { notifications } = await api.notifications();
@@ -19,7 +19,7 @@ export async function renderNotifications(mount, ctx) {
       el('div', {}, el('h1', { text: t('notif.title') })),
       el('div.chips', {},
       notifications.some((n) => n.is_read)
-        ? el('button.btn', {
+        ? el('button.btn.sm.ghost', {
             text: t('notif.clear_read'),
             onclick: async (e) => {
               e.target.disabled = true;
@@ -30,7 +30,7 @@ export async function renderNotifications(mount, ctx) {
           })
         : null,
       notifications.some((n) => !n.is_read)
-        ? el('button.btn', {
+        ? el('button.btn.sm.ghost', {
             text: t('notif.read_all'),
             onclick: async (e) => {
               e.target.disabled = true;
@@ -357,7 +357,6 @@ export async function renderProfile(mount, ctx) {
     // Konto
     el('div.section-title', {}, '⚙️ ' + t('profile.account')),
     el('div.card', {},
-      linkRow(t('profile.edit'), editPanel, '✏️'),
       linkRow(t('pw.title'), pwPanel, '🔑'),
       pwPanel,
       linkRow(t('profile.email_change'), emailPanel, '✉️'),
@@ -761,8 +760,6 @@ export async function renderCatalog(mount) {
     const LIMIT = 60;
     listBox.replaceChildren(
       ...filtered.slice(0, LIMIT).map((i) => {
-        const thumb = itemBild(i, 34);
-
         const fileInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', style: 'display:none' });
         fileInput.addEventListener('change', async () => {
           const file = fileInput.files[0];
@@ -778,7 +775,6 @@ export async function renderCatalog(mount) {
         });
 
         return el('div.row', {},
-          thumb,
           el('div.grow', {}, el('div.rt', { text: i.name }), el('div.rs', { text: i.key })),
           el('span.type-tag.t-' + i.product_type, { text: t('type.' + i.product_type) }),
           el('button.btn.sm', { text: i.image_path ? t('dev.image_replace') : t('dev.image_add'), onclick: () => fileInput.click() }),
