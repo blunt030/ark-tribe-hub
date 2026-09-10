@@ -53,6 +53,7 @@ export function renderAuth(root, { onSignedIn }) {
               })
             )
           ),
+          legalLinks(),
           el('p', { style: 'text-align:center;color:var(--faint);font-size:.76rem;margin-top:14px', text: t('footer.by') })
         )
       )
@@ -149,8 +150,17 @@ export function renderPending(root, { user, onSignOut }) {
           el('h2', { text: t('dash.welcome', { name: user.username }) }),
           el('p', { style: 'color:var(--muted);margin:10px 0 18px', text: t('auth.pending') }),
           el('button.btn.block', { text: t('auth.logout'), onclick: onSignOut })
-        )
+        ),
+        legalLinks()
       )
     )
+  );
+}
+
+function legalLinks() {
+  return el('nav.auth-legal-links', { 'aria-label': t('footer.legal') },
+    el('a', { href: '/impressum.html', text: t('footer.imprint') }),
+    el('a', { href: '/datenschutz.html', text: t('footer.privacy') }),
+    el('a', { href: '/nutzungsbedingungen.html', text: t('footer.terms') })
   );
 }
