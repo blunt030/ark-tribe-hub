@@ -107,6 +107,10 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
   });
 
   await t.test('Voice-Signale erreichen nur Teilnehmer desselben Tribe-Kanals', async () => {
+    const voiceConfig = await admin.get('/api/voice/config');
+    assert.equal(voiceConfig.status, 200);
+    assert.equal(voiceConfig.json.turnConfigured, false);
+    assert.match(voiceConfig.json.iceServers[0].urls[0], /^stun:/);
     const channels = await admin.get('/api/voice/channels');
     const channelId = channels.json.channels[0].id;
     assert.equal((await admin.post(`/api/voice/channels/${channelId}/join`)).status, 200);

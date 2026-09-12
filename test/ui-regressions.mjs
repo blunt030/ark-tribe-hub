@@ -31,11 +31,14 @@ test('Bestellmenü und Menge folgen dem vereinfachten Ablauf', async () => {
     read('public/js/views/orders.js'),
     read('public/js/i18n.js'),
   ]);
-  assert.match(orders, /order\.sub\.animals/);
+  assert.match(orders, /order\.sub\.eggs/);
   assert.match(orders, /order\.sub\.embryos/);
-  assert.doesNotMatch(orders, /catalog\.tab\.egg/);
+  assert.doesNotMatch(orders, /order\.sub\.animals/);
+  assert.match(orders, /types:\s*\['egg'\]/);
+  assert.match(orders, /types:\s*\['embryo'\]/);
+  assert.doesNotMatch(orders, /types:\s*\['creature'\]/);
   assert.match(orders, /selected\s*\?\s*qtyControl\(selected\.quantity/);
-  assert.match(i18n, /"order\.sub\.animals": "Tiere"/);
+  assert.match(i18n, /"order\.sub\.eggs": "Eier"/);
   assert.match(i18n, /"order\.sub\.embryos": "Embryos"/);
 });
 
@@ -52,19 +55,33 @@ test('Startseite und Navigation enthalten weder Schnellzugriff noch Bestand', as
 });
 
 test('Chat, Voice, Tribe-Login und AFK-Abmeldung sind verdrahtet', async () => {
-  const [app, auth, chat, voice] = await Promise.all([
+  const [app, auth, chat, voice, dashboard, css, voiceRoute] = await Promise.all([
     read('public/js/app.js'),
     read('public/js/views/auth.js'),
     read('public/js/views/community.js'),
     read('public/js/views/voice.js'),
+    read('public/js/views/dashboard.js'),
+    read('public/css/app.css'),
+    read('src/routes/voice.routes.js'),
   ]);
   assert.match(auth, /tribeSlug:/);
   assert.match(app, /30 \* 60 \* 1000/);
   assert.match(app, /signOut\(true\)/);
   assert.match(chat, /chat-message.*mine/);
+  assert.match(chat, /section\.chat-window/);
+  assert.match(dashboard, /card\.dashboard-chat-card/);
+  assert.match(css, /\.chat-window\s*\{[\s\S]*?border:\s*2px/);
   assert.match(voice, /getUserMedia/);
   assert.match(voice, /RTCPeerConnection/);
   assert.match(voice, /sendVoiceSignal/);
+  assert.match(voice, /refreshRtcCredentials/);
+  assert.match(voiceRoute, /resolveVoiceIceConfig/);
+});
+
+test('Die große Kartenansicht bleibt auf dem Desktop kompakt', async () => {
+  const css = await read('public/css/app.css');
+  assert.match(css, /\.map-grid-wrap\s*\{[^}]*width:\s*min\(100%,\s*920px\)/);
+  assert.match(css, /\.map-canvas\s*>\s*img\s*\{[^}]*max-height:\s*66vh/);
 });
 
 test('Profil bearbeitet das Profil an genau einer Stelle', async () => {
