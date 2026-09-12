@@ -49,8 +49,8 @@ function makeClient(base) {
     post: (p, b, o) => request('POST', p, b, o),
     patch: (p, b, o) => request('PATCH', p, b, o),
     put: (p, b, o) => request('PUT', p, b, o),
-    async login(identifier, password) {
-      const r = await request('POST', '/api/auth/login', { identifier, password });
+    async login(identifier, password, tribeSlug = 'oao') {
+      const r = await request('POST', '/api/auth/login', { identifier, password, tribeSlug });
       if (r.status === 200) csrf = r.json.csrfToken;
       return r;
     },
@@ -91,7 +91,7 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
   });
 
   await t.test('2. Demo-Zugänge aus dem Seed funktionieren (Passwort-Hashing/Login real)', async () => {
-    assert.equal((await dev.login('Blunt', 'ChangeMe123!')).status, 200);
+    assert.equal((await dev.login('blunt@ark-tribe-hub.dev', 'ChangeMe123!', null)).status, 200);
     assert.equal((await oaoAdmin.login('OaO Admin', 'ChangeMe123!')).status, 200);
     assert.equal((await oaoBreeder.login('OaO Breeder', 'ChangeMe123!')).status, 200);
     const memberLogin = await oaoMember.login('Blunt OaO', 'ChangeMe123!');
@@ -100,7 +100,7 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
   });
 
   await t.test('3. Falsches Passwort wird abgelehnt, ohne Details preiszugeben', async () => {
-    const r = await anon.post('/api/auth/login', { identifier: 'Blunt', password: 'falsch' });
+    const r = await anon.post('/api/auth/login', { identifier: 'blunt@ark-tribe-hub.dev', password: 'falsch' });
     assert.equal(r.status, 401);
   });
 
@@ -209,11 +209,11 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
     assert.equal(roleRes.status, 200);
     const approve = await dev.patch(`/api/admin/members/${xyzAdminId}/approve?tribeId=${xyzTribeId}`);
     assert.equal(approve.status, 200);
-    assert.equal((await xyzAdmin.login('XYZ Admin', 'Testpass123!')).status, 200);
+    assert.equal((await xyzAdmin.login('XYZ Admin', 'Testpass123!', 'xyz')).status, 200);
 
     const regMember = await anon.post('/api/auth/register', { tribeSlug: 'xyz', username: 'XYZ Member', email: 'xyz-member@example.test', password: 'Testpass123!' });
     await dev.patch(`/api/admin/members/${regMember.json.user.id}/approve?tribeId=${xyzTribeId}`);
-    assert.equal((await xyzMember.login('XYZ Member', 'Testpass123!')).status, 200);
+    assert.equal((await xyzMember.login('XYZ Member', 'Testpass123!', 'xyz')).status, 200);
   });
 
   await t.test('15. Tribe-Isolation: XYZ kann OaO-Bestellungen weder lesen noch übernehmen (404, nicht 403)', async () => {
@@ -370,16 +370,16 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
     const bruteClient = makeClient(base);
     // Die ersten Fehlversuche liefern normale 401 mit generischer Meldung.
     for (let i = 0; i < 5; i++) {
-      const r = await bruteClient.post('/api/auth/login', { identifier: 'OaO Admin', password: 'falsches-passwort' });
+      const r = await bruteClient.post('/api/auth/login', { tribeSlug: 'oao', identifier: 'OaO Admin', password: 'falsches-passwort' });
       assert.equal(r.status, 401);
     }
     // Ab dem 6. Versuch greift die Sperre – erkennbar an der abweichenden Meldung.
-    const locked = await bruteClient.post('/api/auth/login', { identifier: 'OaO Admin', password: 'falsches-passwort' });
+    const locked = await bruteClient.post('/api/auth/login', { tribeSlug: 'oao', identifier: 'OaO Admin', password: 'falsches-passwort' });
     assert.equal(locked.status, 401);
     assert.match(locked.json.error.message, /Zu viele fehlgeschlagene/);
 
     // Entscheidend: Auch mit dem RICHTIGEN Passwort bleibt der Login währenddessen gesperrt.
-    const withCorrectPassword = await bruteClient.post('/api/auth/login', { identifier: 'OaO Admin', password: 'ChangeMe123!' });
+    const withCorrectPassword = await bruteClient.post('/api/auth/login', { tribeSlug: 'oao', identifier: 'OaO Admin', password: 'ChangeMe123!' });
     assert.equal(withCorrectPassword.status, 401);
     assert.match(withCorrectPassword.json.error.message, /Zu viele fehlgeschlagene/);
   });

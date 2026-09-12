@@ -13,6 +13,15 @@ test('PostgreSQL engine: additive schema migration, CRUD, constraints and retent
   const { rows: [user] } = await db.query("INSERT INTO users (tribe_id,username,password_hash,status) VALUES ($1,'Tester','test-only','active') RETURNING id",[tribe.id]);
   await db.exec(schema);
   await db.exec(schema);
+  const requiredColumns = await db.query(
+    `SELECT table_name,column_name FROM information_schema.columns
+     WHERE (table_name='users' AND column_name='personal_pin_encrypted')
+        OR (table_name='game_servers' AND column_name IN ('map_image_path','map_image_data','map_image_mime'))`
+  );
+  assert.equal(requiredColumns.rows.length,4);
+  for (const table of ['task_partners','voice_signals']) {
+    assert.equal((await db.query('SELECT to_regclass($1) AS name',[table])).rows[0].name,table);
+  }
   assert.equal((await db.query('SELECT name FROM tribes WHERE id=$1',[tribe.id])).rows[0].name,'Preserved tribe');
   const { rows: [relation] } = await db.query('INSERT INTO tribe_relationships (tribe_id,name,relationship,server,map,created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',[tribe.id,'Friends','alliance','EU','The Island',user.id]);
   assert.equal(relation.relationship,'alliance');
