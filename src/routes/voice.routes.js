@@ -3,6 +3,7 @@ import { readJsonBody, sendJson, badRequest } from '../lib/http.js';
 import { parseIdParam } from '../lib/validate.js';
 import { requireActive, requireRole, requireCsrf } from '../middleware/auth.js';
 import * as voiceService from '../services/voiceService.js';
+import { resolveVoiceIceConfig } from '../services/turnService.js';
 import { config } from '../config.js';
 
 export function buildVoiceRouter(db) {
@@ -18,7 +19,7 @@ export function buildVoiceRouter(db) {
   });
 
   router.get('/api/voice/config', requireActive, async (req, res) => {
-    sendJson(res, 200, { iceServers: config.rtcIceServers, turnConfigured: config.rtcIceServers.some((server) => String(server.urls || '').includes('turn:') || String(server.urls || '').includes('turns:')) });
+    sendJson(res, 200, await resolveVoiceIceConfig(config, req.user.id));
   });
 
   router.post('/api/voice/channels', requireActive, requireCsrf, async (req, res) => {
