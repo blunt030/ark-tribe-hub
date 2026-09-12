@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
   status TEXT NOT NULL DEFAULT 'pending_approval', -- pending_approval | active | rejected | disabled
   avatar_path TEXT,
   personal_vault_number TEXT,
+  personal_pin_encrypted TEXT,
   server TEXT,
   map TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -236,6 +237,9 @@ CREATE TABLE IF NOT EXISTS game_servers (
   map_name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'active',
   notes TEXT,
+  map_image_path TEXT,
+  map_image_data BLOB,
+  map_image_mime TEXT,
   created_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
@@ -278,6 +282,14 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_tribe ON tasks(tribe_id, status);
+
+CREATE TABLE IF NOT EXISTS task_partners (
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (task_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_partners_user ON task_partners(user_id);
 
 CREATE TABLE IF NOT EXISTS task_comments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -330,6 +342,21 @@ CREATE TABLE IF NOT EXISTS voice_participants (
 );
 
 CREATE INDEX IF NOT EXISTS idx_voice_participants_channel ON voice_participants(channel_id);
+
+-- Kurzlebige WebRTC-Signale. Audio selbst läuft verschlüsselt direkt zwischen den
+-- Browsern; der Server transportiert nur Offer/Answer/ICE-Nachrichten im Tribe.
+CREATE TABLE IF NOT EXISTS voice_signals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel_id INTEGER NOT NULL REFERENCES voice_channels(id) ON DELETE CASCADE,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id) ON DELETE CASCADE,
+  sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recipient_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  signal_type TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_signals_recipient ON voice_signals(channel_id, recipient_id, id);
 
 -- Additive, idempotent tables, also installed when an existing database opens.
 CREATE TABLE IF NOT EXISTS tribe_relationships (

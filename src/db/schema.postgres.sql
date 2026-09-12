@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
   avatar_data BYTEA,
   avatar_mime TEXT,
   personal_vault_number TEXT,
+  personal_pin_encrypted TEXT,
   server TEXT,
   map TEXT,
   created_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
@@ -246,6 +247,9 @@ CREATE TABLE IF NOT EXISTS game_servers (
   map_name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'active',
   notes TEXT,
+  map_image_path TEXT,
+  map_image_data BYTEA,
+  map_image_mime TEXT,
   created_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
   updated_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
@@ -288,6 +292,14 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_tribe ON tasks(tribe_id, status);
+
+CREATE TABLE IF NOT EXISTS task_partners (
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (task_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_partners_user ON task_partners(user_id);
 
 CREATE TABLE IF NOT EXISTS task_comments (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -338,6 +350,19 @@ CREATE TABLE IF NOT EXISTS voice_participants (
 );
 
 CREATE INDEX IF NOT EXISTS idx_voice_participants_channel ON voice_participants(channel_id);
+
+CREATE TABLE IF NOT EXISTS voice_signals (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  channel_id INTEGER NOT NULL REFERENCES voice_channels(id) ON DELETE CASCADE,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id) ON DELETE CASCADE,
+  sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recipient_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  signal_type TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_signals_recipient ON voice_signals(channel_id, recipient_id, id);
 
 -- Additive, idempotent tables, also installed when an existing database opens.
 CREATE TABLE IF NOT EXISTS tribe_relationships (
