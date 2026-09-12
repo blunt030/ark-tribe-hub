@@ -81,6 +81,8 @@ export async function renderNewOrder(mount, ctx) {
   note.addEventListener('input', () => { noteCount.textContent = `${note.value.length} / 300`; });
 
   const submit = el('button.btn.primary.block', { text: t('order.create'), disabled: true });
+  let visibleItems = [];
+  let visibleEmptyText = t('order.no_items');
 
   function drawChosen() {
     chosenBox.replaceChildren(
@@ -91,11 +93,11 @@ export async function renderNewOrder(mount, ctx) {
                 el('div.rt', { text: `${c.emoji ? c.emoji + ' ' : ''}${c.name}` }),
                 el('div.rs', {}, typeTag(c.product_type))
               ),
-              qtyControl(c.quantity, (v) => { c.quantity = v; }),
+              qtyControl(c.quantity, (v) => { c.quantity = v; renderResults(visibleItems, visibleEmptyText); }),
               el('button.btn.sm.danger', {
                 text: '✕',
                 'aria-label': t('common.cancel'),
-                onclick: () => { chosen.splice(i, 1); drawChosen(); },
+                onclick: () => { chosen.splice(i, 1); drawChosen(); renderResults(visibleItems, visibleEmptyText); },
               })
             )
           )
@@ -105,24 +107,30 @@ export async function renderNewOrder(mount, ctx) {
   }
 
   function pickButton(it) {
-    return el('button.pick', {
+    const selected = chosen.find((c) => c.itemId === it.id);
+    const add = el('button.pick', {
       type: 'button',
+      'aria-pressed': selected ? 'true' : 'false',
       onclick: () => {
         if (!chosen.some((c) => c.itemId === it.id)) {
           chosen.push({ itemId: it.id, name: it.name, emoji: it.emoji, product_type: it.product_type, quantity: 1 });
           drawChosen();
+          renderResults(visibleItems, visibleEmptyText);
         }
-        search.value = '';
-        search.focus();
       },
-    },
-      itemBild(it, 40),
-      el('span.pt', { text: it.name }),
-      typeTag(it.product_type)
+    }, itemBild(it, 40), el('span.pt', { text: it.name }), typeTag(it.product_type));
+
+    return el('div.pick-row' + (selected ? '.selected' : ''), {},
+      add,
+      selected
+        ? qtyControl(selected.quantity, (v) => { selected.quantity = v; drawChosen(); })
+        : el('span.pick-add', { text: '+' })
     );
   }
 
   function renderResults(items, emptyText) {
+    visibleItems = items;
+    visibleEmptyText = emptyText;
     resultsBox.replaceChildren(
       ...(items.length
         ? items.slice(0, 80).map(pickButton)
@@ -163,8 +171,8 @@ export async function renderNewOrder(mount, ctx) {
       label: () => t('order.group.creatures'),
       hint: () => t('order.group.creatures_hint'),
       entries: [
-        { key: 'creature', art: 'creature', label: () => t('catalog.tab.creature'), types: ['creature'] },
-        { key: 'eggs', art: 'egg', label: () => t('order.sub.eggs'), types: ['egg', 'embryo'] },
+        { key: 'creature', art: 'creature', label: () => t('order.sub.animals'), types: ['creature'] },
+        { key: 'eggs', art: 'egg', label: () => t('order.sub.embryos'), types: ['egg', 'embryo'] },
       ],
     },
     {
@@ -374,17 +382,21 @@ export async function renderNewOrder(mount, ctx) {
         el('h1', { text: t('order.new'), style: 'margin-top:8px' })
       )
     ),
-    el('div.card', {},
-      el('div.field', {},
-        el('label', { for: 'item-search', text: t('order.what') }),
-        search
+    el('div.order-builder', {},
+      el('div.card.order-catalog', {},
+        el('div.field', {},
+          el('label', { for: 'item-search', text: t('order.what') }),
+          search
+        ),
+        accBox,
+        habitatChips,
+        resultsBox
       ),
-      accBox,
-      habitatChips,
-      resultsBox
+      el('div.card.order-selection', {},
+        el('div.section-title', {}, t('order.items')),
+        chosenBox
+      )
     ),
-    el('div.section-title', {}, t('order.items')),
-    chosenBox,
     el('div.card', { style: 'margin-top:18px' },
       el('div.field', {}, el('label', { text: t('order.priority') }), prioSeg),
       el('div.field', {},

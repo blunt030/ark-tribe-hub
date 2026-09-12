@@ -23,6 +23,48 @@ test('Katalogbilder bleiben auf den Bestellablauf begrenzt', async () => {
 test('der Desktop-Katalog nutzt den normalen Seiten-Scroll', async () => {
   const css = await read('public/css/app.css');
   assert.match(css, /@media \(min-width: 900px\)[\s\S]*?\.picker-results\s*\{[\s\S]*?max-height: none;[\s\S]*?overflow-y: visible;/);
+  assert.match(css, /\.main\s*\{[\s\S]*?overflow-y: auto;/);
+});
+
+test('Bestellmenü und Menge folgen dem vereinfachten Ablauf', async () => {
+  const [orders, i18n] = await Promise.all([
+    read('public/js/views/orders.js'),
+    read('public/js/i18n.js'),
+  ]);
+  assert.match(orders, /order\.sub\.animals/);
+  assert.match(orders, /order\.sub\.embryos/);
+  assert.doesNotMatch(orders, /catalog\.tab\.egg/);
+  assert.match(orders, /selected\s*\?\s*qtyControl\(selected\.quantity/);
+  assert.match(i18n, /"order\.sub\.animals": "Tiere"/);
+  assert.match(i18n, /"order\.sub\.embryos": "Embryos"/);
+});
+
+test('Startseite und Navigation enthalten weder Schnellzugriff noch Bestand', async () => {
+  const [dashboard, app, profile] = await Promise.all([
+    read('public/js/views/dashboard.js'),
+    read('public/js/app.js'),
+    read('public/js/views/misc.js'),
+  ]);
+  assert.doesNotMatch(dashboard, /dash\.quick|dash\.activity/);
+  assert.doesNotMatch(app, /renderInventory|\/inventory/);
+  assert.doesNotMatch(profile, /\['\/inventory'/);
+  assert.match(app, /nav\.animal_stats/);
+});
+
+test('Chat, Voice, Tribe-Login und AFK-Abmeldung sind verdrahtet', async () => {
+  const [app, auth, chat, voice] = await Promise.all([
+    read('public/js/app.js'),
+    read('public/js/views/auth.js'),
+    read('public/js/views/community.js'),
+    read('public/js/views/voice.js'),
+  ]);
+  assert.match(auth, /tribeSlug:/);
+  assert.match(app, /30 \* 60 \* 1000/);
+  assert.match(app, /signOut\(true\)/);
+  assert.match(chat, /chat-message.*mine/);
+  assert.match(voice, /getUserMedia/);
+  assert.match(voice, /RTCPeerConnection/);
+  assert.match(voice, /sendVoiceSignal/);
 });
 
 test('Profil bearbeitet das Profil an genau einer Stelle', async () => {

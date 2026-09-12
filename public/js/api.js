@@ -63,6 +63,7 @@ export const api = {
   updateProfile: (b) => call('PATCH', '/api/users/me', b),
   changePassword: (b) => call('POST', '/api/users/me/password', b),
   uploadAvatar: (b) => call('POST', '/api/users/me/avatar', b),
+  generateAccessPin: () => call('POST', '/api/users/me/access-pin/generate', {}),
   uploadItemImage: (id, b) => call('POST', `/api/items/${id}/image`, b),
   dinos: (q = {}) => {
     const p = new URLSearchParams();
@@ -81,6 +82,7 @@ export const api = {
   createServer: (b) => call('POST', '/api/servers', b),
   updateServer: (id, b) => call('PATCH', `/api/servers/${id}`, b),
   deleteServer: (id) => call('DELETE', `/api/servers/${id}`),
+  uploadServerMap: (id, b) => call('POST', `/api/servers/${id}/map-image`, b),
   createMarker: (serverId, b) => call('POST', `/api/servers/${serverId}/markers`, b),
   updateMarker: (id, b) => call('PATCH', `/api/markers/${id}`, b),
   deleteMarker: (id) => call('DELETE', `/api/markers/${id}`),
@@ -95,6 +97,8 @@ export const api = {
   updateTask: (id, b) => call('PATCH', `/api/tasks/${id}`, b),
   deleteTask: (id) => call('DELETE', `/api/tasks/${id}`),
   addTaskComment: (id, b) => call('POST', `/api/tasks/${id}/comments`, b),
+  claimTask: (id) => call('POST', `/api/tasks/${id}/claim`, {}),
+  completeTask: (id, partnerIds) => call('POST', `/api/tasks/${id}/complete`, { partnerIds }),
   inventory: (q = {}) => {
     const p = new URLSearchParams();
     if (q.location) p.set('location', q.location);
@@ -107,11 +111,14 @@ export const api = {
   adjustInventory: (id, delta) => call('POST', `/api/inventory/${id}/adjust`, { delta }),
   deleteInventory: (id) => call('DELETE', `/api/inventory/${id}`),
   voiceChannels: () => call('GET', '/api/voice/channels'),
+  voiceConfig: () => call('GET', '/api/voice/config'),
   createVoiceChannel: (b) => call('POST', '/api/voice/channels', b),
   deleteVoiceChannel: (id) => call('DELETE', `/api/voice/channels/${id}`),
   voiceJoin: (id) => call('POST', `/api/voice/channels/${id}/join`, {}),
   voiceLeave: (id) => call('POST', `/api/voice/channels/${id}/leave`, {}),
   voiceMute: (id, muted) => call('POST', `/api/voice/channels/${id}/mute`, { muted }),
+  voiceSignals: (id, after = 0) => call('GET', `/api/voice/channels/${id}/signals?after=${after}`),
+  sendVoiceSignal: (id, recipientId, type, payload) => call('POST', `/api/voice/channels/${id}/signals`, { recipientId, type, payload }),
   user: (id) => call('GET', `/api/users/${id}`),
   myTribe: () => call('GET', '/api/tribes/me'),
 
@@ -157,6 +164,8 @@ export const api = {
     call('PATCH', `/api/admin/members/${id}/roles` + (tribeId ? `?tribeId=${tribeId}` : ''), { breederCrafter: on }),
   setTribeAdmin: (id, on, tribeId) =>
     call('PATCH', `/api/admin/members/${id}/roles` + (tribeId ? `?tribeId=${tribeId}` : ''), { admin: on }),
+  updateMemberAccess: (id, b, tribeId) =>
+    call('PATCH', `/api/admin/members/${id}/access` + (tribeId ? `?tribeId=${tribeId}` : ''), b),
   auditLogs: () => call('GET', '/api/admin/audit-logs'),
 
   // News

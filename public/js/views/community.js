@@ -53,14 +53,17 @@ export async function renderAlliances(mount, { user }) {
   draw();
 }
 
-export function chatMessage(m) {
-  return el('article.chat-message', { dataset: { messageId: m.id } },
+export function chatMessage(m, currentUserId = null) {
+  const mine = currentUserId != null && Number(m.author_id) === Number(currentUserId);
+  const colorIndex = Math.abs(Number(m.author_id) || 0) % 6;
+  return el(`article.chat-message.author-color-${colorIndex}${mine ? '.mine' : ''}`, { dataset: { messageId: m.id } },
     el('div.chat-meta', {}, el('strong', { text: m.author_name }),
+      mine ? el('span.chat-me', { text: t('chat.me') }) : null,
       el('time', { datetime: m.created_at, text: new Date(m.created_at).toLocaleString(getLang()) })),
     el('p', { text: m.body })); // User content is always textContent, never HTML.
 }
 
-export async function renderChat(mount) {
+export async function renderChat(mount, { user }) {
   mount.append(spinner());
   const initial = await api.chatMessages();
   const messages = new Map(initial.messages.map(m => [m.id, m]));
@@ -90,7 +93,7 @@ export async function renderChat(mount) {
     for (const m of rows) {
       if (messages.has(m.id) && log.querySelector(`[data-message-id="${m.id}"]`)) continue;
       messages.set(m.id, m);
-      const node = chatMessage(m);
+      const node = chatMessage(m, user.id);
       const next = [...log.children].find(n => Number(n.dataset.messageId) > m.id);
       log.insertBefore(node, next || null);
     }

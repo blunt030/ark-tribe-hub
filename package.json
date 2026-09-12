@@ -10,7 +10,7 @@
     "dev": "node --no-warnings src/server.js",
     "start": "node --no-warnings src/server.js",
     "seed": "node --no-warnings src/db/seed.js",
-    "test": "node --no-warnings --test test/run.mjs test/community.mjs test/ui-regressions.mjs",
+    "test": "node --no-warnings --test test/run.mjs test/community.mjs test/new-features.mjs test/ui-regressions.mjs",
     "test:postgres": "node --test test/postgres-schema.mjs"
   },
   "dependencies": {

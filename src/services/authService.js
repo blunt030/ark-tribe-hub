@@ -126,26 +126,36 @@ async function isLockedOut(db, identifier, ip) {
   return Number(row.failures) >= MAX_FAILED_ATTEMPTS;
 }
 
-export async function login(db, { identifier, password, ip, userAgent }) {
+export async function login(db, { tribeSlug, identifier, password, ip, userAgent }) {
   const normalized = identifier?.trim().toLowerCase();
   if (!normalized || !password) throw badRequest('Anmeldedaten fehlen');
 
-  if (await isLockedOut(db, normalized, ip)) {
+  const normalizedTribe = tribeSlug?.trim().toLowerCase() || null;
+  const attemptKey = `${normalizedTribe || '-'}:${normalized}`;
+
+  if (await isLockedOut(db, attemptKey, ip)) {
     throw unauthorized('Zu viele fehlgeschlagene Anmeldeversuche. Bitte in 15 Minuten erneut versuchen.');
   }
 
   // Tribe-Name mitladen, damit die Kopfzeile ihn direkt nach dem Anmelden zeigt
   // (ohne JOIN kaeme hier null und der Name erschiene erst nach einem Neuladen).
-  const user = await db.get(
-    `SELECT u.*, t.name AS tribe_name FROM users u
-     LEFT JOIN tribes t ON t.id = u.tribe_id
-     WHERE lower(u.username) = ? OR lower(u.email) = ?`,
-    [normalized, normalized]
-  );
+  const user = normalized.includes('@')
+    ? await db.get(
+        `SELECT u.*, t.name AS tribe_name FROM users u
+         LEFT JOIN tribes t ON t.id = u.tribe_id
+         WHERE lower(u.email) = ?`,
+        [normalized]
+      )
+    : await db.get(
+        `SELECT u.*, t.name AS tribe_name FROM users u
+         JOIN tribes t ON t.id = u.tribe_id
+         WHERE lower(t.slug) = ? AND lower(u.username) = ? AND t.is_active = 1`,
+        [normalizedTribe, normalized]
+      );
 
   const ok = user ? await verifyPassword(password, user.password_hash) : false;
 
-  await db.run('INSERT INTO login_attempts (identifier, ip, success) VALUES (?,?,?)', [normalized, ip, ok ? 1 : 0]);
+  await db.run('INSERT INTO login_attempts (identifier, ip, success) VALUES (?,?,?)', [attemptKey, ip, ok ? 1 : 0]);
 
   if (!ok) {
     throw unauthorized('Benutzername/E-Mail oder Passwort ist falsch');

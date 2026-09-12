@@ -23,7 +23,7 @@ const VERWALTUNG = [
   'status',
   'server',
   'map',
-  'vault',
+  'personal_vault_number',
   'created_at',
   'updated_at',
 ];
@@ -33,6 +33,7 @@ export const GEHEIME_FELDER = [
   'password_hash',
   'email_verify_token',
   'email_verify_expires_at',
+  'personal_pin_encrypted',
 ];
 
 function auswaehlen(user, felder) {

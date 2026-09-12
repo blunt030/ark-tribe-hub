@@ -32,14 +32,14 @@ export function buildDinoRouter(db) {
     sendJson(res, 200, { dino });
   });
 
-  router.post('/api/dinos', requireActive, requireCsrf, async (req, res) => {
+  router.post('/api/dinos', requireRole('breeder_crafter', 'admin'), requireCsrf, async (req, res) => {
     const tribeId = tribeIdOf(req);
     const body = await readJsonBody(req);
     const dino = await dinoService.createDino(db, tribeId, body, req.user.id);
     sendJson(res, 201, { dino });
   });
 
-  router.patch('/api/dinos/:id', requireActive, requireCsrf, async (req, res) => {
+  router.patch('/api/dinos/:id', requireRole('breeder_crafter', 'admin'), requireCsrf, async (req, res) => {
     const tribeId = tribeIdOf(req);
     const id = parseIdParam(req.params.id);
     const body = await readJsonBody(req);
@@ -56,7 +56,7 @@ export function buildDinoRouter(db) {
     sendJson(res, 200, { ok: true });
   });
 
-  router.post('/api/dinos/:id/image', requireActive, requireCsrf, async (req, res) => {
+  router.post('/api/dinos/:id/image', requireRole('breeder_crafter', 'admin'), requireCsrf, async (req, res) => {
     const tribeId = tribeIdOf(req);
     const id = parseIdParam(req.params.id);
     const existing = await db.get('SELECT id FROM dinos WHERE id = ? AND tribe_id = ?', [id, tribeId]);

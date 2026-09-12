@@ -17,6 +17,7 @@ function priorityBadge(p) {
 
 export async function renderTasks(mount, ctx) {
   const { go, user } = ctx;
+  const isAdmin = user.roles.includes('admin') || user.roles.includes('developer');
   mount.append(spinner());
   const [{ tasks }, { members }] = await Promise.all([api.tasks(), api.members().catch(() => ({ members: [] }))]);
 
@@ -34,6 +35,17 @@ export async function renderTasks(mount, ctx) {
                 el('div.rt', { text: tk.title }),
                 el('div.rs', { text: [assignee?.username, tk.due_date ? t('task.due') + ' ' + tk.due_date : null].filter(Boolean).join(' · ') })
               ),
+              !tk.assignee_id && tk.status === 'open'
+                ? el('button.btn.sm.primary', {
+                    text: t('task.claim'),
+                    onclick: async (e) => {
+                      e.stopPropagation();
+                      e.currentTarget.disabled = true;
+                      try { await api.claimTask(tk.id); toast(t('task.claimed')); go('/tasks/' + tk.id); }
+                      catch (err) { toast(err.message, 'err'); e.currentTarget.disabled = false; }
+                    },
+                  })
+                : null,
               priorityBadge(tk.priority),
               statusBadge(tk.status)
             );
@@ -46,7 +58,7 @@ export async function renderTasks(mount, ctx) {
   mount.append(
     el('div.page-head', {},
       el('div', {}, el('h1', { text: t('task.title') }), el('p', { text: t('task.sub', { n: tasks.length }) })),
-      el('button.btn.primary', { text: '+ ' + t('task.new'), onclick: () => go('/tasks/new') })
+      isAdmin ? el('button.btn.primary', { text: '+ ' + t('task.new'), onclick: () => go('/tasks/new') }) : null
     ),
     el('div.card', {},
       el('div.chips', {},
@@ -72,7 +84,11 @@ export async function renderTasks(mount, ctx) {
 /* ========================================================================== */
 
 export async function renderTaskForm(mount, ctx, idParam) {
-  const { go } = ctx;
+  const { go, user } = ctx;
+  if (!user.roles.some((r) => ['admin', 'developer'].includes(r))) {
+    mount.replaceChildren(emptyState(t('task.admin_only')));
+    return;
+  }
   const editingId = idParam && idParam !== 'new' ? parseInt(idParam, 10) : null;
   mount.append(spinner());
 
@@ -99,7 +115,7 @@ export async function renderTaskForm(mount, ctx, idParam) {
     const body = { title: title.value.trim(), description: description.value.trim(), assigneeId: assignee.value || null, priority: priority.value, status: status.value, dueDate: dueDate.value || null };
     try {
       const result = editingId ? await api.updateTask(editingId, body) : await api.createTask(body);
-      toast(editingId ? t('dino.saved') : t('dino.created'));
+      toast(editingId ? t('task.saved') : t('task.created'));
       go('/tasks/' + result.task.id, true);
     } catch (err) { toast(err.message, 'err'); submit.disabled = false; }
   });
@@ -124,7 +140,8 @@ export async function renderTaskForm(mount, ctx, idParam) {
 /* ========================================================================== */
 
 export async function renderTaskDetail(mount, ctx, idParam) {
-  const { go } = ctx;
+  const { go, user } = ctx;
+  const isAdmin = user.roles.includes('admin') || user.roles.includes('developer');
   const id = parseInt(idParam, 10);
   mount.append(spinner());
   let data, members;
@@ -135,6 +152,8 @@ export async function renderTaskDetail(mount, ctx, idParam) {
     return;
   }
   const assignee = members.find((m) => m.id === data.assignee_id);
+  const canClaim = !data.assignee_id && data.status === 'open';
+  const canComplete = ['open', 'in_progress'].includes(data.status) && (isAdmin || Number(data.assignee_id) === Number(user.id));
 
   const commentsBox = el('div.list', { style: 'margin-top:10px' });
   const commentInput = el('input', { type: 'text', placeholder: t('order.comment_ph') });
@@ -162,8 +181,33 @@ export async function renderTaskDetail(mount, ctx, idParam) {
     finally { sendBtn.disabled = false; }
   });
 
+  const partnerBoxes = members
+    .filter((m) => Number(m.id) !== Number(user.id) && m.status !== 'pending_approval')
+    .map((m) => {
+      const box = el('input', { type: 'checkbox', style: 'width:auto', value: String(m.id), id: 'partner-' + m.id });
+      return { id: m.id, node: el('label.task-partner', { for: 'partner-' + m.id }, box, el('span', { text: m.username })), box };
+    });
+  const finishPanel = canComplete
+    ? el('div.card.task-finish', {},
+        el('h3', { text: t('task.complete_title') }),
+        el('p.hint', { text: t('task.partners_hint') }),
+        partnerBoxes.length ? el('div.task-partners', {}, ...partnerBoxes.map((p) => p.node)) : null,
+        el('button.btn.primary', {
+          text: t('task.complete'),
+          onclick: async (e) => {
+            e.currentTarget.disabled = true;
+            try {
+              await api.completeTask(id, partnerBoxes.filter((p) => p.box.checked).map((p) => p.id));
+              toast(t('task.completed'));
+              go('/tasks/' + id, true);
+            } catch (err) { toast(err.message, 'err'); e.currentTarget.disabled = false; }
+          },
+        })
+      )
+    : null;
+
   mount.replaceChildren();
-  mount.append(
+  mount.append(...[
     el('div.page-head', {}, el('button.btn.sm', { text: '← ' + t('common.back'), onclick: () => go('/tasks') })),
     el('div.card', {},
       el('div', { style: 'display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px' },
@@ -172,16 +216,27 @@ export async function renderTaskDetail(mount, ctx, idParam) {
           data.description ? el('p', { style: 'color:var(--muted);margin-top:6px', text: data.description }) : null,
           el('div.chips', { style: 'margin-top:8px' }, priorityBadge(data.priority), statusBadge(data.status))
         ),
-        el('button.btn.sm', { text: t('common.edit'), onclick: () => go('/tasks/' + id + '/edit') })
+        isAdmin ? el('button.btn.sm', { text: t('common.edit'), onclick: () => go('/tasks/' + id + '/edit') }) : null
       ),
       el('div', { style: 'margin-top:14px;color:var(--muted);font-size:.88rem' },
         `${t('task.assignee')}: ${assignee?.username || '—'}${data.due_date ? ' · ' + t('task.due') + ' ' + data.due_date : ''}`
-      )
+      ),
+      data.partners?.length
+        ? el('div', { style: 'margin-top:8px;color:var(--muted);font-size:.88rem', text: `${t('task.partners')}: ${data.partners.map((p) => p.username).join(', ')}` })
+        : null,
+      canClaim ? el('button.btn.primary', {
+        style: 'margin-top:14px', text: t('task.claim'), onclick: async (e) => {
+          e.currentTarget.disabled = true;
+          try { await api.claimTask(id); toast(t('task.claimed')); go('/tasks/' + id, true); }
+          catch (err) { toast(err.message, 'err'); e.currentTarget.disabled = false; }
+        },
+      }) : null
     ),
+    finishPanel,
     el('div.section-title', { style: 'margin-top:18px' }, t('task.comments')),
     commentsBox,
     el('div', { style: 'display:flex;gap:8px;margin-top:10px' }, commentInput, sendBtn),
-    el('div', { style: 'margin-top:20px' },
+    isAdmin ? el('div', { style: 'margin-top:20px' },
       el('button.btn.danger', {
         text: t('common.delete'),
         onclick: async () => {
@@ -191,7 +246,7 @@ export async function renderTaskDetail(mount, ctx, idParam) {
           catch (err) { toast(err.message, 'err'); }
         },
       })
-    )
-  );
+    ) : null
+  ].filter(Boolean));
   drawComments();
 }

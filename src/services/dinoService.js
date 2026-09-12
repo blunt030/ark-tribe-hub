@@ -23,17 +23,19 @@ function parseStats(row) {
 }
 
 export async function listDinos(db, tribeId, { search, species, status, ownerId } = {}) {
-  let sql = 'SELECT * FROM dinos WHERE tribe_id = ?';
+  let sql = `SELECT d.*, u.username AS owner_name FROM dinos d
+             LEFT JOIN users u ON u.id = d.owner_id AND u.tribe_id = d.tribe_id
+             WHERE d.tribe_id = ?`;
   const params = [tribeId];
   if (search) {
-    sql += ' AND (name LIKE ? OR species LIKE ?)';
+    sql += ' AND (d.name LIKE ? OR d.species LIKE ?)';
     const pattern = `%${search.replace(/[%_]/g, '\\$&')}%`;
     params.push(pattern, pattern);
   }
-  if (species) { sql += ' AND species = ?'; params.push(species); }
-  if (status) { sql += ' AND status = ?'; params.push(status); }
-  if (ownerId) { sql += ' AND owner_id = ?'; params.push(ownerId); }
-  sql += ' ORDER BY name LIMIT 1000';
+  if (species) { sql += ' AND d.species = ?'; params.push(species); }
+  if (status) { sql += ' AND d.status = ?'; params.push(status); }
+  if (ownerId) { sql += ' AND d.owner_id = ?'; params.push(ownerId); }
+  sql += ' ORDER BY d.species, d.name LIMIT 1000';
   const rows = await db.all(sql, params);
   return rows.map(parseStats);
 }
@@ -88,8 +90,14 @@ function validateInput(body) {
  */
 async function referenzenPruefen(db, tribeId, v, eigeneId = null) {
   if (v.ownerId) {
-    const owner = await db.get('SELECT id FROM users WHERE id = ? AND tribe_id = ?', [v.ownerId, tribeId]);
-    if (!owner) throw badRequest('Besitzer gehört nicht zu diesem Tribe');
+    const owner = await db.get(
+      `SELECT u.id FROM users u
+       JOIN user_roles ur ON ur.user_id = u.id
+       JOIN roles r ON r.id = ur.role_id
+       WHERE u.id = ? AND u.tribe_id = ? AND u.status = 'active' AND r.key = 'breeder_crafter'`,
+      [v.ownerId, tribeId]
+    );
+    if (!owner) throw badRequest('Der ausgewählte Breeder gehört nicht als aktiver Breeder zu diesem Tribe');
   }
   for (const [feld, wert] of [['parentMaleId', v.parentMaleId], ['parentFemaleId', v.parentFemaleId]]) {
     if (!wert) continue;

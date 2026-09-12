@@ -9,6 +9,8 @@ import { sendVerificationEmail } from '../services/mailService.js';
 import { validateImage, saveImageToDisk } from '../lib/imageUpload.js';
 import { audit } from '../services/auditService.js';
 import { config } from '../config.js';
+import { generateAccessPin, encryptAccessPin } from '../services/accessPinService.js';
+import { sendAccessPin } from '../services/mailService.js';
 
 /** Server/Map dürfen laut Spezifikation nur der Nutzer selbst sowie Admins/Breeder-Crafter
  *  des gleichen Tribes sehen – normale Mitglieder nicht. */
@@ -28,8 +30,10 @@ async function serializeProfile(db, target, requester) {
     status: requester.id === target.id || requester.roles.includes('developer') ? target.status : undefined,
     roles,
     avatarPath: target.avatar_path,
-    personalVaultNumber: target.personal_vault_number,
   };
+  if (requester.id === target.id || requester.roles.includes('admin') || requester.roles.includes('developer')) {
+    out.personalVaultNumber = target.personal_vault_number;
+  }
   if (canSeeServerMap(target, requester)) {
     out.server = target.server;
     out.map = target.map;
@@ -57,9 +61,6 @@ export function buildUsersRouter(db) {
     const updates = {};
     if (body.server !== undefined) updates.server = optionalString(body.server, 'server', { max: 100 });
     if (body.map !== undefined) updates.map = optionalString(body.map, 'map', { max: 100 });
-    if (body.personalVaultNumber !== undefined) {
-      updates.personal_vault_number = optionalString(body.personalVaultNumber, 'personalVaultNumber', { max: 50 });
-    }
     // E-Mail-Wechsel: der Bestaetigungsstatus MUSS zurueckgesetzt werden. Sonst
     // koennte jemand seine bestaetigte Adresse gegen eine fremde tauschen und
     // gaelte weiterhin als verifiziert - die Bestaetigung waere wertlos.
@@ -151,6 +152,20 @@ export function buildUsersRouter(db) {
     }
     await audit(db, { tribeId: req.user.tribe_id, actorId: req.user.id, action: 'avatar_updated', targetType: 'user', targetId: req.user.id });
     sendJson(res, 200, { avatarPath: relPath });
+  });
+
+  router.post('/api/users/me/access-pin/generate', requireActive, requireCsrf, async (req, res) => {
+    const me = await db.get('SELECT id, username, email, personal_vault_number FROM users WHERE id = ?', [req.user.id]);
+    if (!me?.email) throw badRequest('Für den PIN-Versand muss im Profil eine E-Mail-Adresse hinterlegt sein');
+    const pin = generateAccessPin();
+    await db.transaction(async (tx) => {
+      await tx.run('UPDATE users SET personal_pin_encrypted = ?, updated_at = ? WHERE id = ?', [
+        encryptAccessPin(pin), new Date().toISOString(), req.user.id,
+      ]);
+      await audit(tx, { tribeId: req.user.tribe_id, actorId: req.user.id, action: 'personal_pin_generated', targetType: 'user', targetId: req.user.id });
+    });
+    const delivery = await sendAccessPin({ to: me.email, username: me.username, pin, vaultNumber: me.personal_vault_number });
+    sendJson(res, 200, { ok: true, delivered: Boolean(delivery?.sent) });
   });
 
   router.get('/api/users/:id', requireActive, async (req, res) => {

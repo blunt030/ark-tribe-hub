@@ -11,13 +11,17 @@ import {
 import { renderDinos, renderDinoForm, renderDinoDetail } from './views/dinos.js';
 import { renderServers, renderServerDetail } from './views/servers.js';
 import { renderTasks, renderTaskForm, renderTaskDetail } from './views/tasks.js';
-import { renderInventory } from './views/inventory.js';
 import { renderAlliances, renderChat } from './views/community.js';
 import { renderVoice } from './views/voice.js';
 
 const root = document.getElementById('root');
 let user = null;
 let unreadCount = 0;
+let idleLogoutTimer = null;
+let idleWarningTimer = null;
+let idleWatchBound = false;
+const IDLE_LOGOUT_MS = 30 * 60 * 1000;
+const IDLE_WARNING_MS = 28 * 60 * 1000;
 
 /* -------------------------------------------------------------------------- */
 /* Navigation – wird aus den Rollen abgeleitet.                               */
@@ -51,7 +55,8 @@ function navItems() {
     tools.push({ path: '/chat', icon: '☏', label: t('nav.chat') });
     tools.push({ path: '/servers', icon: '🗺️', label: t('nav.servers') });
     tools.push({ path: '/tasks', icon: '✓', label: t('nav.tasks') });
-    tools.push({ path: '/inventory', icon: '📦', label: t('nav.inventory') });
+    tools.push({ path: '/dinos', icon: '▥', label: t('nav.animal_stats') });
+    tools.push({ path: '/members', icon: '⚌', label: t('nav.members') });
     tools.push({ path: '/voice', icon: '🎙️', label: t('nav.voice') });
   } else if (isDev) {
     // Developer haben plattformweite Rechte, aber KEINEN eigenen Tribe - die
@@ -62,13 +67,13 @@ function navItems() {
     tools.push({ path: '/chat', icon: '☏', label: t('nav.chat') });
     tools.push({ path: '/servers', icon: '🗺️', label: t('nav.servers') });
     tools.push({ path: '/tasks', icon: '✓', label: t('nav.tasks') });
-    tools.push({ path: '/inventory', icon: '📦', label: t('nav.inventory') });
+    tools.push({ path: '/dinos', icon: '▥', label: t('nav.animal_stats') });
+    tools.push({ path: '/members', icon: '⚌', label: t('nav.members') });
     tools.push({ path: '/voice', icon: '🎙️', label: t('nav.voice') });
   }
 
   const tribe = [];
   if (isAdmin) {
-    tribe.push({ path: '/members', icon: '⚌', label: t('nav.members') });
     tribe.push({ path: '/news', icon: '📰', label: t('nav.news') });
     tribe.push({ path: '/audit', icon: '⎙', label: t('nav.audit') });
   }
@@ -271,7 +276,6 @@ const ROUTES = [
   { re: /^\/tasks\/new$/, view: renderTaskForm },
   { re: /^\/tasks\/(\d+)\/edit$/, view: renderTaskForm },
   { re: /^\/tasks\/(\d+)$/, view: renderTaskDetail },
-  { re: /^\/inventory$/, view: renderInventory },
   { re: /^\/voice$/, view: renderVoice },
   { re: /^\/audit$/, view: renderAudit },
   { re: /^\/tribes$/, view: renderTribes },
@@ -301,14 +305,14 @@ async function route() {
   const seite = el('div.view-page');
   view.replaceChildren(seite);
   markActive(path);
-  window.scrollTo(0, 0);
+  (document.querySelector('.main') || window).scrollTo(0, 0);
 
   if (!match) { seite.append(el('div.empty', {}, el('div.big', { text: '404' }))); return; }
 
   // Tribe-Werkzeuge brauchen einen Tribe. Ein Developer hat plattformweite Rechte,
   // aber kein eigenes Tribe-Konto - statt einer leeren oder kaputten Seite bekommt
   // er hier eine klare Erklärung, warum das so ist und was zu tun ist.
-  const TRIBE_ONLY = /^\/(dinos|servers|tasks|inventory|voice|alliances|chat)(\/|$)/;
+  const TRIBE_ONLY = /^\/(dinos|servers|tasks|voice|alliances|chat|members)(\/|$)/;
   if (TRIBE_ONLY.test(path) && !user.tribeId) {
     seite.append(
       el('div.empty', {},
@@ -356,12 +360,38 @@ async function refreshBadges() {
 /* Sitzung                                                                     */
 /* -------------------------------------------------------------------------- */
 
-async function signOut() {
+function stopIdleWatch() {
+  clearTimeout(idleLogoutTimer);
+  clearTimeout(idleWarningTimer);
+  idleLogoutTimer = null;
+  idleWarningTimer = null;
+}
+
+function resetIdleWatch() {
+  if (!user) return;
+  stopIdleWatch();
+  idleWarningTimer = setTimeout(() => toast(t('auth.idle_warning')), IDLE_WARNING_MS);
+  idleLogoutTimer = setTimeout(() => signOut(true), IDLE_LOGOUT_MS);
+}
+
+function startIdleWatch() {
+  if (!idleWatchBound) {
+    for (const eventName of ['pointerdown', 'keydown', 'touchstart', 'scroll']) {
+      window.addEventListener(eventName, resetIdleWatch, { passive: true });
+    }
+    idleWatchBound = true;
+  }
+  resetIdleWatch();
+}
+
+async function signOut(wasIdle = false) {
+  stopIdleWatch();
   try { await api.logout(); } catch { /* egal, lokal trotzdem abmelden */ }
   user = null;
   setCsrf(null);
   location.hash = '';
   showAuth();
+  if (wasIdle === true) toast(t('auth.idle_logout'));
 }
 
 function showAuth() {
@@ -374,6 +404,7 @@ function showAuth() {
 }
 
 async function afterSignIn() {
+  startIdleWatch();
   if (user.status !== 'active') {
     renderPending(root, { user, onSignOut: signOut });
     return;

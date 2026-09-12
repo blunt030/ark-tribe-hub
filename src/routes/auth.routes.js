@@ -52,11 +52,17 @@ export function buildAuthRouter(db, { authRateLimit }) {
   router.post('/api/auth/login', authRateLimit, async (req, res) => {
     const body = await readJsonBody(req);
     const identifier = requireString(body.identifier, 'identifier', { max: 254 });
+    const tribeSlug = body.tribeSlug == null || body.tribeSlug === ''
+      ? null
+      : requireString(body.tribeSlug, 'tribeSlug', { max: 50 }).toLowerCase();
+    if (!identifier.includes('@') && !tribeSlug) {
+      throw badRequest('Für die Anmeldung mit Benutzername fehlt das Tribe-Kürzel');
+    }
     if (typeof body.password !== 'string' || !body.password) throw badRequest('Passwort fehlt');
 
     const ip = req.socket?.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || null;
-    const result = await login(db, { identifier, password: body.password, ip, userAgent });
+    const result = await login(db, { tribeSlug, identifier, password: body.password, ip, userAgent });
 
     setSessionCookie(res, result.sessionId, result.sessionToken, result.expiresAt);
     sendJson(res, 200, {

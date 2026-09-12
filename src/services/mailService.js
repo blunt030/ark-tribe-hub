@@ -166,3 +166,15 @@ export async function sendVerificationEmail({ to, username, verifyUrl }) {
       `Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.`,
   });
 }
+
+export async function sendAccessPin({ to, username, pin, vaultNumber }) {
+  return sendMail({
+    to,
+    subject: 'ARK Tribe Hub – Dein Personal-PIN',
+    text:
+      `Hallo ${username},\n\n` +
+      `dein Personal-PIN lautet: ${pin}\n` +
+      `${vaultNumber ? `Deine Vault-Nummer lautet: ${vaultNumber}\n` : ''}\n` +
+      `Behandle den PIN vertraulich. Wenn du diese Änderung nicht angefordert hast, melde dich bitte bei deinem Tribe-Admin.`,
+  });
+}

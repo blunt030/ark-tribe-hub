@@ -21,7 +21,7 @@ test('Community APIs: permissions, isolation, persistence and rate limits', asyn
     };
   }
   const admin=client(), member=client(), dev=client(), anon=client(), pending=client(), outsider=client();
-  for (const [c,identifier] of [[admin,'OaO Admin'],[member,'Blunt OaO'],[dev,'Blunt']]) assert.equal((await c('POST','/api/auth/login',{identifier,password:'ChangeMe123!'})).status,200);
+  for (const [c,identifier,tribeSlug] of [[admin,'OaO Admin','oao'],[member,'Blunt OaO','oao'],[dev,'blunt@ark-tribe-hub.dev',null]]) assert.equal((await c('POST','/api/auth/login',{identifier,password:'ChangeMe123!',tribeSlug})).status,200);
   const oao = await app.db.get("SELECT id FROM tribes WHERE slug='oao'");
   const other = await app.db.get("INSERT INTO tribes (slug,name) VALUES ('other','Other') RETURNING id");
   // Local fixtures avoid any outbound mail and exercise real login/session checks.
@@ -30,7 +30,7 @@ test('Community APIs: permissions, isolation, persistence and rate limits', asyn
     const u = await app.db.get('INSERT INTO users (username,tribe_id,password_hash,status) VALUES (?,?,?,?) RETURNING id',[name,tribeId,template.password_hash,status]);
     await app.db.run("INSERT INTO user_roles (user_id,role_id) SELECT ?,id FROM roles WHERE key='admin'",[u.id]);
   }
-  for (const [c,identifier] of [[pending,'Pending'],[outsider,'Other admin']]) assert.equal((await c('POST','/api/auth/login',{identifier,password:'ChangeMe123!'})).status,200);
+  for (const [c,identifier,tribeSlug] of [[pending,'Pending','oao'],[outsider,'Other admin','other']]) assert.equal((await c('POST','/api/auth/login',{identifier,password:'ChangeMe123!',tribeSlug})).status,200);
   const payload={name:'Friendly Tribe',relationship:'alliance',server:'EU 123',map:'The Island'};
   let allianceId;
   await t.test('Auth, approval, own tribe and CSRF required',async()=>{
