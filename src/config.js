@@ -105,6 +105,11 @@ export const config = {
       return [{ urls: ['stun:stun.cloudflare.com:3478'] }];
     }
   })(),
+  cloudflareTurn: {
+    keyId: process.env.TURN_KEY_ID || null,
+    keySecret: process.env.TURN_KEY_SECRET || null,
+    ttlSeconds: Math.min(172800, Math.max(300, parseInt(process.env.TURN_CREDENTIAL_TTL_SECONDS || '3600', 10) || 3600)),
+  },
   // Rate-Limits pro Minute und IP. Konfigurierbar, damit Tests/Lasttests nicht
   // an den Produktionswerten scheitern (der Brute-Force-Schutz beim Login ist
   // davon unabhängig und greift immer).
