@@ -920,6 +920,103 @@ Object.assign(STRINGS.es, {
   "chat.scope": "General solo es visible para miembros aprobados de tu tribu."
 });
 
+Object.assign(STRINGS.de, {
+  "auth.tribe_slug": "Tribe-Kürzel",
+  "auth.tribe_login_hint": "Das kurze Kürzel deines Tribes, z. B. oao",
+  "auth.tribe_register_hint": "Das Kürzel, das dein Tribe-Admin dir genannt hat",
+  "auth.idle_warning": "Du wirst in 2 Minuten wegen Inaktivität abgemeldet.",
+  "auth.idle_logout": "Du wurdest nach 30 Minuten Inaktivität sicher abgemeldet.",
+  "nav.animal_stats": "Aktuelle Tier-Stats",
+  "order.sub.animals": "Tiere",
+  "order.sub.embryos": "Embryos",
+  "order.group.creatures_hint": "Tiere und Embryos",
+  "chat.me": "Ich",
+  "profile.vault_unassigned": "Noch nicht zugewiesen",
+  "profile.vault_admin_hint": "Die Vault-Nummer verwaltet dein Tribe-Admin.",
+  "profile.pin_generate": "Persönlichen PIN erzeugen",
+  "profile.pin_sending": "PIN wird sicher erzeugt und versendet …",
+  "profile.pin_sent": "Dein neuer PIN wurde per E-Mail gesendet.",
+  "profile.pin_saved_mail_failed": "PIN wurde gespeichert, aber die E-Mail konnte nicht versendet werden. Bitte deinen Admin um Hilfe.",
+  "profile.pin_title": "Persönlicher Zugang",
+  "profile.pin_hint": "Der neue PIN wird dir per E-Mail gesendet und ist für deinen Admin in der Mitgliederliste sichtbar.",
+  "members.overview": "Mitglieder & Rollen",
+  "members.access": "PINs & Vaults",
+  "members.visible_roles": "Hier siehst du alle aktiven Mitglieder sowie eure Admins und Breeder.",
+  "members.access_hint": "Nur Admins sehen und verwalten persönliche PINs und Vault-Nummern.",
+  "members.pin": "Persönlicher PIN",
+  "members.vault": "Vault-Nummer",
+  "members.pin_random": "Neuen PIN erzeugen",
+  "members.access_saved": "PIN und Vault wurden gespeichert.",
+  "dino.title": "Aktuelle Tier-Stats",
+  "dino.sub": "{n} Zuchtlinien und Stat-Sätze im Tribe.",
+  "dino.new": "Tier-Stats eintragen",
+  "dino.edit": "Tier-Stats bearbeiten",
+  "dino.none": "Noch keine Tier-Stats eingetragen.",
+  "dino.breeder": "Breeder",
+  "dino.breeder_name": "Breeder: {name}",
+  "dino.read_only": "Tier-Stats können nur Tribe-Admins und eingetragene Breeder bearbeiten.",
+  "task.claim": "Aufgabe übernehmen",
+  "task.claimed": "Du hast die Aufgabe übernommen.",
+  "task.admin_only": "Nur Tribe-Admins können Aufgaben erstellen oder ändern.",
+  "task.complete_title": "Aufgabe abschließen",
+  "task.partners_hint": "Wähle Mitglieder aus, die dir geholfen haben.",
+  "task.partners": "Mitgemacht haben",
+  "task.complete": "Als erledigt abschließen",
+  "task.completed": "Aufgabe wurde abgeschlossen.",
+  "task.created": "Aufgabe angelegt.",
+  "task.saved": "Aufgabe gespeichert.",
+  "srv.map_image_missing": "Noch kein Kartenbild hinterlegt",
+  "srv.map_image_hint": "Kartenbild hochladen, groß öffnen und Marker direkt auf der Karte setzen.",
+  "srv.map_image_saved": "Kartenbild gespeichert.",
+  "srv.map_image_upload": "Kartenbild hochladen",
+  "srv.created": "Server angelegt.",
+  "srv.saved": "Server gespeichert.",
+  "voice.ready": "Bereit für Voice.",
+  "voice.tap_to_hear": "Tippe einmal auf die Seite, damit dein Browser den Ton freigibt.",
+  "voice.connected": "Audioverbindung steht.",
+  "voice.connection_problem": "Die direkte Audioverbindung wurde unterbrochen.",
+  "voice.unsupported": "Dieser Browser unterstützt die benötigte Voice-Technik nicht.",
+  "voice.mic_request": "Mikrofonzugriff wird angefragt …",
+  "voice.joined_audio": "Mikrofon aktiv. Verbindung zu den anderen Teilnehmern wird aufgebaut …",
+  "voice.mic_denied": "Mikrofonzugriff wurde nicht erlaubt.",
+  "voice.audio_sub": "Echte Sprachräume für deinen Tribe – direkt im Browser.",
+  "voice.turn_hint": "Voice nutzt aktuell direkte Verbindungen. Für zuverlässige Verbindungen in allen Mobilfunk- und Firmennetzen muss später noch ein TURN-Zugang hinterlegt werden."
+});
+
+Object.assign(STRINGS.en, {
+  "auth.tribe_slug": "Tribe abbreviation", "auth.tribe_login_hint": "Your tribe's short code, e.g. oao", "auth.tribe_register_hint": "The code given to you by your tribe admin",
+  "auth.idle_warning": "You will be signed out in 2 minutes due to inactivity.", "auth.idle_logout": "You were securely signed out after 30 minutes of inactivity.",
+  "nav.animal_stats": "Current animal stats", "order.sub.animals": "Animals", "order.sub.embryos": "Embryos", "order.group.creatures_hint": "Animals and embryos", "chat.me": "Me",
+  "profile.vault_unassigned": "Not assigned yet", "profile.vault_admin_hint": "Your tribe admin manages the vault number.", "profile.pin_generate": "Generate personal PIN", "profile.pin_sending": "Generating and sending PIN …", "profile.pin_sent": "Your new PIN was sent by email.", "profile.pin_saved_mail_failed": "The PIN was saved, but the email could not be sent. Ask your admin for help.", "profile.pin_title": "Personal access", "profile.pin_hint": "The new PIN is emailed to you and visible to your admin in the member list.",
+  "members.overview": "Members & roles", "members.access": "PINs & vaults", "members.visible_roles": "See all active members, admins and breeders here.", "members.access_hint": "Only admins can see and manage personal PINs and vault numbers.", "members.pin": "Personal PIN", "members.vault": "Vault number", "members.pin_random": "Generate new PIN", "members.access_saved": "PIN and vault saved.",
+  "dino.title": "Current animal stats", "dino.sub": "{n} breeding lines and stat sets in the tribe.", "dino.new": "Add animal stats", "dino.edit": "Edit animal stats", "dino.none": "No animal stats yet.", "dino.breeder": "Breeder", "dino.breeder_name": "Breeder: {name}", "dino.read_only": "Only tribe admins and assigned breeders can edit animal stats.",
+  "task.claim": "Claim task", "task.claimed": "You claimed the task.", "task.admin_only": "Only tribe admins can create or change tasks.", "task.complete_title": "Complete task", "task.partners_hint": "Select members who helped you.", "task.partners": "Contributors", "task.complete": "Mark complete", "task.completed": "Task completed.", "task.created": "Task created.", "task.saved": "Task saved.",
+  "srv.map_image_missing": "No map image yet", "srv.map_image_hint": "Upload a map image, open it large and place markers directly on it.", "srv.map_image_saved": "Map image saved.", "srv.map_image_upload": "Upload map image", "srv.created": "Server created.", "srv.saved": "Server saved.",
+  "voice.ready": "Ready for voice.", "voice.tap_to_hear": "Tap the page once to allow browser audio.", "voice.connected": "Audio connected.", "voice.connection_problem": "The direct audio connection was interrupted.", "voice.unsupported": "This browser does not support the required voice technology.", "voice.mic_request": "Requesting microphone access …", "voice.joined_audio": "Microphone active. Connecting to the other participants …", "voice.mic_denied": "Microphone access was not allowed.", "voice.audio_sub": "Real browser-based voice rooms for your tribe.", "voice.turn_hint": "Voice currently uses direct connections. TURN credentials are still needed for reliable connections on every mobile and corporate network."
+});
+
+Object.assign(STRINGS.fr, {
+  "auth.tribe_slug": "Abréviation de tribu", "auth.tribe_login_hint": "Le code court de votre tribu, p. ex. oao", "auth.tribe_register_hint": "Le code donné par votre admin", "auth.idle_warning": "Vous serez déconnecté dans 2 minutes pour inactivité.", "auth.idle_logout": "Vous avez été déconnecté après 30 minutes d'inactivité.",
+  "nav.animal_stats": "Stats actuelles des animaux", "order.sub.animals": "Animaux", "order.sub.embryos": "Embryons", "order.group.creatures_hint": "Animaux et embryons", "chat.me": "Moi",
+  "profile.vault_unassigned": "Pas encore attribué", "profile.vault_admin_hint": "Votre admin gère le numéro de coffre.", "profile.pin_generate": "Générer un PIN personnel", "profile.pin_sending": "Génération et envoi du PIN …", "profile.pin_sent": "Votre nouveau PIN a été envoyé par e-mail.", "profile.pin_saved_mail_failed": "Le PIN a été enregistré, mais l'e-mail n'a pas pu être envoyé.", "profile.pin_title": "Accès personnel", "profile.pin_hint": "Le nouveau PIN vous est envoyé par e-mail et reste visible par votre admin.",
+  "members.overview": "Membres et rôles", "members.access": "PIN et coffres", "members.visible_roles": "Tous les membres, admins et breeders actifs.", "members.access_hint": "Seuls les admins gèrent les PIN et numéros de coffre.", "members.pin": "PIN personnel", "members.vault": "Numéro de coffre", "members.pin_random": "Nouveau PIN", "members.access_saved": "PIN et coffre enregistrés.",
+  "dino.title": "Stats actuelles des animaux", "dino.sub": "{n} lignées et jeux de stats.", "dino.new": "Ajouter des stats", "dino.edit": "Modifier les stats", "dino.none": "Aucune stat enregistrée.", "dino.breeder": "Breeder", "dino.breeder_name": "Breeder : {name}", "dino.read_only": "Seuls les admins et les breeders peuvent modifier les stats.",
+  "task.claim": "Prendre la tâche", "task.claimed": "Vous avez pris la tâche.", "task.admin_only": "Seuls les admins créent ou modifient les tâches.", "task.complete_title": "Terminer la tâche", "task.partners_hint": "Sélectionnez les membres qui vous ont aidé.", "task.partners": "Participants", "task.complete": "Marquer terminée", "task.completed": "Tâche terminée.", "task.created": "Tâche créée.", "task.saved": "Tâche enregistrée.",
+  "srv.map_image_missing": "Aucune image de carte", "srv.map_image_hint": "Ajoutez une carte, ouvrez-la en grand et placez les marqueurs dessus.", "srv.map_image_saved": "Carte enregistrée.", "srv.map_image_upload": "Ajouter une carte", "srv.created": "Serveur créé.", "srv.saved": "Serveur enregistré.",
+  "voice.ready": "Prêt pour le vocal.", "voice.tap_to_hear": "Touchez la page pour autoriser le son.", "voice.connected": "Audio connecté.", "voice.connection_problem": "La connexion audio directe a été interrompue.", "voice.unsupported": "Ce navigateur ne prend pas en charge la technologie vocale requise.", "voice.mic_request": "Demande d'accès au microphone …", "voice.joined_audio": "Microphone actif. Connexion aux autres participants …", "voice.mic_denied": "L'accès au microphone a été refusé.", "voice.audio_sub": "De vrais salons vocaux dans le navigateur pour votre tribu.", "voice.turn_hint": "Le vocal utilise actuellement des connexions directes. Des identifiants TURN restent nécessaires pour tous les réseaux mobiles et d'entreprise."
+});
+
+Object.assign(STRINGS.es, {
+  "auth.tribe_slug": "Abreviatura de tribu", "auth.tribe_login_hint": "El código corto de tu tribu, p. ej. oao", "auth.tribe_register_hint": "El código que te dio el admin", "auth.idle_warning": "Se cerrará tu sesión en 2 minutos por inactividad.", "auth.idle_logout": "La sesión se cerró tras 30 minutos de inactividad.",
+  "nav.animal_stats": "Stats actuales de animales", "order.sub.animals": "Animales", "order.sub.embryos": "Embriones", "order.group.creatures_hint": "Animales y embriones", "chat.me": "Yo",
+  "profile.vault_unassigned": "Aún sin asignar", "profile.vault_admin_hint": "El admin gestiona el número de bóveda.", "profile.pin_generate": "Generar PIN personal", "profile.pin_sending": "Generando y enviando PIN …", "profile.pin_sent": "Tu nuevo PIN fue enviado por correo.", "profile.pin_saved_mail_failed": "El PIN se guardó, pero no se pudo enviar el correo.", "profile.pin_title": "Acceso personal", "profile.pin_hint": "El nuevo PIN se envía por correo y tu admin puede verlo.",
+  "members.overview": "Miembros y roles", "members.access": "PINs y bóvedas", "members.visible_roles": "Todos los miembros, admins y breeders activos.", "members.access_hint": "Solo los admins gestionan PINs y bóvedas.", "members.pin": "PIN personal", "members.vault": "Número de bóveda", "members.pin_random": "Nuevo PIN", "members.access_saved": "PIN y bóveda guardados.",
+  "dino.title": "Stats actuales de animales", "dino.sub": "{n} líneas de cría y stats.", "dino.new": "Añadir stats", "dino.edit": "Editar stats", "dino.none": "Aún no hay stats.", "dino.breeder": "Breeder", "dino.breeder_name": "Breeder: {name}", "dino.read_only": "Solo los admins y breeders pueden modificar las stats.",
+  "task.claim": "Tomar tarea", "task.claimed": "Has tomado la tarea.", "task.admin_only": "Solo los admins crean o modifican tareas.", "task.complete_title": "Completar tarea", "task.partners_hint": "Selecciona a quienes te ayudaron.", "task.partners": "Participantes", "task.complete": "Marcar terminada", "task.completed": "Tarea completada.", "task.created": "Tarea creada.", "task.saved": "Tarea guardada.",
+  "srv.map_image_missing": "Aún no hay imagen del mapa", "srv.map_image_hint": "Sube un mapa, ábrelo en grande y coloca marcadores sobre él.", "srv.map_image_saved": "Mapa guardado.", "srv.map_image_upload": "Subir mapa", "srv.created": "Servidor creado.", "srv.saved": "Servidor guardado.",
+  "voice.ready": "Listo para voice.", "voice.tap_to_hear": "Toca la página para permitir el audio.", "voice.connected": "Audio conectado.", "voice.connection_problem": "La conexión directa de audio se interrumpió.", "voice.unsupported": "Este navegador no admite la tecnología de voz necesaria.", "voice.mic_request": "Solicitando acceso al micrófono …", "voice.joined_audio": "Micrófono activo. Conectando con los demás …", "voice.mic_denied": "No se permitió el micrófono.", "voice.audio_sub": "Salas de voz reales en el navegador para tu tribu.", "voice.turn_hint": "Voice usa conexiones directas. Aún hacen falta credenciales TURN para funcionar de forma fiable en todas las redes móviles y corporativas."
+});
+
 let current = localStorage.getItem('ath_lang') || (navigator.language || 'de').slice(0, 2);
 if (!STRINGS[current]) current = 'de';
 
