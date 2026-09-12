@@ -101,13 +101,13 @@ export async function renderProfile(mount, ctx) {
   // Kennzahlen fuer "Meine Uebersicht". Alles einzeln abgesichert: das
   // Developer-Konto gehoert keinem Tribe an, Aufgaben und Bestand antworten
   // dort mit einem Fehler - die Seite darf daran nicht scheitern.
-  const [{ user: me }, tribe, { preferences }, ordersRes, tasksRes, invRes, notifRes] = await Promise.all([
+  const [{ user: me }, tribe, { preferences }, ordersRes, tasksRes, dinosRes, notifRes] = await Promise.all([
     api.profile(),
     api.myTribe().catch(() => null),
     api.notifPrefs(),
     api.orders('all').catch(() => ({ orders: [] })),
     api.tasks().catch(() => ({ tasks: [] })),
-    api.inventory().catch(() => ({ items: [] })),
+    api.dinos().catch(() => ({ dinos: [] })),
     api.notifications().catch(() => ({ notifications: [] })),
   ]);
 
@@ -117,14 +117,13 @@ export async function renderProfile(mount, ctx) {
   const meineAufgaben = tasksRes.tasks.filter(
     (tk) => tk.assignee_id === me.id && !['done', 'cancelled'].includes(tk.status)
   ).length;
-  const bestandEintraege = invRes.items.length;
+  const tierStatEintraege = dinosRes.dinos.length;
   const mitteilungen = notifRes.notifications.length;
 
   /* ---------------------------------------------------------------- Felder */
 
   const server = el('input', { type: 'text', value: me.server || '', id: 'p-server' });
   const map = el('input', { type: 'text', value: me.map || '', id: 'p-map' });
-  const vault = el('input', { type: 'text', value: me.personalVaultNumber || '', id: 'p-vault' });
   const saveBtn = el('button.btn.primary', { text: t('profile.save') });
 
   saveBtn.addEventListener('click', async () => {
@@ -133,7 +132,6 @@ export async function renderProfile(mount, ctx) {
       await api.updateProfile({
         server: server.value.trim(),
         map: map.value.trim(),
-        personalVaultNumber: vault.value.trim(),
       });
       toast(t('profile.saved'));
     } catch (err) { toast(err.message, 'err'); }
@@ -257,7 +255,11 @@ export async function renderProfile(mount, ctx) {
     ),
     el('div.field', {}, el('label', { for: 'p-server', text: t('profile.server') }), server),
     el('div.field', {}, el('label', { for: 'p-map', text: t('profile.map') }), map),
-    el('div.field', {}, el('label', { for: 'p-vault', text: t('profile.vault') }), vault),
+    el('div.field', {},
+      el('label', { text: t('profile.vault') }),
+      el('div.readonly-value', { text: me.personalVaultNumber || t('profile.vault_unassigned') }),
+      el('span.hint', { text: t('profile.vault_admin_hint') })
+    ),
     el('p.hint', { text: t('profile.visibility'), style: 'margin:-6px 0 14px' }),
     saveBtn
   );
@@ -282,6 +284,20 @@ export async function renderProfile(mount, ctx) {
   }
   const secLabel = el('span.lr-label');
   setzeSicherheitszustand(Boolean(me.emailVerified));
+  const pinStatus = el('span.hint', { role: 'status' });
+  const pinButton = el('button.btn.sm', { type: 'button', text: t('profile.pin_generate') });
+  pinButton.addEventListener('click', async () => {
+    pinButton.disabled = true;
+    pinStatus.textContent = t('profile.pin_sending');
+    try {
+      const result = await api.generateAccessPin();
+      pinStatus.textContent = result.delivered ? t('profile.pin_sent') : t('profile.pin_saved_mail_failed');
+      toast(pinStatus.textContent, result.delivered ? 'ok' : 'err');
+    } catch (err) {
+      pinStatus.textContent = err.message;
+      toast(err.message, 'err');
+    } finally { pinButton.disabled = false; }
+  });
 
   /* ------------------------------------------------------ Benachrichtigungen */
 
@@ -347,7 +363,7 @@ export async function renderProfile(mount, ctx) {
     el('div.tiles', {},
       uebersichtKachel(meineBestellungen, t('profile.cnt.orders')),
       uebersichtKachel(meineAufgaben, t('profile.cnt.tasks')),
-      uebersichtKachel(bestandEintraege, t('profile.cnt.inventory')),
+      uebersichtKachel(tierStatEintraege, t('nav.animal_stats')),
       uebersichtKachel(mitteilungen, t('profile.cnt.notifications'))
     ),
 
@@ -367,6 +383,14 @@ export async function renderProfile(mount, ctx) {
     el('div.section-title', {}, '🛡️ ' + t('profile.security')),
     el('div.card', {},
       el('div.sec-row', {}, el('span', { text: '✉️' }), secLabel, secState),
+      el('div.access-pin-row', {},
+        el('div.grow', {},
+          el('div.rt', { text: t('profile.pin_title') }),
+          el('div.rs', { text: t('profile.pin_hint') })
+        ),
+        pinButton
+      ),
+      pinStatus,
       el('div', { style: 'margin-top:12px' },
         el('button.btn.danger', { text: t('auth.logout'), onclick: onSignOut })
       )
@@ -421,7 +445,7 @@ function adminLinks(user, go) {
   // Funktion bleibt aber vollstaendig erhalten und ist hier erreichbar.
   links.push(['/orders', t('nav.orders')]);
   if (!user.roles.includes('developer') && user.tribeId) {
-    links.push(['/dinos', t('nav.dinos')], ['/servers', t('nav.servers')], ['/tasks', t('nav.tasks')], ['/inventory', t('nav.inventory')], ['/voice', t('nav.voice')]);
+    links.push(['/dinos', t('nav.animal_stats')], ['/servers', t('nav.servers')], ['/tasks', t('nav.tasks')], ['/voice', t('nav.voice')]);
   }
   if (user.roles.includes('admin') || user.roles.includes('developer')) {
     links.push(['/members', t('nav.members')], ['/news', t('nav.news')], ['/audit', t('nav.audit')]);
@@ -445,6 +469,8 @@ function adminLinks(user, go) {
 /* ========================================================================== */
 
 export async function renderMembers(mount, ctx) {
+  const canManage = ctx.user.roles.includes('admin') || ctx.user.roles.includes('developer');
+  let mode = 'overview';
   mount.append(spinner());
   let members;
   try {
@@ -456,17 +482,36 @@ export async function renderMembers(mount, ctx) {
 
   function draw() {
     mount.replaceChildren();
-    mount.append(el('div.page-head', {}, el('div', {}, el('h1', { text: t('admin.members') }))));
+    const modeSwitch = canManage
+      ? el('div.seg', {},
+          el('button' + (mode === 'overview' ? '.on' : ''), { text: t('members.overview'), onclick: () => { mode = 'overview'; draw(); } }),
+          el('button' + (mode === 'access' ? '.on' : ''), { text: t('members.access'), onclick: () => { mode = 'access'; draw(); } })
+        )
+      : null;
+    mount.append(el('div.page-head', {},
+      el('div', {}, el('h1', { text: t('admin.members') }), el('p', { text: t('members.visible_roles') })),
+      modeSwitch
+    ));
 
     const pending = members.filter((m) => m.status === 'pending_approval');
     const active = members.filter((m) => m.status !== 'pending_approval');
 
-    mount.append(el('div.section-title', {}, t('admin.pending'), el('span.c', { text: pending.length })));
-    mount.append(
-      pending.length
-        ? el('div.list', {}, ...pending.map(pendingRow))
-        : emptyState(t('admin.no_pending'))
-    );
+    if (mode === 'access') {
+      mount.append(
+        el('div.notice.note', { text: t('members.access_hint') }),
+        el('div.list.member-access-list', {}, ...active.map(accessRow))
+      );
+      return;
+    }
+
+    if (canManage) {
+      mount.append(el('div.section-title', {}, t('admin.pending'), el('span.c', { text: pending.length })));
+      mount.append(
+        pending.length
+          ? el('div.list', {}, ...pending.map(pendingRow))
+          : emptyState(t('admin.no_pending'))
+      );
+    }
 
     mount.append(el('div.section-title', {}, t('admin.members'), el('span.c', { text: active.length })));
     mount.append(el('div.list', {}, ...active.map(memberRow)));
@@ -505,32 +550,32 @@ export async function renderMembers(mount, ctx) {
 
   function memberRow(m) {
     const isBreeder = m.roles.includes('breeder_crafter');
-  const istAdmin = (m.roles || []).includes('admin');
+    const istAdmin = (m.roles || []).includes('admin');
     return el('div.row', {},
       el('div.grow', {},
         el('div.rt', { text: m.username }),
         el('div.rs', {}, ...m.roles.map((r) => el('span.badge.b-role', { text: t('role.' + r), style: 'margin-right:4px' })))
       ),
-      m.status !== 'active' ? el('span.badge.b-pending', { text: t('ustatus.' + m.status) }) : null,
-      el('button.btn.sm' + (isBreeder ? '.primary' : ''), {
+      canManage && m.status !== 'active' ? el('span.badge.b-pending', { text: t('ustatus.' + m.status) }) : null,
+      canManage ? el('button.btn.sm' + (isBreeder ? '.primary' : ''), {
         text: t('admin.make_breeder'),
         onclick: async (e) => {
           e.target.disabled = true;
           try { await api.setBreeder(m.id, !isBreeder); toast(t('admin.role_saved')); await reload(); }
           catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
         },
-      }),
+      }) : null,
       // Adminrechte vergeben/entziehen. Der Server prüft zusätzlich, dass der
       // letzte Admin sich die Rolle nicht selbst entziehen kann.
-      el('button.btn.sm' + (istAdmin ? '.primary' : ''), {
+      canManage ? el('button.btn.sm' + (istAdmin ? '.primary' : ''), {
         text: t('admin.make_admin'),
         onclick: async (e) => {
           e.target.disabled = true;
           try { await api.setTribeAdmin(m.id, !istAdmin); toast(t('admin.role_saved')); await reload(); }
           catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
         },
-      }),
-      m.status === 'active'
+      }) : null,
+      canManage && m.status === 'active'
         ? el('button.btn.sm.danger', {
             text: t('admin.disable'),
             onclick: async () => {
@@ -541,6 +586,37 @@ export async function renderMembers(mount, ctx) {
             },
           })
         : null
+    );
+  }
+
+  function accessRow(m) {
+    const pin = el('input', { type: 'text', inputmode: 'numeric', maxlength: '6', value: m.personalPin || '', placeholder: '000000', 'aria-label': t('members.pin') });
+    const vault = el('input', { type: 'text', maxlength: '50', value: m.personal_vault_number || '', placeholder: t('members.vault'), 'aria-label': t('members.vault') });
+    const save = el('button.btn.sm.primary', { text: t('profile.save') });
+    const random = el('button.btn.sm', {
+      type: 'button', text: t('members.pin_random'), onclick: () => {
+        const values = new Uint32Array(1);
+        crypto.getRandomValues(values);
+        pin.value = String(values[0] % 1_000_000).padStart(6, '0');
+      },
+    });
+    save.addEventListener('click', async () => {
+      save.disabled = true;
+      try {
+        await api.updateMemberAccess(m.id, { personalPin: pin.value.trim() || undefined, vaultNumber: vault.value.trim() });
+        toast(t('members.access_saved'));
+        await reload();
+      } catch (err) { toast(err.message, 'err'); save.disabled = false; }
+    });
+    return el('div.card.member-access-card', {},
+      el('div.member-access-head', {},
+        el('div', {}, el('div.rt', { text: m.username }), el('div.rs', { text: (m.roles || []).map((r) => t('role.' + r)).join(' · ') })),
+        save
+      ),
+      el('div.member-access-fields', {},
+        el('div.field', {}, el('label', { text: t('members.pin') }), el('div.inline-field', {}, pin, random)),
+        el('div.field', {}, el('label', { text: t('members.vault') }), vault)
+      )
     );
   }
 

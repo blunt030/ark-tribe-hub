@@ -14,7 +14,8 @@ function statusBadge(status) {
 /* ========================================================================== */
 
 export async function renderDinos(mount, ctx) {
-  const { go } = ctx;
+  const { go, user } = ctx;
+  const canEdit = user.roles.some((r) => ['admin', 'developer', 'breeder_crafter'].includes(r));
   mount.append(spinner());
   let dinos = (await api.dinos()).dinos;
 
@@ -40,11 +41,11 @@ export async function renderDinos(mount, ctx) {
               onkeydown: (e) => { if (e.key === 'Enter') go('/dinos/' + d.id); },
             },
               d.image_path
-                ? el('img', { src: '/uploads/' + d.image_path, alt: '', style: 'width:40px;height:40px;object-fit:cover;border-radius:8px;flex:0 0 40px' })
-                : el('span', { style: 'width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex:0 0 40px;background:var(--raised);border-radius:8px', text: '🦖' }),
+                ? el('img', { src: '/uploads/' + d.image_path, alt: '', style: 'width:40px;height:40px;object-fit:contain;border-radius:8px;flex:0 0 40px' })
+                : null,
               el('div.grow', {},
                 el('div.rt', { text: `${d.name} (${d.species})` }),
-                el('div.rs', { text: [d.level ? 'Lvl ' + d.level : null, d.sex !== 'unknown' ? t('dino.sex.' + d.sex) : null, d.server].filter(Boolean).join(' · ') })
+                el('div.rs', { text: [d.owner_name ? t('dino.breeder_name', { name: d.owner_name }) : null, statsSummary(d), d.server].filter(Boolean).join(' · ') })
               ),
               statusBadge(d.status)
             )
@@ -59,7 +60,7 @@ export async function renderDinos(mount, ctx) {
   mount.append(
     el('div.page-head', {},
       el('div', {}, el('h1', { text: t('dino.title') }), el('p', { text: t('dino.sub', { n: dinos.length }) })),
-      el('button.btn.primary', { text: '+ ' + t('dino.new'), onclick: () => go('/dinos/new') })
+      canEdit ? el('button.btn.primary', { text: '+ ' + t('dino.new'), onclick: () => go('/dinos/new') }) : null
     ),
     el('div.card', {}, search,
       el('div.chips', { style: 'margin-top:12px' },
@@ -85,7 +86,11 @@ export async function renderDinos(mount, ctx) {
 /* ========================================================================== */
 
 export async function renderDinoForm(mount, ctx, idParam) {
-  const { go } = ctx;
+  const { go, user } = ctx;
+  if (!user.roles.some((role) => ['admin', 'developer', 'breeder_crafter'].includes(role))) {
+    mount.replaceChildren(emptyState(t('dino.read_only')));
+    return;
+  }
   const editingId = idParam && idParam !== 'new' ? parseInt(idParam, 10) : null;
   mount.append(spinner());
 
@@ -104,7 +109,8 @@ export async function renderDinoForm(mount, ctx, idParam) {
   const speciesList = el('datalist', { id: 'species-list' }, ...[...new Set(allDinos.map((x) => x.species))].map((s) => el('option', { value: s })));
   const sex = el('select', {}, ...['unknown', 'male', 'female'].map((s) => el('option', { value: s, text: t('dino.sex.' + s), selected: (d.sex || 'unknown') === s })));
   const level = el('input', { type: 'number', min: '1', value: d.level || '' });
-  const owner = el('select', {}, el('option', { value: '', text: '—' }), ...members.map((m) => el('option', { value: m.id, text: m.username, selected: d.owner_id === m.id })));
+  const breeders = members.filter((m) => (m.roles || []).includes('breeder_crafter'));
+  const owner = el('select', {}, el('option', { value: '', text: '—' }), ...breeders.map((m) => el('option', { value: m.id, text: m.username, selected: d.owner_id === m.id })));
   const server = el('input', { type: 'text', value: d.server || '' });
   const map = el('input', { type: 'text', value: d.map || '' });
   const location = el('input', { type: 'text', value: d.location || '', placeholder: t('dino.location_ph') });
@@ -168,7 +174,7 @@ export async function renderDinoForm(mount, ctx, idParam) {
       el('div.field', {}, el('label', { text: t('dino.species') }), species),
       el('div.field', {}, el('label', { text: t('dino.sex_label') }), sex),
       el('div.field', {}, el('label', { text: t('dino.level') }), level),
-      el('div.field', {}, el('label', { text: t('dino.owner') }), owner),
+      el('div.field', {}, el('label', { text: t('dino.breeder') }), owner),
       el('div.field', {}, el('label', { text: t('dino.server') }), server),
       el('div.field', {}, el('label', { text: t('dino.map') }), map),
       el('div.field', {}, el('label', { text: t('dino.location') }), location),
@@ -213,7 +219,6 @@ export async function renderDinoDetail(mount, ctx, idParam) {
     alt: '',
     style: `width:88px;height:88px;border-radius:12px;object-fit:cover;background:var(--raised);border:1px solid var(--line);${data.image_path ? '' : 'display:none'}`,
   });
-  const placeholderIcon = el('div', { style: `width:88px;height:88px;border-radius:12px;background:var(--raised);border:1px solid var(--line);display:${data.image_path ? 'none' : 'flex'};align-items:center;justify-content:center;font-size:2.2rem`, text: '🦖' });
   const fileInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', style: 'display:none' });
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files[0];
@@ -223,29 +228,29 @@ export async function renderDinoDetail(mount, ctx, idParam) {
       const res = await api.uploadDinoImage(id, { imageBase64: base64, mimeType: file.type });
       avatarImg.src = '/uploads/' + res.imagePath + '?v=' + Date.now();
       avatarImg.style.display = '';
-      placeholderIcon.style.display = 'none';
       toast(t('dino.image_saved'));
     } catch (err) { toast(err.message, 'err'); }
   });
 
   const canDelete = user.roles.includes('admin') || user.roles.includes('developer');
+  const canEdit = canDelete || user.roles.includes('breeder_crafter');
 
   mount.append(
     el('div.page-head', {}, el('button.btn.sm', { text: '← ' + t('common.back'), onclick: () => go('/dinos') })),
     el('div.card', {},
       el('div', { style: 'display:flex;gap:16px;align-items:center;flex-wrap:wrap' },
-        avatarImg, placeholderIcon,
+        avatarImg,
         el('div', { style: 'flex:1' },
           el('div', { style: 'font-family:var(--ff-display);font-size:1.3rem;font-weight:700', text: data.name }),
           el('div', { style: 'color:var(--muted)', text: data.species }),
           el('div.chips', { style: 'margin-top:8px' }, statusBadge(data.status), data.level ? el('span.badge', { text: 'Lvl ' + data.level }) : null)
         ),
-        el('button.btn.sm', { text: t('dino.image_upload'), onclick: () => fileInput.click() }),
+        canEdit ? el('button.btn.sm', { text: t('dino.image_upload'), onclick: () => fileInput.click() }) : null,
         fileInput
       )
     ),
     el('div.card', { style: 'margin-top:14px' },
-      infoRow(t('dino.owner'), data.ownerName || '—'),
+      infoRow(t('dino.breeder'), data.ownerName || '—'),
       infoRow(t('dino.sex_label'), t('dino.sex.' + data.sex)),
       infoRow(t('dino.server'), data.server || '—'),
       infoRow(t('dino.map'), data.map || '—'),
@@ -280,7 +285,7 @@ export async function renderDinoDetail(mount, ctx, idParam) {
       data.notes ? el('div.card', { style: 'margin-top:14px' }, el('div.section-title', {}, t('dino.notes')), el('p', { text: data.notes })) : null,
     ].filter(Boolean),
     el('div.chips', { style: 'margin-top:18px' },
-      el('button.btn', { text: t('dino.edit'), onclick: () => go('/dinos/' + id + '/edit') }),
+      canEdit ? el('button.btn', { text: t('dino.edit'), onclick: () => go('/dinos/' + id + '/edit') }) : null,
       canDelete
         ? el('button.btn.danger', {
             text: t('common.delete'),
@@ -294,6 +299,11 @@ export async function renderDinoDetail(mount, ctx, idParam) {
         : null
     )
   );
+}
+
+function statsSummary(dino) {
+  const entries = Object.entries(dino.stats || {}).filter(([, value]) => value !== null && value !== '');
+  return entries.slice(0, 3).map(([key, value]) => `${t('dino.stat.' + key)} ${value}`).join(' · ');
 }
 
 function infoRow(label, value) {

@@ -24,11 +24,16 @@ export async function renderServers(mount, ctx) {
       el('button.btn.primary', { text: '+ ' + t('srv.new'), onclick: () => openServerDialog(null, () => go('/servers', true)) })
     ),
     servers.length
-      ? el('div.list', {},
+      ? el('div.server-map-list', {},
           ...servers.map((s) =>
-            el('div.row', { style: 'cursor:pointer', onclick: () => go('/servers/' + s.id), role: 'button', tabindex: '0' },
-              el('div.grow', {}, el('div.rt', { text: s.name }), el('div.rs', { text: s.map_name })),
-              el('span.badge.' + (s.status === 'active' ? 'b-completed' : 'b-cancelled'), { text: t('srv.status.' + s.status) })
+            el('button.server-map-card', { onclick: () => go('/servers/' + s.id) },
+              s.map_image_path
+                ? el('img', { src: '/uploads/' + s.map_image_path, alt: s.map_name })
+                : el('div.server-map-missing', { text: t('srv.map_image_missing') }),
+              el('div.server-map-copy', {},
+                el('div', {}, el('div.rt', { text: s.name }), el('div.rs', { text: s.map_name })),
+                el('span.badge.' + (s.status === 'active' ? 'b-completed' : 'b-cancelled'), { text: t('srv.status.' + s.status) })
+              )
             )
           )
         )
@@ -59,7 +64,7 @@ function openServerDialog(existing, onDone) {
             try {
               if (existing) await api.updateServer(existing.id, { name: name.value.trim(), mapName: mapName.value.trim(), status: status.value, notes: notes.value.trim() });
               else await api.createServer({ name: name.value.trim(), mapName: mapName.value.trim(), status: status.value, notes: notes.value.trim() });
-              toast(existing ? t('dino.saved') : t('dino.created'));
+              toast(existing ? t('srv.saved') : t('srv.created'));
               bg.remove();
               onDone();
             } catch (err) { toast(err.message, 'err'); }
@@ -95,27 +100,35 @@ export async function renderServerDetail(mount, ctx, idParam) {
   const listBox = el('div.list', { style: 'margin-top:10px' });
 
   function drawMap() {
-    const w = 400, h = 400;
-    const dots = data.markers
-      .filter((m) => m.coord_x != null && m.coord_y != null)
-      .map((m) => {
-        const cx = (m.coord_x / 100) * w;
-        const cy = (m.coord_y / 100) * h;
-        const active = m.id === activeMarkerId;
-        return `<g class="map-dot${active ? ' active' : ''}" data-id="${m.id}">
-          <circle cx="${cx}" cy="${cy}" r="${active ? 9 : 6}" />
-          <text x="${cx}" y="${cy - 12}" text-anchor="middle">${CATEGORY_ICON[m.category] || '📍'}</text>
-        </g>`;
-      })
-      .join('');
-    mapBox.innerHTML = `<svg viewBox="0 0 ${w} ${h}" class="map-grid-svg">
-      <rect width="${w}" height="${h}" class="map-grid-bg" />
-      ${Array.from({ length: 9 }, (_, i) => (i + 1) * 40).map((p) => `<line x1="${p}" y1="0" x2="${p}" y2="${h}" class="map-grid-line"/><line x1="0" y1="${p}" x2="${w}" y2="${p}" class="map-grid-line"/>`).join('')}
-      ${dots}
-    </svg>`;
-    mapBox.querySelectorAll('.map-dot').forEach((g) => {
-      g.addEventListener('click', () => { activeMarkerId = Number(g.dataset.id); drawMap(); drawList(); });
-    });
+    mapBox.replaceChildren();
+    if (!data.map_image_path) {
+      mapBox.append(el('div.map-upload-empty', {},
+        el('strong', { text: t('srv.map_image_missing') }),
+        el('span', { text: t('srv.map_image_hint') })
+      ));
+      return;
+    }
+    const canvas = el('div.map-canvas', {
+      onclick: (event) => {
+        if (event.target.closest('.map-pin')) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        const coord_x = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)).toFixed(1);
+        const coord_y = Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)).toFixed(1);
+        openMarkerDialog({ coord_x, coord_y }, id, reload);
+      },
+    },
+      el('img', { src: '/uploads/' + data.map_image_path, alt: data.map_name }),
+      ...data.markers.filter((m) => m.coord_x != null && m.coord_y != null).map((m) =>
+        el('button.map-pin' + (m.id === activeMarkerId ? '.active' : ''), {
+          style: `left:${m.coord_x}%;top:${m.coord_y}%`,
+          title: m.name,
+          'aria-label': m.name,
+          text: CATEGORY_ICON[m.category] || '📍',
+          onclick: (event) => { event.stopPropagation(); activeMarkerId = m.id; drawMap(); drawList(); },
+        })
+      )
+    );
+    mapBox.append(canvas);
   }
 
   function drawList() {
@@ -158,6 +171,17 @@ export async function renderServerDetail(mount, ctx, idParam) {
   }
 
   mount.replaceChildren();
+  const mapFile = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', style: 'display:none' });
+  mapFile.addEventListener('change', async () => {
+    const file = mapFile.files[0];
+    if (!file) return;
+    try {
+      const result = await api.uploadServerMap(id, { imageBase64: await fileToBase64(file), mimeType: file.type });
+      data.map_image_path = result.mapImagePath;
+      toast(t('srv.map_image_saved'));
+      drawMap();
+    } catch (err) { toast(err.message, 'err'); }
+  });
   mount.append(
     el('div.page-head', {}, el('button.btn.sm', { text: '← ' + t('common.back'), onclick: () => go('/servers') })),
     el('div.card', {},
@@ -166,7 +190,11 @@ export async function renderServerDetail(mount, ctx, idParam) {
           el('div', { style: 'font-family:var(--ff-display);font-size:1.3rem;font-weight:700', text: data.name }),
           el('div', { style: 'color:var(--muted)', text: data.map_name })
         ),
-        el('button.btn.sm', { text: t('common.edit'), onclick: () => openServerDialog(data, reload) })
+        el('div.chips', {},
+          el('button.btn.sm', { text: t('srv.map_image_upload'), onclick: () => mapFile.click() }),
+          el('button.btn.sm', { text: t('common.edit'), onclick: () => openServerDialog(data, reload) }),
+          mapFile
+        )
       )
     ),
     el('div.section-title', { style: 'margin-top:18px' },
@@ -200,6 +228,7 @@ export async function renderServerDetail(mount, ctx, idParam) {
 }
 
 function openMarkerDialog(existing, serverId, onDone) {
+  const isEditing = Boolean(existing?.id);
   const name = el('input', { type: 'text', value: existing?.name || '', required: true });
   const category = el('select', {}, ...CATEGORIES.map((c) => el('option', { value: c, text: `${CATEGORY_ICON[c]} ${t('srv.cat.' + c)}`, selected: (existing?.category || 'other') === c })));
   const coordX = el('input', { type: 'number', step: '0.1', min: '0', max: '100', value: existing?.coord_x ?? '' });
@@ -209,7 +238,7 @@ function openMarkerDialog(existing, serverId, onDone) {
   const root = document.getElementById('modal-root');
   const bg = el('div.modal-bg', { onclick: (e) => { if (e.target === bg) bg.remove(); } },
     el('div.modal', { role: 'dialog', 'aria-modal': 'true' },
-      el('h3', { text: existing ? t('srv.edit_marker') : t('srv.new_marker') }),
+      el('h3', { text: isEditing ? t('srv.edit_marker') : t('srv.new_marker') }),
       el('div.field', {}, el('label', { text: t('dino.name') }), name),
       el('div.field', {}, el('label', { text: t('srv.category') }), category),
       el('div', { style: 'display:flex;gap:10px' },
@@ -220,14 +249,14 @@ function openMarkerDialog(existing, serverId, onDone) {
       el('div.modal-actions', {},
         el('button.btn.ghost', { text: t('common.cancel'), onclick: () => bg.remove() }),
         el('button.btn.primary', {
-          text: existing ? t('dino.save') : t('dino.create'),
+          text: isEditing ? t('dino.save') : t('dino.create'),
           onclick: async () => {
             if (!name.value.trim()) { toast(t('common.name_required'), 'err'); return; }
             const body = { name: name.value.trim(), category: category.value, coordX: coordX.value, coordY: coordY.value, description: description.value.trim() };
             try {
-              if (existing) await api.updateMarker(existing.id, body);
+              if (isEditing) await api.updateMarker(existing.id, body);
               else await api.createMarker(serverId, body);
-              toast(existing ? t('dino.saved') : t('dino.created'));
+              toast(isEditing ? t('dino.saved') : t('dino.created'));
               bg.remove();
               onDone();
             } catch (err) { toast(err.message, 'err'); }

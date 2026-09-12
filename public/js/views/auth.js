@@ -61,6 +61,7 @@ export function renderAuth(root, { onSignedIn }) {
   }
 
   function loginForm() {
+    const tribe = el('input', { type: 'text', autocomplete: 'organization', id: 'f-tribe', placeholder: 'oao' });
     const identifier = el('input', { type: 'text', autocomplete: 'username', required: true, id: 'f-id' });
     const password = el('input', { type: 'password', autocomplete: 'current-password', required: true, id: 'f-pw' });
     const submit = el('button.btn.primary.block', { type: 'submit', text: t('auth.login') });
@@ -70,7 +71,11 @@ export function renderAuth(root, { onSignedIn }) {
         e.preventDefault();
         submit.disabled = true;
         try {
-          const res = await api.login({ identifier: identifier.value.trim(), password: password.value });
+          const res = await api.login({
+            tribeSlug: tribe.value.trim().toLowerCase() || undefined,
+            identifier: identifier.value.trim(),
+            password: password.value,
+          });
           setCsrf(res.csrfToken);
           onSignedIn(res.user);
         } catch (err) {
@@ -80,6 +85,11 @@ export function renderAuth(root, { onSignedIn }) {
         }
       },
     },
+      el('div.field', {},
+        el('label', { for: 'f-tribe', text: t('auth.tribe_slug') }),
+        tribe,
+        el('span.hint', { text: t('auth.tribe_login_hint') })
+      ),
       el('div.field', {}, el('label', { for: 'f-id', text: t('auth.identifier') }), identifier),
       el('div.field', {}, el('label', { for: 'f-pw', text: t('auth.password') }), password),
       submit
@@ -89,7 +99,7 @@ export function renderAuth(root, { onSignedIn }) {
   }
 
   function registerForm() {
-    const tribe = el('input', { type: 'text', required: true, id: 'r-tribe', placeholder: 'oao' });
+    const tribe = el('input', { type: 'text', required: true, id: 'r-tribe', placeholder: 'oao', autocomplete: 'organization' });
     const username = el('input', { type: 'text', required: true, id: 'r-user', autocomplete: 'username' });
     const email = el('input', { type: 'email', required: true, id: 'r-mail', autocomplete: 'email' });
     const password = el('input', { type: 'password', required: true, minlength: '8', id: 'r-pw', autocomplete: 'new-password' });
@@ -118,7 +128,11 @@ export function renderAuth(root, { onSignedIn }) {
         }
       },
     },
-      el('div.field', {}, el('label', { for: 'r-tribe', text: t('auth.tribe') }), tribe),
+      el('div.field', {},
+        el('label', { for: 'r-tribe', text: t('auth.tribe_slug') }),
+        tribe,
+        el('span.hint', { text: t('auth.tribe_register_hint') })
+      ),
       el('div.field', {},
         el('label', { for: 'r-user', text: t('auth.username') }),
         username,

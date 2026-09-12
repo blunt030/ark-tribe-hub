@@ -5,8 +5,8 @@ import { chatMessage } from './community.js';
 
 /**
  * Startseite nach dem Entwurf: Begruessung, Kacheln mit den wichtigsten Zahlen
- * (offene Bestellungen, eigene Aufgaben, Ungelesenes), Aktivitaetsverlauf,
- * Tribe- und Serverkachel sowie Schnellzugriff. Darunter weiterhin die
+ * (offene Bestellungen, eigene Aufgaben, Ungelesenes), Tribe- und Serverkachel.
+ * Darunter weiterhin die
  * rollenabhaengigen Bestelllisten - ein Breeder/Crafter arbeitet genau daraus.
  *
  * Ein Benutzer kann mehrere Rollen gleichzeitig haben (z. B. Admin +
@@ -129,32 +129,9 @@ export async function renderDashboard(mount, ctx) {
     );
   }
 
-  // --- Aktivitaeten --------------------------------------------------------
-  // Speist sich aus den eigenen Mitteilungen: genau dort steht, wer eine
-  // Bestellung angelegt hat, was zugewiesen und was erledigt wurde.
-  const aktivitaeten = notifications.notifications.slice(0, 6);
-  mount.append(el('div.section-title', {}, t('dash.activities')));
-  mount.append(
-    el('div.card', {},
-      aktivitaeten.length
-        ? el('div.feed', {},
-            ...aktivitaeten.map((n) =>
-              el('div.feed-item' + (n.is_read ? '' : '.unread'), {},
-                el('span.fi-dot'),
-                el('div.fi-body', {},
-                  el('div.fi-text', { text: t('n.' + n.type) }),
-                  el('div.fi-time', { text: timeAgo(n.created_at) })
-                )
-              )
-            )
-          )
-        : el('p.hint', { style: 'padding:4px 0', text: t('dash.no_activities') })
-    )
-  );
-
   if (hatTribe) {
     mount.append(el('div.section-title', {}, t('nav.chat') + ' · General'),
-      el('div.card', {}, ...(chatRes?.messages || []).map(chatMessage),
+      el('div.card', {}, ...(chatRes?.messages || []).map((m) => chatMessage(m, user.id)),
         chatRes && !chatRes.messages.length ? el('p.hint', { text: t('chat.empty') }) : null,
         el('button.btn', { text: t('dash.show'), onclick: () => go('/chat') })));
   }
@@ -223,30 +200,6 @@ export async function renderDashboard(mount, ctx) {
       : emptyState(t('orders.none'), t('orders.none_sub'))
   );
 
-  // --- Schnellzugriff ------------------------------------------------------
-  const schnell = [['/orders/new', t('order.new')], ['/orders', t('nav.orders')]];
-  if (hatTribe) {
-    schnell.push(
-      ['/tasks', t('nav.tasks')],
-      ['/inventory', t('nav.inventory')],
-      ['/servers', t('nav.servers')],
-      ['/voice', t('nav.voice')],
-      ['/chat', t('nav.chat')],
-      ['/alliances', t('nav.alliances')]
-    );
-  }
-  schnell.push(['/profile', t('nav.profile')]);
-
-  mount.append(
-    el('div.section-title', {}, t('dash.quick')),
-    el('div.quick', {},
-      ...schnell.map(([pfad, label]) =>
-        el('button.quick-btn', { type: 'button', onclick: () => go(pfad) },
-          el('span', { text: label })
-        )
-      )
-    )
-  );
 }
 
 function kachel({ head, value, sub, link, onclick }) {
