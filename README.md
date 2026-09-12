@@ -11,20 +11,20 @@ Moodboards, die direkt gegen dieses Backend läuft.
 
 ## 1. Schnellstart
 
-Voraussetzung: **Node.js 22 oder neuer** (nutzt das eingebaute `node:sqlite`).
+Voraussetzung: **Node.js 24 oder neuer** (nutzt das eingebaute `node:sqlite`).
 
 ```bash
 cd ark-tribe-hub
 cp .env.example .env      # optional – Standardwerte funktionieren sofort
 npm run seed              # legt DB an + Tribe OaO + kompletten ARK-Katalog
 npm start                 # Server auf http://localhost:3000
-npm test                  # 34 End-to-End- und Security-Tests
+npm test                  # 59 End-to-End-, UI- und Security-Tests
+npm run test:postgres     # zusätzlicher PostgreSQL-Schematest
 ```
 
-Für den lokalen Betrieb sind **keine npm-Pakete zu installieren** – das
-Backend läuft auf Node-Bordmitteln (`node:sqlite`, `node:crypto`, `node:http`).
-`package.json` listet `pg` als einzige Abhängigkeit; die wird nur für den
-Postgres-Betrieb beim Hosting geladen (Abschnitt 10) und lokal nie angefasst.
+Das Backend nutzt Node-Bordmittel (`node:sqlite`, `node:crypto`, `node:http`),
+`pg` für PostgreSQL und Nodemailer als lokalen SMTP-Fallback. Auf Render läuft
+der vorhandene Brevo-HTTPS-Versand, wenn `BREVO_API_KEY` gesetzt ist.
 
 ### Demo-Zugänge (nur Entwicklung/Test)
 
@@ -36,6 +36,10 @@ Postgres-Betrieb beim Hosting geladen (Abschnitt 10) und lokal nie angefasst.
 | `Blunt OaO` | OaO | member | *(nur lokal, siehe unten)* |
 | `BetaTribe Admin` | BetaTribe (Test-Tribe) | member + admin | *(nur lokal, siehe unten)* |
 | `BetaTribe Member` | BetaTribe (Test-Tribe) | member | *(nur lokal, siehe unten)* |
+
+Bei einer Anmeldung mit Benutzername gehört das Tribe-Kürzel (z. B. `oao`) in
+das separate Feld. Eine eindeutige E-Mail-Adresse funktioniert auch ohne Kürzel;
+das lokale Developer-Konto meldet sich deshalb als `blunt@ark-tribe-hub.dev` an.
 
 „BetaTribe" ist ein zweiter, rein synthetischer Test-Tribe – ausschließlich dazu da,
 um die Mandantentrennung nachzuprüfen (mit `BetaTribe Admin` einloggen und
@@ -51,6 +55,7 @@ versuchen, OaO-Bestellungen zu sehen: muss überall 404 geben).
 | Bereich | Status |
 |---|---|
 | Registrierung, Login, Logout, persistente Session (30 Tage) | ✅ |
+| Automatische Browser-Abmeldung nach 30 Minuten Inaktivität | ✅ |
 | Passwort-Hashing (scrypt + Salt), niemals Klartext | ✅ |
 | Freischaltung durch Admin (`pending_approval` → `active`) | ✅ |
 | Rollen: developer / admin / breeder_crafter / member (mehrere gleichzeitig) | ✅ |
@@ -67,14 +72,24 @@ versuchen, OaO-Bestellungen zu sehen: muss überall 404 geben).
 | Mehrsprachigkeit DE / EN / FR / ES (i18n in der DB, nicht im Code) | ✅ |
 | Bild-Uploads (Avatar, Item) mit Magic-Byte-Prüfung | ✅ |
 | Audit-Log für kritische Aktionen | ✅ |
+| Allianzen/Freunde/Feinde und farbiger Tribe-Chat „General“ | ✅ |
+| Server- und Kartenverwaltung mit großem Kartenbild und Markern | ✅ |
+| Aktuelle Tier-Stats mit Breeder-Zuordnung und Zuchtwerten | ✅ |
+| Admin-Aufgaben, Übernahme durch Member und Abschluss mit Partnern | ✅ |
+| Mitgliederübersicht mit sichtbaren Admins/Breedern | ✅ |
+| Persönliche, verschlüsselte PINs und adminverwaltete Vault-Nummern | ✅ |
+| Browser-Voice über WebRTC inkl. Mikrofon, Stummschaltung und Signalisierung | ✅ |
+| Impressum, Datenschutz und Nutzungsbedingungen technisch eingebunden | ✅ |
 | CSRF-Schutz, Rate-Limiting, Brute-Force-Sperre, Security-Header | ✅ |
 | Weboberfläche im Look des Moodboards, responsive, 4 Sprachen | ✅ |
 | PWA (Manifest + Service Worker, installierbar) | ✅ |
 | Datenbank-Backend wechselt automatisch: SQLite lokal, Postgres gehostet | ✅ |
 
-**Noch offen (bewusst V2+):** Dino-Datenbank, Server- & Map-Management,
-Map-Marker, Koordinatenliste, Tribe-Tasks, Tribe-News, Voice-Chat. Das Datenmodell und
-die Modulstruktur sind dafür bereits vorbereitet.
+**Vor dem rechtlichen Live-Abschluss noch erforderlich:** vollständiger Name und
+ladungsfähige Anschrift des Betreibers. Für Voice-Verbindungen hinter besonders
+strengen Mobilfunk-/Firmennetzen fehlen außerdem noch kurzlebige TURN-Zugangsdaten.
+Weitere Kreaturen-, Sattel- und Strukturbilder können danach schrittweise ergänzt
+werden; die App-Funktionen hängen davon nicht ab.
 
 ---
 
@@ -89,10 +104,10 @@ Server direkt mitausgeliefert – `npm start` reicht.
 - **Rollenabhängig:** Member, Breeder/Crafter, Admin und Developer sehen
   unterschiedliche Dashboards und Navigationspunkte. Wer mehrere Rollen hat
   (z. B. Admin + Breeder/Crafter), sieht alle passenden Bereiche gleichzeitig.
-- **Responsive:** Sidebar-Navigation auf dem Desktop, Bottom-Navigation mit
-  fünf festen Einträgen auf dem Handy (Übersicht, Bestellungen, Neu,
-  Mitteilungen, Profil) – Admin- und Plattformbereiche sind von dort über das
-  Profil erreichbar, damit die untere Leiste nicht je nach Rolle wackelt.
+- **Responsive:** Sidebar-Navigation auf dem Desktop, Bottom-Navigation mit drei
+  festen Einträgen (Startseite, neue Bestellung, Profil) und einem kompakten
+  „Mehr“-Menü auf dem Handy. So bleibt die Navigation auch auf schmalen Geräten
+  vollständig erreichbar, ohne seitlich überzulaufen.
 - **PWA-Grundlage:** Manifest + Service Worker (Network-first für die
   App-Hülle, `/api` und `/uploads` werden nie gecacht). Auf dem Handy über
   „Zum Startbildschirm hinzufügen" installierbar.
@@ -200,10 +215,11 @@ Oder live über die API als Developer:
 
 ### Bilder
 
-Es sind bewusst **keine ARK-Spielgrafiken eingebettet** – die gehören Studio Wildcard.
-Genau wie in deiner Spezifikation (Abschnitt 27) gefordert, kann stattdessen jedes Item
-über `POST /api/items/:id/image` ein eigenes, rechtmäßig nutzbares Bild bekommen.
-Dein Logo liegt bereits unter `assets/branding/logo.png` im Projekt.
+Es werden keine aus ARK kopierten Spielgrafiken eingebettet. Für erste Kreaturen
+liegen eigens erzeugte, freigestellte PNGs unter `public/assets/`; weitere rechtmäßig
+nutzbare Bilder lassen sich über `POST /api/items/:id/image` ergänzen. Bilder und
+Katalogsymbole erscheinen bewusst nur im Bestellablauf. Das Logo liegt unter
+`public/assets/logo.png`.
 
 ---
 
@@ -224,14 +240,15 @@ weil es das Frontend gar nicht braucht, um sicher zu sein.
 - **Mandantentrennung:** Jede Bestellungs-Query filtert serverseitig auf `tribe_id`.
   Zugriff auf einen fremden Tribe liefert bewusst **404 statt 403**, damit nicht einmal
   die Existenz fremder Daten bestätigt wird.
-- **Rechteeskalation:** Ein Tribe-Admin kann ausschließlich die Breeder/Crafter-Rolle
-  vergeben. Admin- und Developer-Rechte gibt es nur über `/api/developer/...`, und dort
-  kommt ausschließlich Blunt hinein.
+- **Rechteeskalation:** Tribe-Admins verwalten Breeder- und Adminrollen nur im
+  eigenen Tribe; der letzte aktive Admin kann sich nicht selbst entfernen.
+  Plattformweite Developer-Rechte bleiben ausschließlich der Developer-API vorbehalten.
 - **SQL-Injection:** Ausnahmslos parametrisierte Queries, auch in der Item-Suche
   (inkl. Escaping der LIKE-Wildcards `%` und `_`).
 - **Uploads:** Max. 3 MB, nur PNG/JPEG/WEBP, und der behauptete MIME-Type wird gegen
-  die tatsächlichen **Magic Bytes** der Datei geprüft. Dateinamen sind immer zufällige
-  UUIDs – Path Traversal über den Dateinamen ist konstruktiv unmöglich.
+  die tatsächlichen **Magic Bytes** der Datei geprüft. Serverseitig erzeugte,
+  numerische Dateinamen und eine strikte Pfadprüfung verhindern Path Traversal;
+  Upload-Abrufe werden zusätzlich auf den eigenen Tribe begrenzt.
 - **Brute Force:** 5 Fehlversuche pro Benutzer+IP in 15 Minuten sperren den Login –
   auch mit anschließend korrektem Passwort.
 - **Rate Limiting:** 120 Requests/Min. allgemein, 10/Min. auf Login und Registrierung
@@ -261,7 +278,7 @@ Test 19 der Suite feuert beide Requests tatsächlich parallel ab und prüft, das
 npm test
 ```
 
-32 Tests, alle grün. Sie starten einen echten Server mit echter Datenbank und sprechen
+59 Tests plus ein PostgreSQL-Schematest, alle grün. Sie starten einen echten Server mit echter Datenbank und sprechen
 ihn über echte HTTP-Requests an – nichts ist gemockt. Abgedeckt sind unter anderem alle
 Fälle aus Abschnitt 48 deiner Spezifikation:
 
