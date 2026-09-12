@@ -41,17 +41,27 @@ export async function resolveVoiceIceConfig(settings, userId, fetchImpl = global
 
   try {
     const response = await fetchImpl(
-      `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(keyId)}/credentials/generate`,
+      `https://rtc.live.cloudflare.com/v1/turn/keys/`{encodeURIComponent(keyId)}/credentials/generate-ice-servers`,
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${keySecret}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer `{keySecret}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ttl: ttlSeconds }),
         signal: AbortSignal.timeout(8000),
       }
     );
-    if (!response.ok) throw new Error(`Cloudflare antwortet mit HTTP ${response.status}`);
+    if (!response.ok) throw new Error(`Cloudflare antwortet mit HTTP `{response.status}`);
     const payload = await response.json();
-    const supplied = payload?.iceServers;
+    // Cloudflare liefert aktuell ein RTCIceServer-Array. Die fruehere API-Antwort
+    // enthielt an derselben Stelle ein einzelnes Objekt; beides bleibt lesbar,
+    // damit ein gestaffeltes Rollout keine laufenden Voice-Sessions bricht.
+    const suppliedServers = Array.isArray(payload?.iceServers)
+      ? payload.iceServers
+      : [payload?.iceServers].filter(Boolean);
+    const supplied = suppliedServers.find((server) => (
+      urlsOf(server).some((url) => /^turns?:/i.test(String(url)))
+      && server?.username
+      && server?.credential
+    ));
     const turnUrls = urlsOf(supplied)
       .map(String)
       .filter((url) => /^turns?:/i.test(url) && !/:53(?:\?|$)/.test(url));
@@ -77,7 +87,7 @@ export async function resolveVoiceIceConfig(settings, userId, fetchImpl = global
     credentialCache.set(cacheKey, { result, expiresAtMs });
     return result;
   } catch (error) {
-    console.error(`[VOICE] Kurzlebige Cloudflare-TURN-Credentials konnten nicht geladen werden: ${error.message}`);
+    console.error(`[VOICE] Kurzlebige Cloudflare-TURN-Credentials konnten nicht geladen werden: `{error.message}`);
     return baseResult;
   }
 }
