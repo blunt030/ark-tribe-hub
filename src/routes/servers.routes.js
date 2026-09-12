@@ -40,6 +40,23 @@ export function buildServerMapRouter(db) {
     sendJson(res, 200, { ok: true });
   });
 
+  router.post('/api/servers/:id/map-image', requireActive, requireCsrf, async (req, res) => {
+    const tribeId = tribeIdOf(req);
+    const id = parseIdParam(req.params.id);
+    const existing = await db.get('SELECT id FROM game_servers WHERE id = ? AND tribe_id = ?', [id, tribeId]);
+    if (!existing) throw notFound('Server nicht gefunden');
+    const body = await readJsonBody(req);
+    const { buffer, ext, mimeType } = validateImage({ base64: body.imageBase64, mimeType: body.mimeType });
+    const relPath = `server-maps/${id}.${ext}`;
+    if (db.kind === 'postgres') {
+      await db.run('UPDATE game_servers SET map_image_data = ?, map_image_mime = ?, map_image_path = ?, updated_at = ? WHERE id = ?', [buffer, mimeType, relPath, new Date().toISOString(), id]);
+    } else {
+      saveImageToDisk({ buffer, ext, uploadDir: config.uploadDir, subdir: 'server-maps', ownerId: id });
+      await db.run('UPDATE game_servers SET map_image_path = ?, updated_at = ? WHERE id = ?', [relPath, new Date().toISOString(), id]);
+    }
+    sendJson(res, 200, { mapImagePath: relPath });
+  });
+
   router.post('/api/servers/:id/markers', requireActive, requireCsrf, async (req, res) => {
     const body = await readJsonBody(req);
     const marker = await svc.createMarker(db, parseIdParam(req.params.id), tribeIdOf(req), body, req.user.id);

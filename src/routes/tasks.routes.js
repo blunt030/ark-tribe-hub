@@ -1,7 +1,7 @@
 import { Router } from '../lib/router.js';
 import { readJsonBody, sendJson, badRequest } from '../lib/http.js';
 import { parseIdParam } from '../lib/validate.js';
-import { requireActive, requireCsrf } from '../middleware/auth.js';
+import { requireActive, requireRole, requireCsrf } from '../middleware/auth.js';
 import * as taskService from '../services/taskService.js';
 
 export function buildTaskRouter(db) {
@@ -25,19 +25,19 @@ export function buildTaskRouter(db) {
     sendJson(res, 200, { task });
   });
 
-  router.post('/api/tasks', requireActive, requireCsrf, async (req, res) => {
+  router.post('/api/tasks', requireRole('admin'), requireCsrf, async (req, res) => {
     const body = await readJsonBody(req);
     const task = await taskService.createTask(db, tribeIdOf(req), body, req.user.id);
     sendJson(res, 201, { task });
   });
 
-  router.patch('/api/tasks/:id', requireActive, requireCsrf, async (req, res) => {
+  router.patch('/api/tasks/:id', requireRole('admin'), requireCsrf, async (req, res) => {
     const body = await readJsonBody(req);
     const task = await taskService.updateTask(db, parseIdParam(req.params.id), tribeIdOf(req), body, req.user.id);
     sendJson(res, 200, { task });
   });
 
-  router.delete('/api/tasks/:id', requireActive, requireCsrf, async (req, res) => {
+  router.delete('/api/tasks/:id', requireRole('admin'), requireCsrf, async (req, res) => {
     await taskService.deleteTask(db, parseIdParam(req.params.id), tribeIdOf(req), req.user.id);
     sendJson(res, 200, { ok: true });
   });
@@ -46,6 +46,24 @@ export function buildTaskRouter(db) {
     const body = await readJsonBody(req);
     const comment = await taskService.addComment(db, parseIdParam(req.params.id), tribeIdOf(req), body, req.user.id);
     sendJson(res, 201, { comment });
+  });
+
+  router.post('/api/tasks/:id/claim', requireActive, requireCsrf, async (req, res) => {
+    const task = await taskService.claimTask(db, parseIdParam(req.params.id), tribeIdOf(req), req.user.id);
+    sendJson(res, 200, { task });
+  });
+
+  router.post('/api/tasks/:id/complete', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    const task = await taskService.completeTask(
+      db,
+      parseIdParam(req.params.id),
+      tribeIdOf(req),
+      req.user.id,
+      Array.isArray(body.partnerIds) ? body.partnerIds : [],
+      req.user.roles.includes('admin') || req.user.roles.includes('developer')
+    );
+    sendJson(res, 200, { task });
   });
 
   return router;

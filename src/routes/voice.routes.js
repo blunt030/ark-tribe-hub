@@ -1,8 +1,9 @@
 import { Router } from '../lib/router.js';
 import { readJsonBody, sendJson, badRequest } from '../lib/http.js';
 import { parseIdParam } from '../lib/validate.js';
-import { requireActive, requireCsrf } from '../middleware/auth.js';
+import { requireActive, requireRole, requireCsrf } from '../middleware/auth.js';
 import * as voiceService from '../services/voiceService.js';
+import { config } from '../config.js';
 
 export function buildVoiceRouter(db) {
   const router = new Router();
@@ -16,13 +17,17 @@ export function buildVoiceRouter(db) {
     sendJson(res, 200, { channels: await voiceService.listChannels(db, tribeIdOf(req)) });
   });
 
+  router.get('/api/voice/config', requireActive, async (req, res) => {
+    sendJson(res, 200, { iceServers: config.rtcIceServers, turnConfigured: config.rtcIceServers.some((server) => String(server.urls || '').includes('turn:') || String(server.urls || '').includes('turns:')) });
+  });
+
   router.post('/api/voice/channels', requireActive, requireCsrf, async (req, res) => {
     const body = await readJsonBody(req);
     const channel = await voiceService.createChannel(db, tribeIdOf(req), body, req.user.id);
     sendJson(res, 201, { channel });
   });
 
-  router.delete('/api/voice/channels/:id', requireActive, requireCsrf, async (req, res) => {
+  router.delete('/api/voice/channels/:id', requireRole('admin'), requireCsrf, async (req, res) => {
     await voiceService.deleteChannel(db, parseIdParam(req.params.id), tribeIdOf(req), req.user.id);
     sendJson(res, 200, { ok: true });
   });
@@ -41,6 +46,23 @@ export function buildVoiceRouter(db) {
     const body = await readJsonBody(req);
     await voiceService.setMuted(db, parseIdParam(req.params.id), tribeIdOf(req), req.user.id, !!body.muted);
     sendJson(res, 200, { ok: true });
+  });
+
+  router.get('/api/voice/channels/:id/signals', requireActive, async (req, res) => {
+    const signals = await voiceService.listSignals(
+      db,
+      parseIdParam(req.params.id),
+      tribeIdOf(req),
+      req.user.id,
+      Number(req.query.after) || 0
+    );
+    sendJson(res, 200, { signals });
+  });
+
+  router.post('/api/voice/channels/:id/signals', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    const signal = await voiceService.sendSignal(db, parseIdParam(req.params.id), tribeIdOf(req), req.user.id, body);
+    sendJson(res, 201, { signal });
   });
 
   return router;

@@ -1,11 +1,13 @@
 import { Router } from '../lib/router.js';
 import { sendJson, notFound, badRequest, readJsonBody } from '../lib/http.js';
 import { parseIdParam } from '../lib/validate.js';
-import { requireRole, requireCsrf } from '../middleware/auth.js';
+import { requireActive, requireRole, requireCsrf } from '../middleware/auth.js';
 import { getUserRoles } from '../services/authService.js';
-import { serializeUserAdmin } from '../lib/userSerializer.js';
+import { serializeUserAdmin, serializeUserPublic } from '../lib/userSerializer.js';
 import { notify } from '../services/notificationService.js';
 import { audit, listAuditLogs } from '../services/auditService.js';
+import { decryptAccessPin, encryptAccessPin, validateAccessPin } from '../services/accessPinService.js';
+import { sendAccessPin } from '../services/mailService.js';
 
 /**
  * Ein normaler Admin ist immer an seinen eigenen Tribe gebunden (req.user.tribe_id).
@@ -31,12 +33,52 @@ async function scopedMember(db, id, tribeId) {
 export function buildAdminRouter(db) {
   const router = new Router();
 
-  router.get('/api/admin/members', requireRole('admin'), async (req, res) => {
+  router.get('/api/admin/members', requireActive, async (req, res) => {
     const tribeId = effectiveTribeId(req);
-    const rows = await db.all('SELECT * FROM users WHERE tribe_id = ? ORDER BY status, username', [tribeId]);
+    const canManage = req.user.roles.includes('admin') || req.user.roles.includes('developer');
+    const rows = await db.all(
+      `SELECT * FROM users WHERE tribe_id = ?${canManage ? '' : " AND status = 'active'"} ORDER BY status, username`,
+      [tribeId]
+    );
     const members = [];
-    for (const u of rows) members.push(serializeUserAdmin(u, { roles: await getUserRoles(db, u.id) }));
+    for (const u of rows) {
+      const roles = await getUserRoles(db, u.id);
+      members.push(canManage
+        ? serializeUserAdmin(u, { roles, personalPin: decryptAccessPin(u.personal_pin_encrypted) })
+        : serializeUserPublic(u, { roles }));
+    }
     sendJson(res, 200, { members });
+  });
+
+  router.patch('/api/admin/members/:id/access', requireRole('admin'), requireCsrf, async (req, res) => {
+    const id = parseIdParam(req.params.id);
+    const tribeId = effectiveTribeId(req);
+    const body = await readJsonBody(req);
+    const member = await scopedMember(db, id, tribeId);
+    const updates = [];
+    const values = [];
+    let newPin = null;
+    if (body.vaultNumber !== undefined) {
+      const vault = String(body.vaultNumber ?? '').trim();
+      if (vault.length > 50) throw badRequest('Vault-Nummer ist zu lang');
+      updates.push('personal_vault_number = ?');
+      values.push(vault || null);
+    }
+    if (body.personalPin !== undefined) {
+      newPin = validateAccessPin(body.personalPin);
+      updates.push('personal_pin_encrypted = ?');
+      values.push(encryptAccessPin(newPin));
+    }
+    if (!updates.length) throw badRequest('PIN oder Vault-Nummer fehlt');
+    values.push(new Date().toISOString(), id);
+    await db.transaction(async (tx) => {
+      await tx.run(`UPDATE users SET ${updates.join(', ')}, updated_at = ? WHERE id = ?`, values);
+      await audit(tx, { tribeId, actorId: req.user.id, action: 'member_access_updated', targetType: 'user', targetId: id, meta: { pinChanged: Boolean(newPin), vaultChanged: body.vaultNumber !== undefined } });
+    });
+    if (newPin && member.email) {
+      await sendAccessPin({ to: member.email, username: member.username, pin: newPin, vaultNumber: body.vaultNumber ?? member.personal_vault_number });
+    }
+    sendJson(res, 200, { ok: true });
   });
 
   router.patch('/api/admin/members/:id/approve', requireRole('admin'), requireCsrf, async (req, res) => {
