@@ -18,7 +18,7 @@ cd ark-tribe-hub
 cp .env.example .env      # optional – Standardwerte funktionieren sofort
 npm run seed              # legt DB an + Tribe OaO + kompletten ARK-Katalog
 npm start                 # Server auf http://localhost:3000
-npm test                  # 59 End-to-End-, UI- und Security-Tests
+npm test                  # 62 End-to-End-, UI-, TURN- und Security-Tests
 npm run test:postgres     # zusätzlicher PostgreSQL-Schematest
 ```
 
@@ -78,7 +78,7 @@ versuchen, OaO-Bestellungen zu sehen: muss überall 404 geben).
 | Admin-Aufgaben, Übernahme durch Member und Abschluss mit Partnern | ✅ |
 | Mitgliederübersicht mit sichtbaren Admins/Breedern | ✅ |
 | Persönliche, verschlüsselte PINs und adminverwaltete Vault-Nummern | ✅ |
-| Browser-Voice über WebRTC inkl. Mikrofon, Stummschaltung und Signalisierung | ✅ |
+| Browser-Voice über WebRTC inkl. Cloudflare-TURN, Mikrofon und Stummschaltung | ✅ vorbereitet |
 | Impressum, Datenschutz und Nutzungsbedingungen technisch eingebunden | ✅ |
 | CSRF-Schutz, Rate-Limiting, Brute-Force-Sperre, Security-Header | ✅ |
 | Weboberfläche im Look des Moodboards, responsive, 4 Sprachen | ✅ |
@@ -86,8 +86,9 @@ versuchen, OaO-Bestellungen zu sehen: muss überall 404 geben).
 | Datenbank-Backend wechselt automatisch: SQLite lokal, Postgres gehostet | ✅ |
 
 **Vor dem rechtlichen Live-Abschluss noch erforderlich:** vollständiger Name und
-ladungsfähige Anschrift des Betreibers. Für Voice-Verbindungen hinter besonders
-strengen Mobilfunk-/Firmennetzen fehlen außerdem noch kurzlebige TURN-Zugangsdaten.
+ladungsfähige Anschrift des Betreibers. Die Cloudflare-TURN-Integration erzeugt
+kurzlebige Zugangsdaten sicher auf dem Server; live fehlen nur noch ein TURN-Key
+mit `Calls Write`-Berechtigung und die beiden Render-Secrets.
 Weitere Kreaturen-, Sattel- und Strukturbilder können danach schrittweise ergänzt
 werden; die App-Funktionen hängen davon nicht ab.
 
@@ -384,7 +385,7 @@ ark-tribe-hub/
 │   │                            rateLimiter, imageUpload
 │   ├── middleware/              auth (Session/RBAC/CSRF), security (Header/CORS/Limits)
 │   ├── services/                authService, orderService, notificationService,
-│   │                            auditService  ← die gesamte Geschäftslogik
+│   │                            auditService, turnService  ← Geschäftslogik
 │   └── routes/                  auth, users, tribes, catalog, orders,
 │                                notifications, admin, developer
 ├── data/catalog/creatures.json  217 Kreaturen (Katalogquelle)

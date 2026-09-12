@@ -131,7 +131,7 @@ export async function renderDashboard(mount, ctx) {
 
   if (hatTribe) {
     mount.append(el('div.section-title', {}, t('nav.chat') + ' · General'),
-      el('div.card', {}, ...(chatRes?.messages || []).map((m) => chatMessage(m, user.id)),
+      el('div.card.dashboard-chat-card', {}, ...(chatRes?.messages || []).map((m) => chatMessage(m, user.id)),
         chatRes && !chatRes.messages.length ? el('p.hint', { text: t('chat.empty') }) : null,
         el('button.btn', { text: t('dash.show'), onclick: () => go('/chat') })));
   }
