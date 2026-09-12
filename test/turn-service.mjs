@@ -7,20 +7,22 @@ test('Cloudflare TURN erzeugt kurzlebige, browsergeeignete Credentials pro Benut
   let requests = 0;
   const fakeFetch = async (url, options) => {
     requests += 1;
-    assert.match(url, /\/turn\/keys\/turn-key-id\/credentials\/generate$/);
+    assert.match(url, /\/turn\/keys\/turn-key-id\/credentials\/generate-ice-servers$/);
     assert.equal(options.headers.Authorization, 'Bearer server-only-secret');
     assert.deepEqual(JSON.parse(options.body), { ttl: 3600 });
     return new Response(JSON.stringify({
-      iceServers: {
-        urls: [
-          'stun:stun.cloudflare.com:3478',
-          'turn:turn.cloudflare.com:53?transport=udp',
-          'turn:turn.cloudflare.com:3478?transport=udp',
-          'turns:turn.cloudflare.com:443?transport=tcp',
-        ],
-        username: 'temporary-user',
-        credential: 'temporary-password',
-      },
+      iceServers: [
+        { urls: ['stun:stun.cloudflare.com:3478'] },
+        {
+          urls: [
+            'turn:turn.cloudflare.com:53?transport=udp',
+            'turn:turn.cloudflare.com:3478?transport=udp',
+            'turns:turn.cloudflare.com:443?transport=tcp',
+          ],
+          username: 'temporary-user',
+          credential: 'temporary-password',
+        },
+      ],
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   };
 
