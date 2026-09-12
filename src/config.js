@@ -95,6 +95,16 @@ export const config = {
     .filter(Boolean),
   sessionTtlDays: parseInt(process.env.SESSION_TTL_DAYS || '30', 10),
   sessionSecret: resolveSessionSecret(),
+  rtcIceServers: (() => {
+    if (!process.env.RTC_ICE_SERVERS_JSON) return [{ urls: ['stun:stun.cloudflare.com:3478'] }];
+    try {
+      const parsed = JSON.parse(process.env.RTC_ICE_SERVERS_JSON);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      console.error('[VOICE] RTC_ICE_SERVERS_JSON ist kein gültiges JSON; es wird nur der Standard-STUN-Server verwendet');
+      return [{ urls: ['stun:stun.cloudflare.com:3478'] }];
+    }
+  })(),
   // Rate-Limits pro Minute und IP. Konfigurierbar, damit Tests/Lasttests nicht
   // an den Produktionswerten scheitern (der Brute-Force-Schutz beim Login ist
   // davon unabhängig und greift immer).

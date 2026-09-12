@@ -27,6 +27,7 @@ import { buildServerMapRouter } from './routes/servers.routes.js';
 import { buildTaskRouter } from './routes/tasks.routes.js';
 import { buildInventoryRouter } from './routes/inventory.routes.js';
 import { buildVoiceRouter } from './routes/voice.routes.js';
+import { cleanupExpiredSignals } from './services/voiceService.js';
 
 const UPLOAD_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 
@@ -93,7 +94,7 @@ function buildUploadsRouter(db) {
   const router = new Router();
   router.get('/uploads/:subdir/:filename', requireActive, async (req, res) => {
     const { subdir, filename } = req.params;
-    if (!['avatars', 'items', 'dinos', 'markers'].includes(subdir) || !isSafeUploadFilename(filename)) {
+    if (!['avatars', 'items', 'dinos', 'markers', 'server-maps'].includes(subdir) || !isSafeUploadFilename(filename)) {
       throw notFound('Datei nicht gefunden');
     }
     const ext = path.extname(filename).slice(1).toLowerCase();
@@ -105,11 +106,11 @@ function buildUploadsRouter(db) {
     // Pruefung koennte jeder angemeldete Nutzer durch simples Hochzaehlen der
     // Zahl im Dateinamen die Bilder fremder Tribes abrufen (IDOR), obwohl die
     // zugehoerigen API-Endpunkte sauber abgesichert sind.
-    if (subdir === 'dinos' || subdir === 'markers') {
+    if (subdir === 'dinos' || subdir === 'markers' || subdir === 'server-maps') {
       if (!/^\d+$/.test(idPart)) throw notFound('Datei nicht gefunden');
       const istDeveloper = req.user.roles.includes('developer');
       if (!istDeveloper) {
-        const tabelle = subdir === 'dinos' ? 'dinos' : 'map_markers';
+        const tabelle = subdir === 'dinos' ? 'dinos' : subdir === 'markers' ? 'map_markers' : 'game_servers';
         const besitzer = await db.get(`SELECT tribe_id FROM ${tabelle} WHERE id = ?`, [idPart]);
         // Auch bei "nicht vorhanden" bewusst 404 - so laesst sich ueber die
         // Antwort nicht herausfinden, ob eine fremde ID existiert.
@@ -119,9 +120,9 @@ function buildUploadsRouter(db) {
 
     if (db.kind === 'postgres') {
       // Kein lokales Dateisystem verfügbar -> Bild kommt als Blob aus der DB.
-      const table = subdir === 'avatars' ? 'users' : subdir === 'dinos' ? 'dinos' : subdir === 'markers' ? 'map_markers' : 'items';
-      const dataCol = subdir === 'avatars' ? 'avatar_data' : 'image_data';
-      const mimeCol = subdir === 'avatars' ? 'avatar_mime' : 'image_mime';
+      const table = subdir === 'avatars' ? 'users' : subdir === 'dinos' ? 'dinos' : subdir === 'markers' ? 'map_markers' : subdir === 'server-maps' ? 'game_servers' : 'items';
+      const dataCol = subdir === 'avatars' ? 'avatar_data' : subdir === 'server-maps' ? 'map_image_data' : 'image_data';
+      const mimeCol = subdir === 'avatars' ? 'avatar_mime' : subdir === 'server-maps' ? 'map_image_mime' : 'image_mime';
       if (!/^\d+$/.test(idPart)) throw notFound('Datei nicht gefunden');
       const row = await db.get(`SELECT ${dataCol} AS data, ${mimeCol} AS mime FROM ${table} WHERE id = ?`, [idPart]);
       if (!row || !row.data) throw notFound('Datei nicht gefunden');
@@ -217,6 +218,16 @@ export async function createApp(dbPath, options = {}) {
     };
     next();
   });
+
+  // WebRTC-Angebote enthalten kurzlebige technische Verbindungsdaten. Sie
+  // werden auch dann zeitnah entfernt, wenn nach einem Gespräch niemand mehr
+  // den Voice-Bereich öffnet und damit die normale Poll-Bereinigung auslöst.
+  await cleanupExpiredSignals(db);
+  const voiceCleanupTimer = setInterval(() => {
+    cleanupExpiredSignals(db).catch((err) => console.error('[VOICE] Signal-Bereinigung fehlgeschlagen:', err.message));
+  }, 60_000);
+  voiceCleanupTimer.unref();
+  server.on('close', () => clearInterval(voiceCleanupTimer));
 
   return { server, db, router };
 }
