@@ -153,9 +153,9 @@ export async function renderNewOrder(mount, ctx) {
   /* erreichbar.                                                              */
   /* ------------------------------------------------------------------------ */
 
-  // Land/Wasser/Flieger/Sonstige gilt nicht nur für Kreaturen, sondern genauso für
-  // deren Eier/Embryos/Sättel (die haben in der Datenbank dieselbe Kategorie wie
-  // ihre Kreatur - z.B. "Rex Egg" liegt in "Landtiere", genau wie "Rex" selbst).
+  // Land/Wasser/Flieger/Sonstige gilt für Eier, Embryos und Sättel. Diese Einträge
+  // haben in der Datenbank dieselbe Kategorie wie ihre Kreatur - z.B. liegt ein
+  // Rex-Ei in "Landtiere". Lebende Kreaturen werden hier bewusst nicht bestellt.
   // Nur Strukturen und Sonstiges haben keinen Lebensraum-Bezug.
   const HABITAT_AWARE_TYPES = ['creature', 'egg', 'embryo', 'saddle'];
 
@@ -171,8 +171,8 @@ export async function renderNewOrder(mount, ctx) {
       label: () => t('order.group.creatures'),
       hint: () => t('order.group.creatures_hint'),
       entries: [
-        { key: 'creature', art: 'creature', label: () => t('order.sub.animals'), types: ['creature'] },
-        { key: 'eggs', art: 'egg', label: () => t('order.sub.embryos'), types: ['egg', 'embryo'] },
+        { key: 'eggs', art: 'egg', label: () => t('order.sub.eggs'), types: ['egg'] },
+        { key: 'embryos', art: 'embryo', label: () => t('order.sub.embryos'), types: ['embryo'] },
       ],
     },
     {
@@ -216,8 +216,8 @@ export async function renderNewOrder(mount, ctx) {
     const entry = activeEntry;
     resultsBox.replaceChildren(spinner());
     try {
-      // Ein Eintrag kann mehrere Produkttypen bündeln ("Eier & Embryos"). Die
-      // Listen werden zusammengeführt und über die ID entdoppelt.
+      // Die Abfrage bleibt auf Listen ausgelegt, damit weitere fachlich sinnvolle
+      // Bündel später möglich bleiben. Eier und Embryos sind jetzt bewusst getrennt.
       const listen = await Promise.all(
         entry.types.map((pt) => {
           const query = { productType: pt };

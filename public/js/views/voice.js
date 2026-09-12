@@ -6,16 +6,19 @@ export async function renderVoice(mount, ctx) {
   const { user } = ctx;
   mount.append(spinner());
 
-  const [{ channels: initialChannels }, rtcConfig] = await Promise.all([
+  const [{ channels: initialChannels }, initialRtcConfig] = await Promise.all([
     api.voiceChannels(),
     api.voiceConfig().catch(() => ({ iceServers: [], turnConfigured: false })),
   ]);
+  let rtcConfig = initialRtcConfig;
   let channels = initialChannels;
   let activeChannelId = null;
   let localStream = null;
   let lastSignalId = 0;
   let polling = false;
   let pollTimer = null;
+  let credentialRefreshTimer = null;
+  let refreshingIce = false;
   let shuttingDown = false;
   const peers = new Map();
   const audioStage = el('div.voice-audio-stage', { 'aria-live': 'polite' });
@@ -66,7 +69,10 @@ export async function renderVoice(mount, ctx) {
     };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'connected') connectionState.textContent = t('voice.connected');
-      if (['failed', 'disconnected'].includes(pc.connectionState)) connectionState.textContent = t('voice.connection_problem');
+      if (['failed', 'disconnected'].includes(pc.connectionState)) {
+        connectionState.textContent = t('voice.connection_problem');
+        if (pc.connectionState === 'failed' && Number(user.id) < peerId) refreshRtcCredentials(true);
+      }
       if (pc.connectionState === 'closed') stopPeer(peerId);
     };
     return entry;
@@ -79,6 +85,48 @@ export async function renderVoice(mount, ctx) {
     const offer = await entry.pc.createOffer();
     await entry.pc.setLocalDescription(offer);
     await signal(peerId, 'offer', entry.pc.localDescription.toJSON());
+  }
+
+  async function restartPeer(peerId) {
+    const entry = peers.get(Number(peerId));
+    if (!entry || entry.pc.signalingState !== 'stable') return;
+    entry.pc.restartIce();
+    const offer = await entry.pc.createOffer({ iceRestart: true });
+    await entry.pc.setLocalDescription(offer);
+    await signal(peerId, 'offer', entry.pc.localDescription.toJSON());
+  }
+
+  function scheduleCredentialRefresh() {
+    clearTimeout(credentialRefreshTimer);
+    credentialRefreshTimer = null;
+    if (!activeChannelId || !rtcConfig.turnConfigured || !rtcConfig.refreshAfterSeconds) return;
+    credentialRefreshTimer = setTimeout(
+      () => refreshRtcCredentials(true),
+      Math.max(60, rtcConfig.refreshAfterSeconds) * 1000
+    );
+  }
+
+  async function refreshRtcCredentials(restartConnections = false) {
+    if (refreshingIce || shuttingDown || !mount.isConnected) return;
+    refreshingIce = true;
+    try {
+      rtcConfig = await api.voiceConfig();
+      for (const entry of peers.values()) {
+        entry.pc.setConfiguration({ ...entry.pc.getConfiguration(), iceServers: rtcConfig.iceServers || [] });
+      }
+      if (restartConnections && activeChannelId) {
+        // Pro Peer-Paar startet nur der Teilnehmer mit der kleineren ID neu.
+        for (const peerId of peers.keys()) {
+          if (Number(user.id) < Number(peerId)) await restartPeer(peerId);
+        }
+      }
+      scheduleCredentialRefresh();
+    } catch {
+      clearTimeout(credentialRefreshTimer);
+      credentialRefreshTimer = setTimeout(() => refreshRtcCredentials(restartConnections), 60_000);
+    } finally {
+      refreshingIce = false;
+    }
   }
 
   async function reconcilePeers() {
@@ -147,6 +195,7 @@ export async function renderVoice(mount, ctx) {
     connectionState.textContent = t('voice.mic_request');
     try {
       if (activeChannelId) await stopLocal(true);
+      rtcConfig = await api.voiceConfig().catch(() => rtcConfig);
       localStream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: false,
@@ -158,6 +207,7 @@ export async function renderVoice(mount, ctx) {
       channels = (await api.voiceChannels()).channels;
       draw();
       await reconcilePeers();
+      scheduleCredentialRefresh();
       pollVoice();
     } catch (err) {
       localStream?.getTracks().forEach((track) => track.stop());
@@ -171,7 +221,9 @@ export async function renderVoice(mount, ctx) {
     if (shuttingDown) return;
     shuttingDown = true;
     clearTimeout(pollTimer);
+    clearTimeout(credentialRefreshTimer);
     pollTimer = null;
+    credentialRefreshTimer = null;
     const channelId = activeChannelId;
     const otherIds = [...peers.keys()];
     if (notifyServer && channelId) {

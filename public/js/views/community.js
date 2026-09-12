@@ -73,6 +73,7 @@ export async function renderChat(mount, { user }) {
   const log = el('div.chat-log', { role: 'log', 'aria-label': t('nav.chat'), 'aria-live': 'polite', 'aria-relevant': 'additions' });
   const status = el('p.hint', { role: 'status' });
   const empty = el('p.hint', { text: t('chat.empty') });
+  const chatWindow = el('section.chat-window', { 'aria-label': t('nav.chat') }, empty, log, status);
   const input = el('textarea', { id: 'chat-body', rows: 3, maxlength: 2000, required: true, placeholder: t('chat.placeholder') });
   const send = el('button.btn.primary', { type: 'submit', text: t('chat.send') });
   const older = el('button.btn.chat-older', { text: t('chat.older'), onclick: async () => {
@@ -114,7 +115,7 @@ export async function renderChat(mount, { user }) {
     finally { sending = false; send.disabled = false; input.readOnly = false; }
   } }, el('label', { for: 'chat-body', text: t('chat.message') }), input,
   el('div.actions', {}, el('span.hint', { text: t('chat.limits') }), send));
-  mount.replaceChildren(el('div.page-head', {}, el('div', {}, el('h1', { text: t('nav.chat') + ' · General' }), el('p', { text: t('chat.scope') }))), older, empty, log, status, composer);
+  mount.replaceChildren(el('div.page-head', {}, el('div', {}, el('h1', { text: t('nav.chat') + ' · General' }), el('p', { text: t('chat.scope') }))), older, chatWindow, composer);
   older.hidden = !olderAvailable;
   merge(initial.messages);
   log.scrollTop = log.scrollHeight;
