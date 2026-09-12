@@ -22,11 +22,16 @@ export async function listTasks(db, tribeId, { status, assigneeId } = {}) {
 
 export async function getTask(db, id, tribeId) {
   const task = await scopedTask(db, id, tribeId);
-  const comments = await db.all(
+  const [comments, partners] = await Promise.all([db.all(
     `SELECT c.*, COALESCE(u.username, '—') AS author_name FROM task_comments c LEFT JOIN users u ON u.id = c.author_id WHERE c.task_id = ? ORDER BY c.created_at`,
     [id]
-  );
-  return { ...task, comments };
+  ), db.all(
+    `SELECT u.id, u.username FROM task_partners tp
+     JOIN users u ON u.id = tp.user_id
+     WHERE tp.task_id = ? AND u.tribe_id = ? ORDER BY u.username`,
+    [id, tribeId]
+  )]);
+  return { ...task, comments, partners };
 }
 
 function validateInput(body) {
@@ -118,5 +123,40 @@ export async function addComment(db, taskId, tribeId, body, actorId) {
       await notify(tx, { userId: task.assignee_id, tribeId, type: 'task_comment', payload: { taskId, title: task.title } });
     }
     return inserted;
+  });
+}
+
+export async function claimTask(db, id, tribeId, actorId) {
+  return db.transaction(async (tx) => {
+    await scopedTask(tx, id, tribeId);
+    const result = await tx.run(
+      `UPDATE tasks SET assignee_id = ?, status = 'in_progress', updated_at = ?
+       WHERE id = ? AND tribe_id = ? AND assignee_id IS NULL AND status = 'open'`,
+      [actorId, new Date().toISOString(), id, tribeId]
+    );
+    if (result.changes === 0) throw badRequest('Diese Aufgabe wurde bereits übernommen oder ist nicht mehr offen');
+    await audit(tx, { tribeId, actorId, action: 'task_claimed', targetType: 'task', targetId: id });
+    return tx.get('SELECT * FROM tasks WHERE id = ?', [id]);
+  });
+}
+
+export async function completeTask(db, id, tribeId, actorId, partnerIds, isAdmin = false) {
+  const uniquePartners = [...new Set(partnerIds.map(Number).filter((value) => Number.isInteger(value) && value > 0 && value !== actorId))];
+  if (uniquePartners.length > 20) throw badRequest('Es können höchstens 20 Partner eingetragen werden');
+  return db.transaction(async (tx) => {
+    const task = await scopedTask(tx, id, tribeId);
+    if (!isAdmin && Number(task.assignee_id) !== Number(actorId)) throw badRequest('Nur die zuständige Person kann diese Aufgabe abschließen');
+    if (!['open', 'in_progress'].includes(task.status)) throw badRequest('Diese Aufgabe kann nicht mehr abgeschlossen werden');
+    for (const partnerId of uniquePartners) {
+      const member = await tx.get("SELECT id FROM users WHERE id = ? AND tribe_id = ? AND status = 'active'", [partnerId, tribeId]);
+      if (!member) throw badRequest('Mindestens ein Partner gehört nicht als aktives Mitglied zu diesem Tribe');
+    }
+    await tx.run('DELETE FROM task_partners WHERE task_id = ?', [id]);
+    for (const partnerId of uniquePartners) {
+      await tx.run('INSERT INTO task_partners (task_id, user_id) VALUES (?,?)', [id, partnerId]);
+    }
+    await tx.run("UPDATE tasks SET status = 'done', updated_at = ? WHERE id = ?", [new Date().toISOString(), id]);
+    await audit(tx, { tribeId, actorId, action: 'task_completed', targetType: 'task', targetId: id, meta: { partnerIds: uniquePartners } });
+    return getTask(tx, id, tribeId);
   });
 }

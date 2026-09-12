@@ -78,6 +78,7 @@ export async function deleteChannel(db, id, tribeId, actorId) {
 export async function joinChannel(db, channelId, tribeId, userId) {
   await scopedChannel(db, channelId, tribeId);
   return db.transaction(async (tx) => {
+    await tx.run('DELETE FROM voice_signals WHERE tribe_id = ? AND (sender_id = ? OR recipient_id = ?)', [tribeId, userId, userId]);
     await tx.run('DELETE FROM voice_participants WHERE tribe_id = ? AND user_id = ?', [tribeId, userId]);
     await tx.run(
       'INSERT INTO voice_participants (channel_id, tribe_id, user_id, is_muted) VALUES (?,?,?,0)',
@@ -88,7 +89,10 @@ export async function joinChannel(db, channelId, tribeId, userId) {
 
 export async function leaveChannel(db, channelId, tribeId, userId) {
   await scopedChannel(db, channelId, tribeId);
-  await db.run('DELETE FROM voice_participants WHERE channel_id = ? AND user_id = ?', [channelId, userId]);
+  await db.transaction(async (tx) => {
+    await tx.run('DELETE FROM voice_signals WHERE channel_id = ? AND (sender_id = ? OR recipient_id = ?)', [channelId, userId, userId]);
+    await tx.run('DELETE FROM voice_participants WHERE channel_id = ? AND user_id = ?', [channelId, userId]);
+  });
 }
 
 export async function setMuted(db, channelId, tribeId, userId, muted) {
@@ -98,4 +102,53 @@ export async function setMuted(db, channelId, tribeId, userId, muted) {
     [muted ? 1 : 0, channelId, userId]
   );
   if (result.changes === 0) throw badRequest('Du bist nicht in diesem Kanal');
+}
+
+const SIGNAL_TYPES = ['offer', 'answer', 'ice', 'bye'];
+
+export async function cleanupExpiredSignals(db) {
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  await db.run('DELETE FROM voice_signals WHERE created_at < ?', [cutoff]);
+}
+
+async function participantPruefen(db, channelId, tribeId, userId) {
+  const participant = await db.get(
+    'SELECT id FROM voice_participants WHERE channel_id = ? AND tribe_id = ? AND user_id = ?',
+    [channelId, tribeId, userId]
+  );
+  if (!participant) throw badRequest('Du bist nicht in diesem Voice-Kanal');
+}
+
+export async function sendSignal(db, channelId, tribeId, senderId, body) {
+  await scopedChannel(db, channelId, tribeId);
+  await participantPruefen(db, channelId, tribeId, senderId);
+  const recipientId = Number(body.recipientId);
+  if (!Number.isInteger(recipientId) || recipientId <= 0 || recipientId === senderId) throw badRequest('Ungültiger Signal-Empfänger');
+  await participantPruefen(db, channelId, tribeId, recipientId);
+  if (!SIGNAL_TYPES.includes(body.type)) throw badRequest('Ungültiger Signaltyp');
+  const payload = JSON.stringify(body.payload ?? null);
+  if (payload.length > 100_000) throw badRequest('Voice-Signal ist zu groß');
+  const inserted = await db.get(
+    `INSERT INTO voice_signals (channel_id, tribe_id, sender_id, recipient_id, signal_type, payload)
+     VALUES (?,?,?,?,?,?) RETURNING id`,
+    [channelId, tribeId, senderId, recipientId, body.type, payload]
+  );
+  return { id: inserted.id };
+}
+
+export async function listSignals(db, channelId, tribeId, userId, afterId = 0) {
+  await scopedChannel(db, channelId, tribeId);
+  await participantPruefen(db, channelId, tribeId, userId);
+  await cleanupExpiredSignals(db);
+  const rows = await db.all(
+    `SELECT id, sender_id, signal_type, payload, created_at FROM voice_signals
+     WHERE channel_id = ? AND tribe_id = ? AND recipient_id = ? AND id > ?
+     ORDER BY id LIMIT 200`,
+    [channelId, tribeId, userId, Number(afterId) || 0]
+  );
+  return rows.map((row) => {
+    let payload = null;
+    try { payload = JSON.parse(row.payload); } catch { payload = null; }
+    return { id: row.id, senderId: row.sender_id, type: row.signal_type, payload, createdAt: row.created_at };
+  });
 }
