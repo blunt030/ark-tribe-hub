@@ -1,4 +1,3 @@
-
 /**
  * Mitgelieferte, rechtmäßig neu erstellte Katalogbilder.
  *
