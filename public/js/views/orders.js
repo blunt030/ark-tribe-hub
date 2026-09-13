@@ -1,5 +1,5 @@
 import { el, spinner, orderCard, orderTitle, emptyState, statusBadge, priorityBadge, typeTag, toast, confirmDialog } from '../ui.js';
-import { itemIcon, itemBild } from '../icons.js';
+import { itemBild } from '../icons.js';
 import { t, timeAgo } from '../i18n.js';
 import { api, ApiError } from '../api.js';
 
@@ -294,7 +294,6 @@ export async function renderNewOrder(mount, ctx) {
               waehleEintrag(g.entries[0]);
             },
           },
-            itemIcon(g.art, 18),
             el('span.acc-copy', {},
               el('span.acc-title', { text: g.label() }),
               el('span.acc-hint', { text: g.hint() })
@@ -307,7 +306,6 @@ export async function renderNewOrder(mount, ctx) {
                 type: 'button',
                 onclick: () => { offeneGruppe = g.key; waehleEintrag(e); },
               },
-                itemIcon(e.art, 16),
                 el('span', { text: e.label() })
               )
             )
