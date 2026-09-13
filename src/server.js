@@ -27,7 +27,8 @@ import { buildServerMapRouter } from './routes/servers.routes.js';
 import { buildTaskRouter } from './routes/tasks.routes.js';
 import { buildInventoryRouter } from './routes/inventory.routes.js';
 import { buildVoiceRouter } from './routes/voice.routes.js';
-import { cleanupExpiredSignals } from './services/voiceService.js';
+import { cleanupExpiredSignals, cleanupStaleParticipants } from './services/voiceService.js';
+import { resolveVoiceIceConfig } from './services/turnService.js';
 
 const UPLOAD_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 
@@ -222,9 +223,10 @@ export async function createApp(dbPath, options = {}) {
   // WebRTC-Angebote enthalten kurzlebige technische Verbindungsdaten. Sie
   // werden auch dann zeitnah entfernt, wenn nach einem Gespräch niemand mehr
   // den Voice-Bereich öffnet und damit die normale Poll-Bereinigung auslöst.
-  await cleanupExpiredSignals(db);
+  await Promise.all([cleanupExpiredSignals(db), cleanupStaleParticipants(db)]);
   const voiceCleanupTimer = setInterval(() => {
-    cleanupExpiredSignals(db).catch((err) => console.error('[VOICE] Signal-Bereinigung fehlgeschlagen:', err.message));
+    Promise.all([cleanupExpiredSignals(db), cleanupStaleParticipants(db)])
+      .catch((err) => console.error('[VOICE] Bereinigung fehlgeschlagen:', err.message));
   }, 60_000);
   voiceCleanupTimer.unref();
   server.on('close', () => clearInterval(voiceCleanupTimer));
@@ -251,6 +253,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       console.log(`🦖 ARK Tribe Hub Backend läuft auf http://localhost:${port}`);
       console.log(`   Health-Check: http://localhost:${port}/api/health`);
       console.log(`   Datenbank: ${config.databaseUrl ? 'Postgres (DATABASE_URL)' : 'SQLite (' + config.dbPath + ')'}`);
+      resolveVoiceIceConfig(config, 'startup-diagnostic')
+        .then((result) => console.log(`[VOICE] Cloudflare TURN ist ${result.turnConfigured ? 'bereit' : 'nicht vollständig konfiguriert'}`))
+        .catch((err) => console.error('[VOICE] TURN-Diagnose fehlgeschlagen:', err.message));
     })
     .catch((err) => {
       console.error('❌ Start fehlgeschlagen:', err.message);

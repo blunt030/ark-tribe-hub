@@ -38,8 +38,9 @@ der vorhandene Brevo-HTTPS-Versand, wenn `BREVO_API_KEY` gesetzt ist.
 | `BetaTribe Member` | BetaTribe (Test-Tribe) | member | *(nur lokal, siehe unten)* |
 
 Bei einer Anmeldung mit Benutzername gehört das Tribe-Kürzel (z. B. `oao`) in
-das separate Feld. Eine eindeutige E-Mail-Adresse funktioniert auch ohne Kürzel;
-das lokale Developer-Konto meldet sich deshalb als `blunt@ark-tribe-hub.dev` an.
+das separate Feld. Eine eindeutige E-Mail-Adresse funktioniert auch ohne Kürzel.
+Das plattformweite Developer-Konto meldet sich als `Blunt` an und lässt das
+Tribe-Feld leer.
 
 „BetaTribe" ist ein zweiter, rein synthetischer Test-Tribe – ausschließlich dazu da,
 um die Mandantentrennung nachzuprüfen (mit `BetaTribe Admin` einloggen und

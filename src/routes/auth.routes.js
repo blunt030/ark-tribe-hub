@@ -55,9 +55,6 @@ export function buildAuthRouter(db, { authRateLimit }) {
     const tribeSlug = body.tribeSlug == null || body.tribeSlug === ''
       ? null
       : requireString(body.tribeSlug, 'tribeSlug', { max: 50 }).toLowerCase();
-    if (!identifier.includes('@') && !tribeSlug) {
-      throw badRequest('Für die Anmeldung mit Benutzername fehlt das Tribe-Kürzel');
-    }
     if (typeof body.password !== 'string' || !body.password) throw badRequest('Passwort fehlt');
 
     const ip = req.socket?.remoteAddress || 'unknown';

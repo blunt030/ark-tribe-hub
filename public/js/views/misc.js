@@ -274,6 +274,15 @@ export async function renderProfile(mount, ctx) {
     el('div.field', {}, el('label', { for: 'p-email', text: t('profile.email') }), emailInput),
     emailSaveBtn
   );
+  const prefPanel = panel(
+    el('p', { style: 'color:var(--muted);font-size:.86rem;margin:0 0 12px', text: t('notif.settings_hint') }),
+    el('div.chips', { style: 'margin-bottom:12px' },
+      el('button.btn.sm', { text: t('notif.enable_all'), onclick: () => setAll(true) }),
+      el('button.btn.sm', { text: t('notif.disable_all'), onclick: () => setAll(false) })
+    ),
+    prefList,
+    el('div', { style: 'margin-top:14px' }, prefSaveBtn)
+  );
 
   // Sicherheitszeile: wird nach einem E-Mail-Wechsel direkt aktualisiert.
   const secState = el('span.sec-state');
@@ -370,13 +379,15 @@ export async function renderProfile(mount, ctx) {
     // Benachrichtigungen (aufklappbar)
     el('div.acc', { style: 'margin-top:16px' }, notifGruppe),
 
-    // Konto
-    el('div.section-title', {}, '⚙️ ' + t('profile.account')),
+    // Einstellungen: alle Optionen bleiben kompakt, bis der Nutzer sie braucht.
+    el('div.section-title', {}, '⚙️ ' + t('profile.settings')),
     el('div.card', {},
       linkRow(t('pw.title'), pwPanel, '🔑'),
       pwPanel,
       linkRow(t('profile.email_change'), emailPanel, '✉️'),
-      emailPanel
+      emailPanel,
+      linkRow(t('notif.settings'), prefPanel, '🔔'),
+      prefPanel
     ),
 
     // Sicherheit
@@ -408,19 +419,6 @@ export async function renderProfile(mount, ctx) {
           )
         )
       )
-    ),
-
-    // Benachrichtigungseinstellungen (bleiben bewusst offen sichtbar - sie
-    // gehoeren zu den Einstellungen, nicht zum Posteingang oben)
-    el('div.card', { style: 'margin-top:14px' },
-      el('div', { style: 'font-weight:600;margin-bottom:4px', text: '🔔 ' + t('notif.settings') }),
-      el('p', { style: 'color:var(--muted);font-size:.86rem;margin:0 0 12px', text: t('notif.settings_hint') }),
-      el('div.chips', { style: 'margin-bottom:12px' },
-        el('button.btn.sm', { text: t('notif.enable_all'), onclick: () => setAll(true) }),
-        el('button.btn.sm', { text: t('notif.disable_all'), onclick: () => setAll(false) })
-      ),
-      prefList,
-      el('div', { style: 'margin-top:14px' }, prefSaveBtn)
     ),
 
     adminLinks(user, go)

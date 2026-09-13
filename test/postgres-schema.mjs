@@ -16,9 +16,10 @@ test('PostgreSQL engine: additive schema migration, CRUD, constraints and retent
   const requiredColumns = await db.query(
     `SELECT table_name,column_name FROM information_schema.columns
      WHERE (table_name='users' AND column_name='personal_pin_encrypted')
-        OR (table_name='game_servers' AND column_name IN ('map_image_path','map_image_data','map_image_mime'))`
+        OR (table_name='game_servers' AND column_name IN ('map_image_path','map_image_data','map_image_mime'))
+        OR (table_name='voice_participants' AND column_name='last_seen_at')`
   );
-  assert.equal(requiredColumns.rows.length,4);
+  assert.equal(requiredColumns.rows.length,5);
   for (const table of ['task_partners','voice_signals']) {
     assert.equal((await db.query('SELECT to_regclass($1) AS name',[table])).rows[0].name,table);
   }

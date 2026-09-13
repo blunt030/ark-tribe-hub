@@ -346,6 +346,7 @@ CREATE TABLE IF NOT EXISTS voice_participants (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   is_muted INTEGER NOT NULL DEFAULT 0,
   joined_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+  last_seen_at TEXT NOT NULL DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
   UNIQUE(channel_id, user_id)
 );
 

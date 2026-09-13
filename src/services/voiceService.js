@@ -9,6 +9,15 @@ async function scopedChannel(db, id, tribeId) {
 
 /** Kanaele, die jeder Tribe standardmaessig bekommt (Punkt 26). */
 export const STANDARD_KANAELE = ['Meeting', 'VC1', 'VC2', 'VC3', 'AFK'];
+const PRESENCE_TIMEOUT_MS = 45_000;
+
+/** Entfernt Teilnehmer, deren Browser nicht mehr pollt (Tab geschlossen,
+ *  Netzwechsel, App im Hintergrund). Sonst bleiben sie dauerhaft im Raum und
+ *  andere Browser versuchen erfolglos, Audio zu einem Geisterteilnehmer aufzubauen. */
+export async function cleanupStaleParticipants(db) {
+  const cutoff = new Date(Date.now() - PRESENCE_TIMEOUT_MS).toISOString();
+  await db.run('DELETE FROM voice_participants WHERE last_seen_at IS NULL OR last_seen_at < ?', [cutoff]);
+}
 
 /**
  * Legt die Standardkanaele an, sobald ein Tribe zum ersten Mal den Voice-Bereich
@@ -28,6 +37,7 @@ async function standardkanaeleSicherstellen(db, tribeId) {
 
 export async function listChannels(db, tribeId) {
   await standardkanaeleSicherstellen(db, tribeId);
+  await cleanupStaleParticipants(db);
   // Standardkanaele in fester Reihenfolge zuerst, eigene danach alphabetisch.
   const channels = await db.all('SELECT * FROM voice_channels WHERE tribe_id = ? ORDER BY name', [tribeId]);
   channels.sort((a, b) => {
@@ -77,12 +87,13 @@ export async function deleteChannel(db, id, tribeId, actorId) {
  *  man es aus echten Voice-Chat-Programmen kennt. */
 export async function joinChannel(db, channelId, tribeId, userId) {
   await scopedChannel(db, channelId, tribeId);
+  const now = new Date().toISOString();
   return db.transaction(async (tx) => {
     await tx.run('DELETE FROM voice_signals WHERE tribe_id = ? AND (sender_id = ? OR recipient_id = ?)', [tribeId, userId, userId]);
     await tx.run('DELETE FROM voice_participants WHERE tribe_id = ? AND user_id = ?', [tribeId, userId]);
     await tx.run(
-      'INSERT INTO voice_participants (channel_id, tribe_id, user_id, is_muted) VALUES (?,?,?,0)',
-      [channelId, tribeId, userId]
+      'INSERT INTO voice_participants (channel_id, tribe_id, user_id, is_muted, last_seen_at) VALUES (?,?,?,0,?)',
+      [channelId, tribeId, userId, now]
     );
   });
 }
@@ -138,6 +149,10 @@ export async function sendSignal(db, channelId, tribeId, senderId, body) {
 
 export async function listSignals(db, channelId, tribeId, userId, afterId = 0) {
   await scopedChannel(db, channelId, tribeId);
+  await db.run(
+    'UPDATE voice_participants SET last_seen_at = ? WHERE channel_id = ? AND tribe_id = ? AND user_id = ?',
+    [new Date().toISOString(), channelId, tribeId, userId]
+  );
   await participantPruefen(db, channelId, tribeId, userId);
   await cleanupExpiredSignals(db);
   const rows = await db.all(

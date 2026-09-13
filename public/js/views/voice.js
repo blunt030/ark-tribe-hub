@@ -20,10 +20,42 @@ export async function renderVoice(mount, ctx) {
   let credentialRefreshTimer = null;
   let refreshingIce = false;
   let shuttingDown = false;
+  let audioContext = null;
   const peers = new Map();
   const audioStage = el('div.voice-audio-stage', { 'aria-live': 'polite' });
   const listBox = el('div.voice-channel-list');
   const connectionState = el('p.voice-state.hint', { role: 'status', text: t('voice.ready') });
+  const networkBadge = el('span.badge.voice-network');
+  const audioUnlockButton = el('button.btn.sm.primary', {
+    type: 'button', text: t('voice.enable_audio'), hidden: true,
+    onclick: () => unlockRemoteAudio(),
+  });
+
+  function updateNetworkBadge() {
+    networkBadge.className = 'badge voice-network ' + (rtcConfig.turnConfigured ? 'b-ready' : 'b-high');
+    networkBadge.textContent = rtcConfig.turnConfigured ? t('voice.turn_ready') : t('voice.direct_only');
+  }
+
+  async function prepareAudioPlayback() {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    try {
+      audioContext ||= new AudioContext();
+      if (audioContext.state === 'suspended') await audioContext.resume();
+    } catch { /* Der sichtbare Freigabe-Knopf bleibt als Fallback. */ }
+  }
+
+  async function unlockRemoteAudio() {
+    await prepareAudioPlayback();
+    let blocked = false;
+    for (const { audio } of peers.values()) {
+      audio.muted = false;
+      audio.volume = 1;
+      try { await audio.play(); } catch { blocked = true; }
+    }
+    audioUnlockButton.hidden = !blocked;
+    connectionState.textContent = blocked ? t('voice.tap_to_hear') : t('voice.audio_enabled');
+  }
 
   const channelForMe = () => channels.find((channel) =>
     channel.participants.some((participant) => Number(participant.user_id) === Number(user.id))
@@ -37,15 +69,20 @@ export async function renderVoice(mount, ctx) {
     entry.pc.ontrack = null;
     entry.pc.onicecandidate = null;
     entry.pc.onconnectionstatechange = null;
+    entry.pc.oniceconnectionstatechange = null;
     entry.pc.close();
     entry.audio.remove();
   }
 
   async function signal(recipientId, type, payload) {
-    if (!activeChannelId) return;
-    try { await api.sendVoiceSignal(activeChannelId, recipientId, type, payload); }
+    if (!activeChannelId) return false;
+    try {
+      await api.sendVoiceSignal(activeChannelId, recipientId, type, payload);
+      return true;
+    }
     catch (err) {
-      if (![400, 404].includes(err.status)) connectionState.textContent = err.message;
+      connectionState.textContent = err.message || t('voice.signal_failed');
+      return false;
     }
   }
 
@@ -56,13 +93,18 @@ export async function renderVoice(mount, ctx) {
     for (const track of localStream?.getTracks() || []) pc.addTrack(track, localStream);
 
     const audio = el('audio', { autoplay: true, playsinline: true, dataset: { peerId: String(peerId) } });
+    audio.muted = false;
+    audio.volume = 1;
     audioStage.append(audio);
     const entry = { pc, audio, offered: false, pendingIce: [] };
     peers.set(peerId, entry);
 
     pc.ontrack = (event) => {
       audio.srcObject = event.streams[0] || new MediaStream([event.track]);
-      audio.play().catch(() => { connectionState.textContent = t('voice.tap_to_hear'); });
+      audio.play().then(() => { audioUnlockButton.hidden = true; }).catch(() => {
+        audioUnlockButton.hidden = false;
+        connectionState.textContent = t('voice.tap_to_hear');
+      });
     };
     pc.onicecandidate = (event) => {
       if (event.candidate) signal(peerId, 'ice', event.candidate.toJSON());
@@ -75,6 +117,9 @@ export async function renderVoice(mount, ctx) {
       }
       if (pc.connectionState === 'closed') stopPeer(peerId);
     };
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'failed' && Number(user.id) < peerId) refreshRtcCredentials(true);
+    };
     return entry;
   }
 
@@ -84,7 +129,7 @@ export async function renderVoice(mount, ctx) {
     entry.offered = true;
     const offer = await entry.pc.createOffer();
     await entry.pc.setLocalDescription(offer);
-    await signal(peerId, 'offer', entry.pc.localDescription.toJSON());
+    if (!await signal(peerId, 'offer', entry.pc.localDescription.toJSON())) entry.offered = false;
   }
 
   async function restartPeer(peerId) {
@@ -111,6 +156,7 @@ export async function renderVoice(mount, ctx) {
     refreshingIce = true;
     try {
       rtcConfig = await api.voiceConfig();
+      updateNetworkBadge();
       for (const entry of peers.values()) {
         entry.pc.setConfiguration({ ...entry.pc.getConfiguration(), iceServers: rtcConfig.iceServers || [] });
       }
@@ -140,6 +186,7 @@ export async function renderVoice(mount, ctx) {
       ensurePeer(peerId);
       if (Number(user.id) < peerId) await makeOffer(peerId);
     }
+    if (current.size === 0) connectionState.textContent = t('voice.waiting');
   }
 
   async function handleSignal(message) {
@@ -195,7 +242,9 @@ export async function renderVoice(mount, ctx) {
     connectionState.textContent = t('voice.mic_request');
     try {
       if (activeChannelId) await stopLocal(true);
+      await prepareAudioPlayback();
       rtcConfig = await api.voiceConfig().catch(() => rtcConfig);
+      updateNetworkBadge();
       localStream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: false,
@@ -233,6 +282,9 @@ export async function renderVoice(mount, ctx) {
     for (const id of otherIds) stopPeer(id);
     localStream?.getTracks().forEach((track) => track.stop());
     localStream = null;
+    if (audioContext && audioContext.state !== 'closed') await audioContext.close().catch(() => {});
+    audioContext = null;
+    audioUnlockButton.hidden = true;
     activeChannelId = null;
     lastSignalId = 0;
     shuttingDown = false;
@@ -303,11 +355,12 @@ export async function renderVoice(mount, ctx) {
   mount.replaceChildren(...[
     el('div.page-head', {}, el('div', {}, el('h1', { text: t('voice.title') }), el('p', { text: t('voice.audio_sub') }))),
     !rtcConfig.turnConfigured ? el('div.notice.note', { text: t('voice.turn_hint') }) : null,
-    connectionState,
+    el('div.voice-status-row', {}, connectionState, networkBadge, audioUnlockButton),
     el('div.card.voice-create', {}, newChannelInput, createButton),
     listBox,
     audioStage
   ].filter(Boolean));
+  updateNetworkBadge();
   draw();
 
   const lifecycle = setInterval(() => {

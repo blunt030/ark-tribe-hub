@@ -139,19 +139,37 @@ export async function login(db, { tribeSlug, identifier, password, ip, userAgent
 
   // Tribe-Name mitladen, damit die Kopfzeile ihn direkt nach dem Anmelden zeigt
   // (ohne JOIN kaeme hier null und der Name erschiene erst nach einem Neuladen).
-  const user = normalized.includes('@')
-    ? await db.get(
+  let user;
+  if (normalized.includes('@')) {
+    user = await db.get(
         `SELECT u.*, t.name AS tribe_name FROM users u
          LEFT JOIN tribes t ON t.id = u.tribe_id
          WHERE lower(u.email) = ?`,
         [normalized]
-      )
-    : await db.get(
+      );
+  } else if (normalizedTribe) {
+    user = await db.get(
         `SELECT u.*, t.name AS tribe_name FROM users u
          JOIN tribes t ON t.id = u.tribe_id
          WHERE lower(t.slug) = ? AND lower(u.username) = ? AND t.is_active = 1`,
         [normalizedTribe, normalized]
       );
+  } else {
+    // Plattform-Developer gehören absichtlich keinem Tribe an. Sie können sich
+    // deshalb mit ihrem eindeutigen globalen Benutzernamen und leerem Tribe-Feld
+    // anmelden. Normale Tribe-Namen bleiben ohne Kürzel uneindeutig und liefern
+    // weiterhin nur die generische Fehlermeldung.
+    user = await db.get(
+      `SELECT u.*, NULL AS tribe_name FROM users u
+       WHERE u.tribe_id IS NULL AND lower(u.username) = ?
+         AND EXISTS (
+           SELECT 1 FROM user_roles ur
+           JOIN roles r ON r.id = ur.role_id
+           WHERE ur.user_id = u.id AND r.key = 'developer'
+         )`,
+      [normalized]
+    );
+  }
 
   const ok = user ? await verifyPassword(password, user.password_hash) : false;
 

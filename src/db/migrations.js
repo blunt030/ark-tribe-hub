@@ -21,6 +21,10 @@ const MIGRATIONS = [
     postgresSql: 'ALTER TABLE game_servers ADD COLUMN map_image_data BYTEA',
   },
   { table: 'game_servers', column: 'map_image_mime', sql: 'ALTER TABLE game_servers ADD COLUMN map_image_mime TEXT' },
+  // Bei bestehenden Datenbanken bewusst nullable ergänzen: SQLite erlaubt beim
+  // ALTER TABLE keinen berechneten Zeit-Default. Neue/aktive Teilnehmer setzen
+  // den Wert in voiceService sofort; alte Geistereinträge werden entfernt.
+  { table: 'voice_participants', column: 'last_seen_at', sql: 'ALTER TABLE voice_participants ADD COLUMN last_seen_at TEXT' },
 ];
 
 function isAlreadyExistsError(err) {

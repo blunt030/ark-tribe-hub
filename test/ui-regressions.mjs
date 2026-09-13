@@ -77,11 +77,18 @@ test('Chat, Voice, Tribe-Login und AFK-Abmeldung sind verdrahtet', async () => {
   assert.match(chat, /chat-message.*mine/);
   assert.match(chat, /section\.chat-window/);
   assert.match(dashboard, /card\.dashboard-chat-card/);
+  assert.match(dashboard, /dashboard-chat-composer/);
+  assert.match(dashboard, /sendChatMessage/);
+  assert.match(dashboard, /tone:\s*'urgent'/);
   assert.match(css, /\.chat-window\s*\{[\s\S]*?border:\s*2px/);
+  assert.match(css, /\.tile\.tile-urgent/);
+  assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important;/);
   assert.match(voice, /getUserMedia/);
   assert.match(voice, /RTCPeerConnection/);
   assert.match(voice, /sendVoiceSignal/);
   assert.match(voice, /refreshRtcCredentials/);
+  assert.match(voice, /unlockRemoteAudio/);
+  assert.match(voice, /voice\.turn_ready/);
   assert.match(voiceRoute, /resolveVoiceIceConfig/);
 });
 
@@ -120,6 +127,8 @@ test('Bestellbereiche und Mitteilungen sind visuell klar begrenzt', async () => 
   assert.match(css, /\.order-groups \.acc-group\[data-group="creatures"\]/);
   assert.match(css, /\.order-groups \.acc-group\[data-group="structures"\]/);
   assert.match(notifications, /mount\.classList\.add\('notifications-page'\)/);
+  assert.match(notifications, /const prefPanel = panel/);
+  assert.match(notifications, /linkRow\(t\('notif\.settings'\), prefPanel/);
   assert.match(css, /\.notifications-page \{ max-width: 920px;/);
 });
 

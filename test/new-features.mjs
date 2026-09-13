@@ -47,13 +47,15 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
   const member = client(base);
   const breeder = client(base);
   const outsider = client(base);
+  const developer = client(base);
 
-  await t.test('Benutzername braucht Tribe-Kürzel; E-Mail bleibt eindeutig', async () => {
-    assert.equal((await anonymous.post('/api/auth/login', { identifier: 'OaO Admin', password: 'ChangeMe123!' })).status, 400);
+  await t.test('Tribe-Namen brauchen ein Kürzel; globale Developer nicht', async () => {
+    assert.equal((await anonymous.post('/api/auth/login', { identifier: 'OaO Admin', password: 'ChangeMe123!' })).status, 401);
     assert.equal((await admin.login('OaO Admin', 'oao')).status, 200);
     assert.equal((await member.login('Blunt OaO', 'oao')).status, 200);
     assert.equal((await breeder.login('OaO Breeder', 'oao')).status, 200);
     assert.equal((await outsider.login('BetaTribe Member', 'betatribe')).status, 200);
+    assert.equal((await developer.login('Blunt')).status, 200);
     assert.equal((await client(base).login('admin@oao.dev', null)).status, 200);
   });
 
@@ -127,5 +129,15 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
     assert.equal(received.json.signals[0].payload.sdp, 'test-only');
     assert.equal((await outsider.get(`/api/voice/channels/${channelId}/signals?after=0`)).status, 404);
     assert.equal((await member.delete(`/api/voice/channels/${channelId}`)).status, 403);
+
+    const adminId = (await app.db.get("SELECT id FROM users WHERE username='OaO Admin'")).id;
+    await app.db.run(
+      'UPDATE voice_participants SET last_seen_at = ? WHERE channel_id = ? AND user_id = ?',
+      ['2000-01-01T00:00:00.000Z', channelId, adminId]
+    );
+    const cleaned = await member.get('/api/voice/channels');
+    const remainingIds = cleaned.json.channels.find((entry) => entry.id === channelId).participants.map((entry) => entry.user_id);
+    assert.ok(!remainingIds.includes(adminId));
+    assert.ok(remainingIds.includes(memberId));
   });
 });

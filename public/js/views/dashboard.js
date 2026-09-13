@@ -104,6 +104,7 @@ export async function renderDashboard(mount, ctx) {
             sub: t('dash.orders_n', { n: urgent.length }),
             link: t('dash.show'),
             onclick: () => go('/orders'),
+            tone: 'urgent',
           })
         : null
     )
@@ -130,10 +131,59 @@ export async function renderDashboard(mount, ctx) {
   }
 
   if (hatTribe) {
-    mount.append(el('div.section-title', {}, t('nav.chat') + ' · General'),
-      el('div.card.dashboard-chat-card', {}, ...(chatRes?.messages || []).map((m) => chatMessage(m, user.id)),
-        chatRes && !chatRes.messages.length ? el('p.hint', { text: t('chat.empty') }) : null,
-        el('button.btn', { text: t('dash.show'), onclick: () => go('/chat') })));
+    const previewMessages = [...(chatRes?.messages || [])];
+    const previewLog = el('div.dashboard-chat-log', { role: 'log', 'aria-live': 'polite' });
+    const chatStatus = el('p.hint', { role: 'status' });
+    const chatInput = el('textarea', {
+      id: 'dashboard-chat-body', rows: 2, maxlength: 2000, required: true,
+      placeholder: t('chat.placeholder'),
+    });
+    const chatSend = el('button.btn.sm.primary', { type: 'submit', text: t('chat.send') });
+
+    function drawChatPreview() {
+      previewLog.replaceChildren(
+        ...(previewMessages.length
+          ? previewMessages.slice(-3).map((message) => chatMessage(message, user.id))
+          : [el('p.hint', { text: t('chat.empty') })])
+      );
+    }
+
+    const chatComposer = el('form.dashboard-chat-composer', {
+      onsubmit: async (event) => {
+        event.preventDefault();
+        const body = chatInput.value.trim();
+        if (!body || chatSend.disabled) return;
+        chatSend.disabled = true;
+        chatInput.readOnly = true;
+        try {
+          const { message } = await api.sendChatMessage(body);
+          previewMessages.push(message);
+          chatInput.value = '';
+          chatStatus.textContent = '';
+          drawChatPreview();
+        } catch (err) {
+          chatStatus.textContent = err.message;
+        } finally {
+          chatSend.disabled = false;
+          chatInput.readOnly = false;
+          chatInput.focus();
+        }
+      },
+    },
+      el('label', { for: 'dashboard-chat-body', text: t('chat.message') }),
+      chatInput,
+      el('div.actions', {},
+        el('button.btn.sm', { type: 'button', text: t('dash.show'), onclick: () => go('/chat') }),
+        chatSend
+      ),
+      chatStatus
+    );
+
+    drawChatPreview();
+    mount.append(
+      el('div.section-title', {}, t('nav.chat') + ' · General'),
+      el('div.card.dashboard-chat-card', {}, previewLog, chatComposer)
+    );
   }
 
   // --- Tribe und Server ----------------------------------------------------
@@ -202,8 +252,8 @@ export async function renderDashboard(mount, ctx) {
 
 }
 
-function kachel({ head, value, sub, link, onclick }) {
-  return el('div.tile', {},
+function kachel({ head, value, sub, link, onclick, tone }) {
+  return el('div.tile' + (tone ? '.tile-' + tone : ''), {},
     el('div.t-head', {}, el('span', { text: head })),
     el('div.t-val', { text: String(value) }),
     sub ? el('div.t-sub', { text: sub }) : null,
