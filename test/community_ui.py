@@ -95,7 +95,8 @@ try:
         member.goto(base+'/#/')
         expect(member.locator('.chat-message p').last).to_have_text(text)
         check(True,'Home shows latest chat message')
-        # Verify an actual failing image progresses through bundled image to SVG.
+        # Verify an actual failing upload falls back to the bundled image and a
+        # fully missing image disappears instead of showing a misleading symbol.
         fallback=admin.evaluate('''async () => {
           const {itemBild}=await import('/js/icons.js');
           const a=itemBild({key:'rex',image_path:'items/missing.jpg'});
@@ -104,9 +105,10 @@ try:
           const bundled=a.querySelector('img');
           const loaded=!!bundled?.naturalWidth && bundled.src.endsWith('/assets/rex.png');
           bundled.dispatchEvent(new Event('error'));
-          const svg=!!a.querySelector('svg'); a.remove(); return {loaded,svg};
+          await new Promise(r=>setTimeout(r,20));
+          const removed=!a.isConnected; return {loaded,removed};
         }''')
-        check(fallback['loaded'] and fallback['svg'],'Uploaded image fallback to bundled JPEG, then silhouette')
+        check(fallback['loaded'] and fallback['removed'],'Uploaded image fallback to bundled PNG, then no misleading symbol')
         # Add server via the same authenticated API client used by the app.
         admin.evaluate("async()=>{const {api}=await import('/js/api.js');await api.createServer({name:'AAA UI Server',mapName:'The Island'});}")
         admin.goto(base+'/#/')
