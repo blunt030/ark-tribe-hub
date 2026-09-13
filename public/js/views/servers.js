@@ -1,12 +1,19 @@
 import { el, spinner, emptyState, toast, confirmDialog, fileToBase64 } from '../ui.js';
 import { t } from '../i18n.js';
 import { api } from '../api.js';
+import { STANDARD_MAPS, mitgeliefertesKartenbild } from '../map-images.js';
 
 const CATEGORY_ICON = {
   base: '🏠', turret_base: '⚔️', warroom: '📦', farm: '🌾', resource: '⛏️',
   dino: '🦖', loot: '💎', cave: '🕳️', boss: '👑', other: '📍',
 };
 const CATEGORIES = Object.keys(CATEGORY_ICON);
+
+function serverKartenbild(server) {
+  return server.map_image_path
+    ? '/uploads/' + server.map_image_path
+    : mitgeliefertesKartenbild(server.map_name);
+}
 
 /* ========================================================================== */
 /* Server-Liste                                                              */
@@ -27,8 +34,8 @@ export async function renderServers(mount, ctx) {
       ? el('div.server-map-list', {},
           ...servers.map((s) =>
             el('button.server-map-card', { onclick: () => go('/servers/' + s.id) },
-              s.map_image_path
-                ? el('img', { src: '/uploads/' + s.map_image_path, alt: s.map_name })
+              serverKartenbild(s)
+                ? el('img', { src: serverKartenbild(s), alt: s.map_name })
                 : el('div.server-map-missing', { text: t('srv.map_image_missing') }),
               el('div.server-map-copy', {},
                 el('div', {}, el('div.rt', { text: s.name }), el('div.rs', { text: s.map_name })),
@@ -43,7 +50,9 @@ export async function renderServers(mount, ctx) {
 
 function openServerDialog(existing, onDone) {
   const name = el('input', { type: 'text', value: existing?.name || '', required: true });
-  const mapName = el('input', { type: 'text', value: existing?.map_name || '', required: true, placeholder: t('srv.map_ph') });
+  const mapListId = 'server-map-names';
+  const mapName = el('input', { type: 'text', value: existing?.map_name || '', required: true, placeholder: t('srv.map_ph'), list: mapListId });
+  const mapNames = el('datalist', { id: mapListId }, ...STANDARD_MAPS.map((map) => el('option', { value: map.name })));
   const status = el('select', {}, ...['active', 'inactive'].map((s) => el('option', { value: s, text: t('srv.status.' + s), selected: (existing?.status || 'active') === s })));
   const notes = el('textarea', { value: existing?.notes || '' });
 
@@ -52,7 +61,7 @@ function openServerDialog(existing, onDone) {
     el('div.modal', { role: 'dialog', 'aria-modal': 'true' },
       el('h3', { text: existing ? t('srv.edit') : t('srv.new') }),
       el('div.field', {}, el('label', { text: t('srv.name') }), name),
-      el('div.field', {}, el('label', { text: t('srv.map') }), mapName),
+      el('div.field', {}, el('label', { text: t('srv.map') }), mapName, mapNames),
       el('div.field', {}, el('label', { text: t('srv.status_label') }), status),
       el('div.field', {}, el('label', { text: t('dino.notes') }), notes),
       el('div.modal-actions', {},
@@ -101,7 +110,8 @@ export async function renderServerDetail(mount, ctx, idParam) {
 
   function drawMap() {
     mapBox.replaceChildren();
-    if (!data.map_image_path) {
+    const mapSrc = serverKartenbild(data);
+    if (!mapSrc) {
       mapBox.append(el('div.map-upload-empty', {},
         el('strong', { text: t('srv.map_image_missing') }),
         el('span', { text: t('srv.map_image_hint') })
@@ -117,7 +127,7 @@ export async function renderServerDetail(mount, ctx, idParam) {
         openMarkerDialog({ coord_x, coord_y }, id, reload);
       },
     },
-      el('img', { src: '/uploads/' + data.map_image_path, alt: data.map_name }),
+      el('img', { src: mapSrc, alt: data.map_name }),
       ...data.markers.filter((m) => m.coord_x != null && m.coord_y != null).map((m) =>
         el('button.map-pin' + (m.id === activeMarkerId ? '.active' : ''), {
           style: `left:${m.coord_x}%;top:${m.coord_y}%`,
