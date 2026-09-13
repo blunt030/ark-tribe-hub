@@ -11,8 +11,11 @@ const EXAKTE_BILDER = new Set([
   'managarmr', 'ankylosaurus', 'dimorphodon', 'doedicurus', 'baryonyx',
   'kaprosuchus', 'basilosaurus',
   'spinosaurus', 'triceratops',
-  'rex_saddle', 'argentavis_saddle',
-  'metal_wall', 'vault',
+  'acrocanthosaurus', 'allosaurus', 'carnotaurus', 'pteranodon',
+  'therizinosaurus', 'carcharodontosaurus',
+  'rex_saddle', 'argentavis_saddle', 'acrocanthosaurus_saddle', 'allosaurus_saddle',
+  'triceratops_saddle',
+  'metal_wall', 'stone_foundation', 'vault', 'smithy', 'industrial_forge', 'fabricator',
 ]);
 
 const TYPBILDER = {
