@@ -1,4 +1,3 @@
-
 """Local Chromium UI regression checks. No production accounts or mail required."""
 import os, tempfile, subprocess, socket, shutil
 from pathlib import Path
