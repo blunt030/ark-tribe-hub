@@ -651,7 +651,7 @@ textarea { resize: vertical; min-height: 74px; }
 .server-map-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
 .server-map-card { padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text); text-align: left; cursor: pointer; }
 .server-map-card:hover { border-color: var(--gold-dim); transform: translateY(-1px); }
-.server-map-card > img, .server-map-missing { display: block; width: 100%; aspect-ratio: 16 / 7; object-fit: cover; background: var(--raised); }
+.server-map-card > img, .server-map-missing { display: block; width: 100%; aspect-ratio: 16 / 6; max-height: 360px; object-fit: cover; background: var(--raised); }
 .server-map-missing { display: grid; place-items: center; color: var(--muted); font-size: .9rem; }
 .server-map-copy { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; }
 .map-upload-empty { min-height: 300px; display: grid; place-content: center; gap: 6px; padding: 30px; text-align: center; color: var(--muted); }
@@ -834,7 +834,8 @@ textarea { resize: vertical; min-height: 74px; }
   #toasts { bottom: 78px; right: 12px; left: 12px; max-width: none; }
   .grid.stats { grid-template-columns: repeat(2, 1fr); }
   .page-head { margin-bottom: 16px; }
-  .order-builder { grid-template-columns: 1fr; }
+  .order-builder { grid-template-columns: minmax(0, 1fr); }
+  .order-builder > * { min-width: 0; }
   .order-selection { position: static; order: -1; }
 }
 
@@ -867,9 +868,8 @@ textarea { resize: vertical; min-height: 74px; }
   .brand-ident .bi-role { font-size: .68rem; }
 }
 
-/* ---------- Katalog-Silhouetten (ersetzen die alten Aufzaehlungspunkte) ---- */
+/* ---------- Katalogbilder im Bestellablauf -------------------------------- */
 
-.item-icon { display: block; color: var(--muted); }
 .icon-box {
   display: flex; align-items: center; justify-content: center;
   background: transparent; border-radius: 8px; color: var(--gold);
@@ -877,26 +877,11 @@ textarea { resize: vertical; min-height: 74px; }
 .icon-box .catalog-image {
   display: block;
   width: 100%; height: 100%;
+  padding: 2px;
   object-fit: contain;
   object-position: center;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,.42));
 }
-.icon-box.icon-placeholder {
-  background: var(--raised);
-  border: 1px solid var(--line-soft);
-  padding: 4px;
-}
-.icon-box.icon-placeholder .item-icon { width: 100%; height: 100%; }
-/* Artikelarten farblich unterscheiden, damit man sie in Listen schnell trennt. */
-.ic-egg, .ic-embryo { color: var(--st-prepared); }
-.ic-saddle { color: var(--gold); }
-.ic-structure { color: var(--muted); }
-.ic-water { color: var(--st-prepared); }
-.ic-flying { color: var(--st-available); }
-
-/* Filterknopf mit Symbol + Text nebeneinander. */
-.btn.with-icon { display: inline-flex; align-items: center; gap: 6px; }
-.btn.with-icon .item-icon { color: currentColor; }
 
 /* =========================================================================
    Redesign: aufklappbare Gruppen, Kacheln, Aktivitaeten, Schnellzugriff
@@ -945,10 +930,8 @@ textarea { resize: vertical; min-height: 74px; }
   text-transform: none;
 }
 .acc-head .acc-caret { color: var(--faint); font-size: .8rem; }
-.order-groups .acc-group.open .acc-head,
-.order-groups .acc-group.open .acc-head .item-icon { color: var(--group-accent); }
+.order-groups .acc-group.open .acc-head { color: var(--group-accent); }
 .acc-group.open:not([data-group]) .acc-head { color: var(--gold); }
-.acc-group.open:not([data-group]) .acc-head .item-icon { color: var(--gold); }
 
 .acc-body { display: none; }
 .acc-group.open .acc-body {
@@ -964,7 +947,6 @@ textarea { resize: vertical; min-height: 74px; }
 }
 .acc-item:hover { background: var(--panel); color: var(--text); }
 .acc-item.on { border-color: var(--gold-dim); color: var(--gold); background: rgba(212, 175, 55, .07); }
-.acc-item.on .item-icon { color: var(--gold); }
 
 /* ---------- Kacheln (Startseite, Profiluebersicht) ------------------------ */
 

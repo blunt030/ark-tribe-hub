@@ -7,10 +7,12 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { startServer } from '../src/server.js';
+import { MAX_BODY_BYTES } from '../src/lib/http.js';
+import { MAX_IMAGE_BYTES } from '../src/lib/imageUpload.js';
 
 function makeClient(base) {
   let cookie = null;
@@ -112,8 +114,12 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
 
     const rex = r.json.items.find((i) => i.key === 'rex');
     rexId = rex.id;
-    rexEggId = r.json.items.find((i) => i.key === 'rex_egg').id;
-    rexSaddleId = r.json.items.find((i) => i.key === 'rex_saddle').id;
+    const rexEgg = r.json.items.find((i) => i.key === 'rex_egg');
+    const rexSaddle = r.json.items.find((i) => i.key === 'rex_saddle');
+    rexEggId = rexEgg.id;
+    rexSaddleId = rexSaddle.id;
+    assert.equal(rexEgg.name, 'Rex-Ei');
+    assert.equal(rexSaddle.name, 'Rex-Sattel');
 
     // Stichprobe der Korrektur: Yutyrannus legt ein Ei (kein Embryo) und hat einen Sattel.
     const yuty = r.json.items.filter((i) => i.key.startsWith('yutyrannus'));
@@ -388,6 +394,41 @@ test('ARK Tribe Hub – Backend End-to-End- und Security-Suite', async (t) => {
     const fakeImage = Buffer.from('das ist definitiv kein PNG').toString('base64');
     const r = await oaoMember.post('/api/users/me/avatar', { imageBase64: fakeImage, mimeType: 'image/png' });
     assert.equal(r.status, 400);
+  });
+
+  await t.test('29a. Bild-Upload: Body-Grenze berücksichtigt den Base64-Aufschlag vollständig', () => {
+    const groessterBase64Body = Math.ceil((MAX_IMAGE_BYTES * 4) / 3);
+    assert.ok(MAX_BODY_BYTES > groessterBase64Body, '3-MiB-Bild passt nicht als Base64-JSON durch den Body-Parser');
+  });
+
+  await t.test('29b. Avatarbilder sind auf den eigenen Tribe beschränkt (IDOR-Schutz)', async () => {
+    const png = readFileSync(path.resolve('public/assets/rex.png'));
+    const upload = await oaoMember.post('/api/users/me/avatar', {
+      imageBase64: png.toString('base64'),
+      mimeType: 'image/png',
+    });
+    assert.equal(upload.status, 200);
+    const url = `/uploads/${upload.json.avatarPath}`;
+    assert.equal((await oaoAdmin.get(url)).status, 200, 'Mitglied desselben Tribes muss den Avatar sehen können');
+    assert.equal((await xyzMember.get(url)).status, 404, 'Fremder Tribe darf den Avatar nicht abrufen');
+    assert.equal((await dev.get(url)).status, 200, 'Developer darf für Supportzwecke tribeübergreifend zugreifen');
+  });
+
+  await t.test('29c. Logout erfordert wie jede schreibende Aktion ein gültiges CSRF-Token', async () => {
+    const logoutClient = makeClient(base);
+    assert.equal((await logoutClient.login('OaO Breeder', 'ChangeMe123!')).status, 200);
+    assert.equal((await logoutClient.post('/api/auth/logout', undefined, { noCsrf: true })).status, 403);
+    assert.equal((await logoutClient.get('/api/auth/me')).status, 200, 'Fehlgeschlagener Logout darf die Session nicht löschen');
+    assert.equal((await logoutClient.post('/api/auth/logout')).status, 200);
+    assert.equal((await logoutClient.get('/api/auth/me')).status, 401);
+  });
+
+  await t.test('29d. Browser-Schutzheader sperren unnötige Geräte- und Plugin-Zugriffe', async () => {
+    const response = await fetch(`${base}/`);
+    assert.match(response.headers.get('permissions-policy') || '', /camera=\(\)/);
+    assert.match(response.headers.get('permissions-policy') || '', /microphone=\(self\)/);
+    assert.equal(response.headers.get('x-permitted-cross-domain-policies'), 'none');
+    assert.equal(response.headers.get('x-frame-options'), 'DENY');
   });
 
   await t.test('30. Server/Map sind für normale Mitglieder unsichtbar, für Admin/Breeder sichtbar', async () => {

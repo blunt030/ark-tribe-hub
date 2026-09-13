@@ -97,10 +97,12 @@ test('Community APIs: permissions, isolation, persistence and rate limits', asyn
   });
   await t.test('Bundled images are real PNG responses',async()=>{
     const source=readFileSync(new URL('../public/js/icons.js',import.meta.url),'utf8');
-    const keys=[...source.match(/const MITGELIEFERT = new Set\(\[([\s\S]*?)\]/)[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
+    const exact=[...source.match(/const EXAKTE_BILDER = new Set\(\[([\s\S]*?)\]/)[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
+    const keys=[...exact,'egg','embryo'];
     for(const key of keys) {
       const res=await fetch(base()+'/assets/'+key+'.png'); assert.equal(res.headers.get('content-type'),'image/png');
       const bytes=new Uint8Array(await res.arrayBuffer()); assert.equal(bytes[0],137); assert.equal(bytes[1],80);
+      assert.equal(bytes[25],6,`${key}.png muss einen echten Alpha-Kanal besitzen`);
     }
   });
 });

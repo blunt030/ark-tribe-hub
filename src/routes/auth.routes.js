@@ -2,7 +2,7 @@ import { Router } from '../lib/router.js';
 import { readJsonBody, sendJson, serializeCookie, clearCookie, badRequest } from '../lib/http.js';
 import { requireString, requirePassword, requireEmail } from '../lib/validate.js';
 import { register, login, logout, csrfTokenFor, verifyEmail } from '../services/authService.js';
-import { requireAuth, SESSION_COOKIE } from '../middleware/auth.js';
+import { requireAuth, requireCsrf, SESSION_COOKIE } from '../middleware/auth.js';
 import { config } from '../config.js';
 
 function publicUser(user) {
@@ -71,7 +71,7 @@ export function buildAuthRouter(db, { authRateLimit }) {
     });
   });
 
-  router.post('/api/auth/logout', requireAuth, async (req, res) => {
+  router.post('/api/auth/logout', requireAuth, requireCsrf, async (req, res) => {
     await logout(db, req.session.id);
     res.setHeader('Set-Cookie', clearCookie(SESSION_COOKIE, { secure: config.isProduction }));
     sendJson(res, 200, { ok: true });

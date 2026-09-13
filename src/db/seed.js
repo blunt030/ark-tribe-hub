@@ -90,14 +90,24 @@ function loadCreatureCatalog() {
   const items = [];
   for (const [key, name, categoryCode, reproduction, hasSaddle] of raw.creatures) {
     const category = CATEGORY_CODE_MAP[categoryCode];
-    items.push({ key, category, type: 'creature', name });
+    const sameName = { de: name, en: name, fr: name, es: name };
+    items.push({ key, category, type: 'creature', name: sameName });
     if (reproduction === 'egg') {
-      items.push({ key: `${key}_egg`, category, type: 'egg', name: `${name} Egg` });
+      items.push({
+        key: `${key}_egg`, category, type: 'egg', legacyName: `${name} Egg`,
+        name: { de: `${name}-Ei`, en: `${name} Egg`, fr: `Œuf de ${name}`, es: `Huevo de ${name}` },
+      });
     } else if (reproduction === 'embryo') {
-      items.push({ key: `${key}_embryo`, category, type: 'embryo', name: `${name} Embryo` });
+      items.push({
+        key: `${key}_embryo`, category, type: 'embryo', legacyName: `${name} Embryo`,
+        name: { de: `${name}-Embryo`, en: `${name} Embryo`, fr: `Embryon de ${name}`, es: `Embrión de ${name}` },
+      });
     }
     if (hasSaddle) {
-      items.push({ key: `${key}_saddle`, category, type: 'saddle', name: `${name} Saddle` });
+      items.push({
+        key: `${key}_saddle`, category, type: 'saddle', legacyName: `${name} Saddle`,
+        name: { de: `${name}-Sattel`, en: `${name} Saddle`, fr: `Selle de ${name}`, es: `Montura de ${name}` },
+      });
     }
   }
   return items;
@@ -164,10 +174,9 @@ export async function seed(db) {
       }
     }
     // Vollständiger Kreaturenkatalog aus data/catalog/creatures.json (~217 Kreaturen
-    // -> ~380+ Katalog-Items inkl. Eier/Embryos/Sättel). DE/EN werden mit dem
-    // recherchierten Namen befüllt (bei ARK meist ohnehin identisch/Eigenname);
-    // FR/ES fallen über COALESCE in der Order-Abfrage sauber auf DE zurück, bis
-    // sie im Adminbereich gezielt ergänzt werden.
+    // -> ~380+ Katalog-Items inkl. Eier/Embryos/Sättel). Kreaturennamen bleiben
+    // Eigennamen; Ei/Embryo/Sattel erhalten in allen vier Sprachen eine passende
+    // Bezeichnung.
     const catalogItems = loadCreatureCatalog();
     const categoryIdCache = new Map();
     for (const item of catalogItems) {
@@ -178,8 +187,16 @@ export async function seed(db) {
       const catId = categoryIdCache.get(item.category);
       await tx.run('INSERT INTO items (category_id, product_type, key) VALUES (?,?,?) ON CONFLICT(key) DO NOTHING', [catId, item.type, item.key]);
       const itemRow = await tx.get('SELECT id FROM items WHERE key = ?', [item.key]);
-      await tx.run('INSERT INTO item_translations (item_id, lang, name) VALUES (?,?,?) ON CONFLICT(item_id, lang) DO NOTHING', [itemRow.id, 'de', item.name]);
-      await tx.run('INSERT INTO item_translations (item_id, lang, name) VALUES (?,?,?) ON CONFLICT(item_id, lang) DO NOTHING', [itemRow.id, 'en', item.name]);
+      for (const lang of config.supportedLangs) {
+        const translated = item.name[lang] || item.name.en;
+        await tx.run('INSERT INTO item_translations (item_id, lang, name) VALUES (?,?,?) ON CONFLICT(item_id, lang) DO NOTHING', [itemRow.id, lang, translated]);
+        // Ältere Datenbanken enthalten für alle Sprachen noch die englische,
+        // automatisch erzeugte Bezeichnung. Nur genau diesen Altwert ersetzen;
+        // individuelle Änderungen aus dem Developer-Bereich bleiben unangetastet.
+        if (item.legacyName && translated !== item.legacyName) {
+          await tx.run('UPDATE item_translations SET name = ? WHERE item_id = ? AND lang = ? AND name = ?', [translated, itemRow.id, lang, item.legacyName]);
+        }
+      }
     }
 
     // Strukturen: eigene, recherchierte Liste (data/catalog/structures.json) - eigene

@@ -11,9 +11,12 @@ export const unauthorized = (msg = 'Nicht angemeldet') => new ApiError(401, 'UNA
 export const forbidden = (msg = 'Keine Berechtigung für diese Aktion') => new ApiError(403, 'FORBIDDEN', msg);
 export const notFound = (msg = 'Nicht gefunden') => new ApiError(404, 'NOT_FOUND', msg);
 export const conflict = (msg = 'Konflikt') => new ApiError(409, 'CONFLICT', msg);
+export const payloadTooLarge = (msg = 'Anfrage zu groß') => new ApiError(413, 'PAYLOAD_TOO_LARGE', msg);
 export const tooMany = (msg = 'Zu viele Anfragen, bitte später erneut versuchen') => new ApiError(429, 'RATE_LIMITED', msg);
 
-const MAX_BODY_BYTES = 2_000_000; // 2 MB (reicht für JSON inkl. Base64-Avatarbilder in Item-Größe)
+// Bild-Uploads dürfen nach der Dekodierung bis zu 3 MiB groß sein. Base64 wächst
+// um ungefähr ein Drittel; etwas Reserve deckt JSON-Felder und Data-URL-Präfix ab.
+export const MAX_BODY_BYTES = Math.ceil((3 * 1024 * 1024 * 4) / 3) + 32 * 1024;
 
 export function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -22,7 +25,7 @@ export function readJsonBody(req) {
     req.on('data', (chunk) => {
       size += chunk.length;
       if (size > MAX_BODY_BYTES) {
-        reject(badRequest('Anfrage zu groß', 'PAYLOAD_TOO_LARGE'));
+        reject(payloadTooLarge('Anfrage zu groß (max. 3 MB Bilddaten)'));
         req.destroy();
         return;
       }

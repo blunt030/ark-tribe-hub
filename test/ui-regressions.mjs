@@ -17,6 +17,7 @@ test('Katalogbilder bleiben auf den Bestellablauf begrenzt', async () => {
   assert.doesNotMatch(inventory, /itemIcon|itemBild|iconFuerItem/);
   assert.doesNotMatch(catalog, /itemIcon|itemBild|iconFuerItem/);
   assert.match(orders, /showImages: true/);
+  assert.doesNotMatch(orders, /itemIcon/);
   assert.match(ui, /showImages \? itemBild\(it, 36\)/);
 });
 
@@ -40,6 +41,12 @@ test('Bestellmenü und Menge folgen dem vereinfachten Ablauf', async () => {
   assert.match(orders, /selected\s*\?\s*qtyControl\(selected\.quantity/);
   assert.match(i18n, /"order\.sub\.eggs": "Eier"/);
   assert.match(i18n, /"order\.sub\.embryos": "Embryos"/);
+});
+
+test('die mobile Bestellung bleibt innerhalb des Viewports', async () => {
+  const css = await read('public/css/app.css');
+  assert.match(css, /@media \(max-width: 899px\)[\s\S]*?\.order-builder\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(css, /\.order-builder\s*>\s*\*\s*\{\s*min-width:\s*0/);
 });
 
 test('Startseite und Navigation enthalten weder Schnellzugriff noch Bestand', async () => {
@@ -95,6 +102,7 @@ test('vorhandene Katalogbilder sind transparente PNGs und werden nicht beschnitt
     read('public/css/app.css'),
   ]);
   assert.match(icons, /return `\/assets\/\$\{key\}\.png`/);
+  assert.doesNotMatch(icons, /createElementNS|<svg|innerHTML/);
   assert.doesNotMatch(icons, /object-fit:cover/);
   assert.match(css, /\.catalog-image[\s\S]*?object-fit: contain;[\s\S]*?object-position: center;/);
   assert.match(css, /\.icon-box\s*\{[\s\S]*?background: transparent;/);
