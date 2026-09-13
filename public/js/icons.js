@@ -13,21 +13,31 @@ const EXAKTE_BILDER = new Set([
   'spinosaurus', 'triceratops',
   'acrocanthosaurus', 'allosaurus', 'carnotaurus', 'pteranodon',
   'therizinosaurus', 'carcharodontosaurus',
+  'daeodon', 'yutyrannus', 'megatherium', 'quetzal',
   'rex_saddle', 'argentavis_saddle', 'acrocanthosaurus_saddle', 'allosaurus_saddle',
-  'triceratops_saddle',
+  'triceratops_saddle', 'ankylosaurus_saddle', 'baryonyx_saddle',
+  'brontosaurus_saddle', 'carcharodontosaurus_saddle',
   'metal_wall', 'stone_foundation', 'vault', 'smithy', 'industrial_forge', 'fabricator',
+  'chemistry_bench', 'refrigerator', 'generator', 'auto_turret',
 ]);
-
-const TYPBILDER = {
-  egg: 'egg',
-  embryo: 'embryo',
-};
 
 export function mitgeliefertesBild(item) {
   const key = String(item.key || '');
   if (EXAKTE_BILDER.has(key)) return `/assets/${key}.png`;
+
+  // Ei und Embryo gehören im Katalog zu einer konkreten Kreatur. Ihre Schlüssel
+  // lauten z. B. "rex_egg" bzw. "direwolf_embryo". In der Bestellung soll daher
+  // das wirklich passende Tier erscheinen und nicht bei allen Einträgen dasselbe
+  // allgemeine Ei-/Embryo-Symbol. Ist das Tierbild noch nicht vorhanden, bleibt
+  // der Bildplatz leer, bis die entsprechende Grafik ergänzt wurde.
   const type = String(item.product_type || item.productType || '');
-  return TYPBILDER[type] ? `/assets/${TYPBILDER[type]}.png` : null;
+  if (type === 'egg' || type === 'embryo') {
+    const suffix = `_${type}`;
+    const creatureKey = key.endsWith(suffix) ? key.slice(0, -suffix.length) : '';
+    if (EXAKTE_BILDER.has(creatureKey)) return `/assets/${creatureKey}.png`;
+  }
+
+  return null;
 }
 
 /**
