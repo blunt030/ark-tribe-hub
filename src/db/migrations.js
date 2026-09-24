@@ -1,3 +1,4 @@
+import { migrateEmailTokens } from '../lib/emailTokens.js';
 /**
  * Migrationen für Spalten, die NACH dem ersten Live-Deploy hinzugekommen sind.
  * "CREATE TABLE IF NOT EXISTS" in schema.sql/schema.postgres.sql greift nur beim
@@ -44,4 +45,5 @@ export async function runMigrations(db) {
       throw err;
     }
   }
+  await migrateEmailTokens(db);
 }

@@ -1,4 +1,5 @@
-import { hashPassword, verifyPassword } from '../lib/password.js';
+import { emailTokenHash } from '../lib/emailTokens.js';
+import { hashPassword, verifyPassword, needsPasswordRehash } from '../lib/password.js';
 import { randomToken, sha256, hmac } from '../lib/tokens.js';
 import { badRequest, unauthorized, conflict } from '../lib/http.js';
 import { config } from '../config.js';
@@ -21,7 +22,7 @@ async function loadFullUser(db, userId) {
   // Tribe-Name gleich mitladen: die Kopfzeile zeigt ihn neben dem Logo an
   // (Punkt 19), sonst waere dafuer bei jedem Seitenaufruf eine Extra-Abfrage nötig.
   const user = await db.get(
-    `SELECT u.*, t.name AS tribe_name FROM users u
+    `SELECT u.*, t.name AS tribe_name, t.is_active AS tribe_active FROM users u
      LEFT JOIN tribes t ON t.id = u.tribe_id
      WHERE u.id = ?`,
     [userId]
@@ -56,7 +57,7 @@ export async function register(db, { tribeSlug, username, email, password }) {
   const result = await db.transaction(async (tx) => {
     const insertResult = await tx.get(
       `INSERT INTO users (tribe_id, username, email, password_hash, status, email_verify_token, email_verify_expires_at) VALUES (?,?,?,?, 'pending_approval', ?, ?) RETURNING *`,
-      [tribe.id, username, email || null, passwordHash, emailVerifyToken, emailVerifyExpires]
+      [tribe.id, username, email || null, passwordHash, emailVerifyToken ? emailTokenHash(emailVerifyToken) : null, emailVerifyExpires]
     );
     const user = insertResult;
 
@@ -128,10 +129,10 @@ async function isLockedOut(db, identifier, ip) {
 
 export async function login(db, { tribeSlug, identifier, password, ip, userAgent }) {
   const normalized = identifier?.trim().toLowerCase();
-  if (!normalized || !password) throw badRequest('Anmeldedaten fehlen');
+  if (!normalized || typeof password !== 'string' || !password || password.length > 200) throw badRequest('Anmeldedaten fehlen');
 
   const normalizedTribe = tribeSlug?.trim().toLowerCase() || null;
-  const attemptKey = `${normalizedTribe || '-'}:${normalized}`;
+  const attemptKey = normalized.includes('@') ? `email:${normalized}` : `${normalizedTribe || '-'}:${normalized}`;
 
   if (await isLockedOut(db, attemptKey, ip)) {
     throw unauthorized('Zu viele fehlgeschlagene Anmeldeversuche. Bitte in 15 Minuten erneut versuchen.');
@@ -142,14 +143,14 @@ export async function login(db, { tribeSlug, identifier, password, ip, userAgent
   let user;
   if (normalized.includes('@')) {
     user = await db.get(
-        `SELECT u.*, t.name AS tribe_name FROM users u
+        `SELECT u.*, t.name AS tribe_name, t.is_active AS tribe_active FROM users u
          LEFT JOIN tribes t ON t.id = u.tribe_id
          WHERE lower(u.email) = ?`,
         [normalized]
       );
   } else if (normalizedTribe) {
     user = await db.get(
-        `SELECT u.*, t.name AS tribe_name FROM users u
+        `SELECT u.*, t.name AS tribe_name, t.is_active AS tribe_active FROM users u
          JOIN tribes t ON t.id = u.tribe_id
          WHERE lower(t.slug) = ? AND lower(u.username) = ? AND t.is_active = 1`,
         [normalizedTribe, normalized]
@@ -171,7 +172,10 @@ export async function login(db, { tribeSlug, identifier, password, ip, userAgent
     );
   }
 
-  const ok = user ? await verifyPassword(password, user.password_hash) : false;
+  // Unknown accounts still perform the same expensive password derivation.
+  const dummyHash = `scrypt-v2:${'0'.repeat(32)}:${'0'.repeat(128)}`;
+  const passwordMatches = await verifyPassword(password, user?.password_hash || dummyHash);
+  const ok = Boolean(user) && passwordMatches;
 
   await db.run('INSERT INTO login_attempts (identifier, ip, success) VALUES (?,?,?)', [attemptKey, ip, ok ? 1 : 0]);
 
@@ -179,8 +183,13 @@ export async function login(db, { tribeSlug, identifier, password, ip, userAgent
     throw unauthorized('Benutzername/E-Mail oder Passwort ist falsch');
   }
 
-  if (user.status === 'disabled' || user.status === 'rejected') {
+  if (user.status === 'disabled' || user.status === 'rejected' || (user.tribe_id && !user.tribe_active)) {
     throw unauthorized('Dieses Konto ist gesperrt. Bitte wende dich an deinen Tribe-Admin.');
+  }
+
+  if (needsPasswordRehash(user.password_hash)) {
+    const upgraded = await hashPassword(password);
+    await db.run('UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ?', [upgraded, user.id, user.password_hash]);
   }
 
   const sessionToken = randomToken(32);
@@ -209,25 +218,23 @@ export async function logout(db, sessionId) {
 
 /** Bestätigt eine E-Mail-Adresse anhand des Tokens aus der Bestätigungsmail. */
 export async function verifyEmail(db, token) {
-  if (!token) return { ok: false, reason: 'missing_token' };
+  if (typeof token !== 'string' || !/^[a-f0-9]{48}$/.test(token)) return { ok: false, reason: 'invalid_token' };
+  const digest = emailTokenHash(token);
   const user = await db.get(
-    'SELECT id, username, email_verified, email_verify_expires_at FROM users WHERE email_verify_token = ?',
-    [token]
+    'SELECT id, username, email_verify_expires_at FROM users WHERE email_verify_token = ?', [digest]
   );
   if (!user) return { ok: false, reason: 'invalid_token' };
-  if (user.email_verified) return { ok: true, username: user.username, alreadyVerified: true };
-
-  // Abgelaufene Links ablehnen. Bestandskonten ohne gesetzte Ablaufzeit (aus der
-  // Zeit vor dieser Migration) bleiben bewusst gueltig, damit niemand ausgesperrt wird.
-  if (user.email_verify_expires_at && new Date(user.email_verify_expires_at) < new Date()) {
-    return { ok: false, reason: 'expired_token' };
+  if (user.email_verify_expires_at) {
+    const expires = Date.parse(user.email_verify_expires_at);
+    if (!Number.isFinite(expires) || expires <= Date.now()) return { ok: false, reason: 'expired_token' };
   }
-
-  // Token nach erfolgreicher Bestaetigung entfernen -> nur einmal verwendbar.
-  await db.run(
-    'UPDATE users SET email_verified = 1, email_verify_token = NULL, email_verify_expires_at = NULL WHERE id = ?',
-    [user.id]
+  // Only the token actually read may be consumed. A concurrent email change or
+  // second click must never confirm another address using an obsolete link.
+  const updated = await db.get(
+    `UPDATE users SET email_verified = 1, email_verify_token = NULL, email_verify_expires_at = NULL
+     WHERE id = ? AND email_verify_token = ? RETURNING id`, [user.id, digest]
   );
+  if (!updated) return { ok: false, reason: 'invalid_token' };
   return { ok: true, username: user.username, alreadyVerified: false };
 }
 
@@ -256,7 +263,10 @@ export async function resolveSession(db, sessionId, rawToken) {
   await db.run('UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?', [nowIso, newExpiry, sessionId]);
 
   const user = await loadFullUser(db, session.user_id);
-  if (!user) return null;
+  if (!user || ['disabled', 'rejected'].includes(user.status) || (user.tribe_id && !user.tribe_active)) {
+    await db.run('DELETE FROM sessions WHERE id = ?', [sessionId]);
+    return null;
+  }
   return { session, user };
 }
 

@@ -36,7 +36,9 @@ export function readJsonBody(req) {
       const raw = Buffer.concat(chunks).toString('utf8').trim();
       if (!raw) return resolve({});
       try {
-        resolve(JSON.parse(raw));
+        const body = JSON.parse(raw);
+        if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Expected object');
+        resolve(body);
       } catch {
         reject(badRequest('Ungültiges JSON im Request-Body'));
       }
@@ -50,6 +52,7 @@ export function sendJson(res, status, body) {
   if (!res.headersSent) {
     res.writeHead(status, {
       'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
       'Content-Length': Buffer.byteLength(payload),
     });
   }
@@ -76,7 +79,9 @@ export function parseCookies(req) {
     if (idx === -1) continue;
     const key = part.slice(0, idx).trim();
     const value = part.slice(idx + 1).trim();
-    if (key) out[key] = decodeURIComponent(value);
+    if (key) {
+      try { out[key] = decodeURIComponent(value); } catch { /* Ignore malformed cookies. */ }
+    }
   }
   return out;
 }

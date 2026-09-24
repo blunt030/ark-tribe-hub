@@ -1,3 +1,4 @@
+import { clientIp } from '../lib/rateLimiter.js';
 import { Router } from '../lib/router.js';
 import { readJsonBody, sendJson, serializeCookie, clearCookie, badRequest } from '../lib/http.js';
 import { requireString, requirePassword, requireEmail } from '../lib/validate.js';
@@ -55,9 +56,9 @@ export function buildAuthRouter(db, { authRateLimit }) {
     const tribeSlug = body.tribeSlug == null || body.tribeSlug === ''
       ? null
       : requireString(body.tribeSlug, 'tribeSlug', { max: 50 }).toLowerCase();
-    if (typeof body.password !== 'string' || !body.password) throw badRequest('Passwort fehlt');
+    if (typeof body.password !== 'string' || !body.password || body.password.length > 200) throw badRequest('Passwort fehlt');
 
-    const ip = req.socket?.remoteAddress || 'unknown';
+    const ip = clientIp(req);
     const userAgent = req.headers['user-agent'] || null;
     const result = await login(db, { tribeSlug, identifier, password: body.password, ip, userAgent });
 

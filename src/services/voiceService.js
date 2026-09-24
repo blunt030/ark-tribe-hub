@@ -1,4 +1,5 @@
 import { badRequest, notFound } from '../lib/http.js';
+import { requireString } from '../lib/validate.js';
 import { audit } from './auditService.js';
 
 async function scopedChannel(db, id, tribeId) {
@@ -62,7 +63,7 @@ export async function listChannels(db, tribeId) {
 }
 
 export async function createChannel(db, tribeId, body, actorId) {
-  const name = body.name?.trim();
+  const name = requireString(body.name, 'name', { max: 80 });
   if (!name) throw badRequest('Kanalname fehlt');
   return db.transaction(async (tx) => {
     const inserted = await tx.get(

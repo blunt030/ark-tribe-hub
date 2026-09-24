@@ -11,6 +11,14 @@ export const LANGS = [
 
 const STRINGS = {
   de: {
+    'dash.available_n': '{n} frei',
+    'dash.command': 'Kommandozentrale',
+    'dash.overview': 'Übersicht',
+    'dash.platform': 'Plattform',
+    'dash.tribe_status': 'Tribe-Status',
+    'dash.current_map': 'Aktuelle Map',
+    'dash.open_voice': 'Voice öffnen',
+    'dash.completed_n': '{n} erledigt',
     /* --- Redesign: Bestellassistent, Profil, Startseite ------------------- */
     'order.what': 'Was möchtest du bestellen?',
     'order.group.creatures': 'Kreaturen', 'order.group.structures': 'Strukturen',
@@ -215,6 +223,14 @@ const STRINGS = {
   },
 
   en: {
+    'dash.available_n': '{n} unclaimed',
+    'dash.command': 'Command center',
+    'dash.overview': 'Overview',
+    'dash.platform': 'Platform',
+    'dash.tribe_status': 'Tribe status',
+    'dash.current_map': 'Current map',
+    'dash.open_voice': 'Open voice',
+    'dash.completed_n': '{n} completed',
     /* --- Redesign: order wizard, profile, home ---------------------------- */
     'order.what': 'What would you like to order?',
     'order.group.creatures': 'Creatures', 'order.group.structures': 'Structures',
@@ -419,6 +435,14 @@ const STRINGS = {
   },
 
   fr: {
+    'dash.available_n': '{n} disponibles',
+    'dash.command': 'Centre de commandement',
+    'dash.overview': 'Aperçu',
+    'dash.platform': 'Plateforme',
+    'dash.tribe_status': 'État de la tribu',
+    'dash.current_map': 'Carte actuelle',
+    'dash.open_voice': 'Ouvrir le vocal',
+    'dash.completed_n': '{n} terminées',
     /* --- Refonte : commande, profil, accueil ------------------------------ */
     'order.what': 'Que souhaites-tu commander ?',
     'order.group.creatures': 'Créatures', 'order.group.structures': 'Structures',
@@ -623,6 +647,14 @@ const STRINGS = {
   },
 
   es: {
+    'dash.available_n': '{n} disponibles',
+    'dash.command': 'Centro de mando',
+    'dash.overview': 'Resumen',
+    'dash.platform': 'Plataforma',
+    'dash.tribe_status': 'Estado de la tribu',
+    'dash.current_map': 'Mapa actual',
+    'dash.open_voice': 'Abrir voz',
+    'dash.completed_n': '{n} completadas',
     /* --- Rediseño: pedido, perfil, inicio --------------------------------- */
     'order.what': '¿Qué quieres pedir?',
     'order.group.creatures': 'Criaturas', 'order.group.structures': 'Estructuras',

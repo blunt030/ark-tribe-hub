@@ -1,262 +1,232 @@
 import { el, spinner, orderCard, emptyState, newsTicker } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 import { api } from '../api.js';
-import { chatMessage } from './community.js';
+import { mitgeliefertesKartenbild } from '../map-images.js';
+import { itemBild } from '../icons.js';
 
-/**
- * Startseite nach dem Entwurf: Begruessung, Kacheln mit den wichtigsten Zahlen
- * (offene Bestellungen, eigene Aufgaben, Ungelesenes), Tribe- und Serverkachel.
- * Darunter weiterhin die
- * rollenabhaengigen Bestelllisten - ein Breeder/Crafter arbeitet genau daraus.
- *
- * Ein Benutzer kann mehrere Rollen gleichzeitig haben (z. B. Admin +
- * Breeder/Crafter) - dann werden die passenden Abschnitte untereinander gezeigt,
- * statt ihn zwischen getrennten Ansichten wechseln zu lassen.
- */
+/** Existing data and routes, presented as a tribe command center. */
 export async function renderDashboard(mount, ctx) {
   const { user, go } = ctx;
   mount.append(spinner());
-
-  const isDev = user.roles.includes('developer');
   const isAdmin = user.roles.includes('admin');
-  const isBreeder = user.roles.includes('breeder_crafter');
-  // Tribe-Inhalte hängen vom tatsächlichen Tribe-Kontext ab, auch bei Developern.
-  const hatTribe = Boolean(user.tribeId);
-
-  const [orders, notifications, members, newsRes, tasksRes, serversRes, tribeRes, chatRes] = await Promise.all([
+  const hasTribe = Boolean(user.tribeId);
+  const [ordersRes, notificationsRes, membersRes, newsRes, tasksRes, serversRes, tribeRes, chatRes, voiceRes] = await Promise.all([
     api.orders().catch(() => ({ orders: [] })),
     api.notifications().catch(() => ({ notifications: [] })),
-    isAdmin && hatTribe ? api.members().catch(() => ({ members: [] })) : Promise.resolve({ members: [] }),
+    isAdmin && hasTribe ? api.members().catch(() => ({ members: [] })) : Promise.resolve({ members: [] }),
     api.news().catch(() => ({ news: [] })),
-    hatTribe ? api.tasks().catch(() => ({ tasks: [] })) : Promise.resolve({ tasks: [] }),
-    hatTribe ? api.servers().catch(() => ({ servers: [] })) : Promise.resolve({ servers: [] }),
-    hatTribe ? api.myTribe().catch(() => null) : Promise.resolve(null),
-    hatTribe ? api.chatMessages({ limit: 3 }).catch(() => null) : Promise.resolve(null),
+    hasTribe ? api.tasks().catch(() => ({ tasks: [] })) : Promise.resolve({ tasks: [] }),
+    hasTribe ? api.servers().catch(() => ({ servers: [] })) : Promise.resolve({ servers: [] }),
+    hasTribe ? api.myTribe().catch(() => null) : Promise.resolve(null),
+    hasTribe ? api.chatMessages({ limit: 3 }).catch(() => null) : Promise.resolve(null),
+    hasTribe ? api.voiceChannels().catch(() => ({ channels: [] })) : Promise.resolve({ channels: [] }),
   ]);
-
-  const all = orders.orders;
-  const unread = notifications.notifications.filter((n) => !n.is_read).length;
-  const pendingMembers = members.members.filter((m) => m.status === 'pending_approval');
-
-  mount.replaceChildren();
-
-  const ticker = newsTicker(newsRes.news);
-  if (ticker) mount.append(ticker);
-
-  const sub = isDev ? 'dash.sub_dev' : isAdmin ? 'dash.sub_admin' : isBreeder ? 'dash.sub_breeder' : 'dash.sub_member';
-
-  // --- Begruessung ---------------------------------------------------------
-  // Der Name bleibt in der h1: sie ist die Ueberschrift der Seite, und genau
-  // daran erkennt man beim Anmelden sofort, mit welchem Konto man drin ist.
-  mount.append(
-    el('div.page-head', {},
-      el('div', {},
-        el('h1', { text: t('dash.welcome_back', { name: user.username }) }),
-        el('p', { text: t(sub) })
-      ),
-      el('button.btn.primary', { text: '+ ' + t('order.new'), onclick: () => go('/orders/new') })
-    )
-  );
-
+  const all = ordersRes.orders || [];
+  const notifications = notificationsRes.notifications || [];
+  const members = membersRes.members || [];
+  const tasks = tasksRes.tasks || [];
+  const servers = serversRes.servers || [];
+  const server = servers.find((s) => s.status === 'active') || servers[0];
+  const serverDetail = server ? await api.server(server.id).catch(() => ({ server })) : null;
+  const markers = serverDetail?.server?.markers || [];
+  const channels = voiceRes.channels || [];
+  const speaking = new Set(channels.flatMap((channel) => (channel.participants || []).map((participant) => participant.user_id)));
+  const fallback = mitgeliefertesKartenbild(server?.map_name);
+  const mapImage = server?.map_image_path ? '/uploads/' + server.map_image_path : fallback;
   const mine = all.filter((o) => o.member_id === user.id);
   const openAll = all.filter((o) => !['completed', 'cancelled'].includes(o.status));
   const unclaimed = openAll.filter((o) => !o.assigned_to);
-  const claimedByMe = all.filter((o) => o.assigned_to === user.id && !['completed', 'cancelled'].includes(o.status));
+  const claimedByMe = openAll.filter((o) => o.assigned_to === user.id);
   const urgent = openAll.filter((o) => o.priority === 'urgent');
+  const myTasks = tasks.filter((task) => task.assignee_id === user.id && !['done', 'cancelled'].includes(task.status));
+  const pendingMembers = members.filter((member) => member.status === 'pending_approval');
+  const unread = notifications.filter((notification) => !notification.is_read).length;
+  const tribeName = tribeRes?.tribe?.name || user.tribeName || t('dash.tribe');
 
-  // Zugewiesene Aufgaben MUESSEN beim Zustaendigen auftauchen - vorher gab es
-  // dafuer auf der Startseite keinen Platz, man musste die Aufgabenseite oeffnen
-  // und selbst suchen.
-  const meineAufgaben = tasksRes.tasks.filter(
-    (tk) => tk.assignee_id === user.id && !['done', 'cancelled'].includes(tk.status)
+  mount.replaceChildren();
+  const ticker = newsTicker(newsRes.news);
+  if (ticker) mount.append(ticker);
+  mount.append(el('section.dash-hero', {},
+    mapArtwork('/assets/dashboard-command-hero.webp', '/assets/dashboard-hero.png'),
+    el('div.dash-hero-content', {},
+      el('h1', { text: hasTribe ? tribeName : t('dash.platform') }),
+      el('div.dash-eyebrow', { text: t('dash.command') }),
+      el('div.dash-hero-meta', {},
+        server ? el('span', { text: server.name + ' · ' + server.map_name }) : null,
+        server ? el('span.dash-live' + (server.status === 'active' ? '.is-active' : ''), { text: t('srv.status.' + server.status) }) : null,
+        !server ? el('span', { text: hasTribe ? t('dash.no_server') : t('dash.welcome_back', { name: user.username }) }) : null
+      ),
+      el('div.dash-hero-actions', {},
+        el('button.btn.primary.dash-hero-cta', { type: 'button', text: '+  ' + t('order.new'), onclick: () => go('/orders/new') })
+      )
+    )
+  ));
+  mount.append(el('section.dash-metrics', { 'aria-label': t('dash.overview') },
+    metric('▤', t('dash.tile.orders'), openAll.length, t('dash.available_n', { n: unclaimed.length }), () => go('/orders'), 'orders'),
+    hasTribe ? metric('☑', t('dash.tile.tasks'), myTasks.length, t('dash.tasks_open_n', { n: myTasks.length }), () => go('/tasks'), 'tasks') : null,
+    metric('⚠', t('dash.urgent'), urgent.length, t('dash.open_jobs'), () => go('/orders'), 'urgent'),
+    metric('♧', t('nav.notifications'), unread, t('dash.unread'), () => go('/notifications'), 'alerts')
+  ));
+
+  const work = el('div.dash-left-column', {},
+    el('section.dash-panel.dash-work', {},
+      heading(t('dash.open_jobs'), null, t('dash.show'), () => go('/orders'), '▤'),
+      openAll.length
+        ? el('div.dash-featured-orders', {}, ...openAll.slice(0, 3).map((o) => featuredOrder(o, go)))
+        : emptyState(t('orders.none_open'))
+    ),
+    hasTribe ? el('section.dash-panel.dash-map', {},
+      heading(t('dash.current_map'), null, t('dash.show'), () => go('/servers'), '◇'),
+      server ? el('div.dash-map-canvas', {},
+        mapImage ? mapArtwork(mapImage, fallback) : null,
+        el('button.dash-map-caption', { type: 'button', onclick: () => go('/servers/' + server.id) },
+          el('strong', { text: server.map_name }), el('span', { text: server.name + ' ↗' })
+        ),
+        ...markers.filter((m) => m.coord_x != null && m.coord_y != null && Number.isFinite(Number(m.coord_x)) && Number.isFinite(Number(m.coord_y)))
+          .slice(0, 10).map((m) => el('button.dash-map-pin', {
+            type: 'button', style: `left:${Math.min(100, Math.max(0, Number(m.coord_x)))}%;top:${Math.min(100, Math.max(0, Number(m.coord_y)))}%`,
+            title: m.name, 'aria-label': m.name, onclick: () => go('/servers/' + server.id)
+          }, el('span', { text: markerIcon(m.category) }), el('small', { text: m.name })))
+      ) : el('div.dash-map-empty', {},
+        el('p', { text: t('dash.no_server') }),
+        el('button.btn.sm', { type: 'button', text: t('nav.servers'), onclick: () => go('/servers') })
+      )
+    ) : null
   );
-
-  // --- Kacheln -------------------------------------------------------------
-  mount.append(
-    el('div.tiles', {},
-      kachel({
-        head: t('dash.tile.orders'),
-        value: openAll.length,
-        sub: t('dash.orders_n', { n: openAll.length }),
-        link: t('dash.show'),
-        onclick: () => go('/orders'),
-      }),
-      hatTribe
-        ? kachel({
-            head: t('dash.tile.tasks'),
-            value: meineAufgaben.length,
-            sub: t('dash.tasks_open_n', { n: meineAufgaben.length }),
-            link: t('dash.show'),
-            onclick: () => go('/tasks'),
-          })
-        : null,
-      kachel({
-        head: t('dash.unread'),
-        value: unread,
-        sub: t('nav.notifications'),
-        link: t('dash.show'),
-        onclick: () => go('/notifications'),
-      }),
-      urgent.length
-        ? kachel({
-            head: t('dash.urgent'),
-            value: urgent.length,
-            sub: t('dash.orders_n', { n: urgent.length }),
-            link: t('dash.show'),
-            onclick: () => go('/orders'),
-            tone: 'urgent',
-          })
-        : null
+  const aside = el('aside.dash-aside', {},
+    hasTribe ? el('section.dash-panel.dash-tribe', {},
+      heading(t('dash.tribe_status'), null, t('dash.show'), () => go('/members'), '♟'),
+      isAdmin ? statusLine('♙', t('nav.members'), members.filter((m) => m.status === 'active').length, () => go('/members')) : null,
+      statusLine('♩', t('nav.voice'), speaking.size, () => go('/voice'),
+        channels.filter((c) => (c.participants || []).length).map((c) => c.name).join(' · ')),
+      statusLine('☑', t('dash.tile.tasks'), tasks.filter((task) => !['done', 'cancelled'].includes(task.status)).length, () => go('/tasks'),
+        tasks.length ? t('dash.completed_n', { n: tasks.filter((task) => task.status === 'done').length }) : ''),
+      statusLine('▤', t('dash.tile.orders'), openAll.length, () => go('/orders'))
+    ) : null,
+    hasTribe ? chatPanel(chatRes?.messages || [], user, go) : null,
+    el('section.dash-panel.dash-activity', {},
+      heading(t('dash.activities'), null, t('dash.show'), () => go('/notifications'), '◷'),
+      notifications.length ? el('div.dash-activity-list', {}, ...notifications.slice(0, 4).map((n) =>
+        el('button.dash-activity-row', { type: 'button', onclick: () => go(n.payload?.orderId ? '/orders/' + n.payload.orderId : '/notifications') },
+          el('span.dash-activity-dot', { 'aria-hidden': 'true', text: '✦' }),
+          el('span', {}, el('strong', { text: t('n.' + n.type) }), el('small', { text: timeAgo(n.created_at) }))
+        ))) : el('p.dash-empty-note', { text: t('dash.no_activities') })
     )
   );
+  mount.append(el('div.dash-main-grid', {}, work, aside));
 
-  // --- Meine Aufgaben ------------------------------------------------------
-  if (meineAufgaben.length) {
-    mount.append(el('div.section-title', {}, t('dash.tile.tasks'), el('span.c', { text: meineAufgaben.length })));
-    mount.append(
-      el('div.list', {},
-        ...meineAufgaben.slice(0, 5).map((tk) =>
-          el('div.row', { style: 'cursor:pointer', role: 'button', tabindex: '0', onclick: () => go('/tasks/' + tk.id) },
-            el('div.grow', {},
-              el('div.rt', { text: tk.title }),
-              el('div.rs', {
-                text: [t('task.status.' + tk.status), tk.due_date ? t('task.due') + ' ' + tk.due_date : null]
-                  .filter(Boolean).join(' · '),
-              })
-            )
-          )
-        )
-      )
-    );
-  }
+  if (pendingMembers.length) mount.append(el('section.dash-panel.dash-attention', {},
+    heading(t('admin.pending'), pendingMembers.length, t('dash.show'), () => go('/members')),
+    ...pendingMembers.slice(0, 4).map((member) => el('div.dash-task-row', {},
+      el('strong', { text: member.username }), el('span', { text: timeAgo(member.created_at) })
+    ))
+  ));
 
-  if (hatTribe) {
-    const previewMessages = [...(chatRes?.messages || [])];
-    const previewLog = el('div.dashboard-chat-log', { role: 'log', 'aria-live': 'polite' });
-    const chatStatus = el('p.hint', { role: 'status' });
-    const chatInput = el('textarea', {
-      id: 'dashboard-chat-body', rows: 2, maxlength: 2000, required: true,
-      placeholder: t('chat.placeholder'),
-    });
-    const chatSend = el('button.btn.sm.primary', { type: 'submit', text: t('chat.send') });
-
-    function drawChatPreview() {
-      previewLog.replaceChildren(
-        ...(previewMessages.length
-          ? previewMessages.slice(-3).map((message) => chatMessage(message, user.id))
-          : [el('p.hint', { text: t('chat.empty') })])
-      );
-    }
-
-    const chatComposer = el('form.dashboard-chat-composer', {
-      onsubmit: async (event) => {
-        event.preventDefault();
-        const body = chatInput.value.trim();
-        if (!body || chatSend.disabled) return;
-        chatSend.disabled = true;
-        chatInput.readOnly = true;
-        try {
-          const { message } = await api.sendChatMessage(body);
-          previewMessages.push(message);
-          chatInput.value = '';
-          chatStatus.textContent = '';
-          drawChatPreview();
-        } catch (err) {
-          chatStatus.textContent = err.message;
-        } finally {
-          chatSend.disabled = false;
-          chatInput.readOnly = false;
-          chatInput.focus();
-        }
-      },
-    },
-      el('label', { for: 'dashboard-chat-body', text: t('chat.message') }),
-      chatInput,
-      el('div.actions', {},
-        el('button.btn.sm', { type: 'button', text: t('dash.show'), onclick: () => go('/chat') }),
-        chatSend
-      ),
-      chatStatus
-    );
-
-    drawChatPreview();
-    mount.append(
-      el('div.section-title', {}, t('nav.chat') + ' · General'),
-      el('div.card.dashboard-chat-card', {}, previewLog, chatComposer)
-    );
-  }
-
-  // --- Tribe und Server ----------------------------------------------------
-  if (hatTribe) {
-    const server = serversRes.servers[0];
-    mount.append(
-      el('div.tiles', { style: 'margin-top:16px' },
-        kachel({
-          head: t('dash.tribe'),
-          value: tribeRes?.tribe?.name || '—',
-          // Die Mitgliederzahl steht nur Admins zur Verfuegung; erfunden wird
-          // hier nichts. Wer sie nicht abrufen darf, sieht stattdessen die Rolle.
-          sub: isAdmin ? t('dash.members_n', { n: members.members.length }) : t('role.' + user.roles[0]),
-          link: isAdmin ? t('dash.show') : null,
-          onclick: isAdmin ? () => go('/members') : null,
-        }),
-        kachel({
-          head: t('dash.server'),
-          value: server?.map_name || '—',
-          sub: server?.name || t('dash.no_server'),
-          link: t('dash.show'),
-          onclick: () => go('/servers'),
-        })
-      )
-    );
-  }
-
-  // --- Hinweis für Admins: wartende Mitglieder -----------------------------
-  if (isAdmin && pendingMembers.length > 0) {
-    mount.append(
-      el('div.section-title', {}, t('admin.pending'), el('span.c', { text: pendingMembers.length })),
-      el('div.list', {},
-        ...pendingMembers.slice(0, 4).map((m) =>
-          el('div.row', {},
-            el('div.grow', {}, el('div.rt', { text: m.username }), el('div.rs', { text: timeAgo(m.created_at) })),
-            el('button.btn.sm', { text: t('admin.members'), onclick: () => go('/members') })
-          )
-        )
-      )
-    );
-  }
-
-  // --- Offene Aufträge (Breeder/Crafter, Admin) ----------------------------
-  if (isBreeder || isAdmin || isDev) {
-    mount.append(el('div.section-title', {}, t('dash.open_jobs'), el('span.c', { text: unclaimed.length })));
-    mount.append(
-      unclaimed.length
-        ? el('div.grid.cols2', {}, ...unclaimed.slice(0, 6).map((o) => orderCard(o, (id) => go('/orders/' + id))))
-        : emptyState(t('orders.none_open'))
-    );
-
-    if (claimedByMe.length) {
-      mount.append(el('div.section-title', {}, t('dash.my_jobs'), el('span.c', { text: claimedByMe.length })));
-      mount.append(el('div.grid.cols2', {}, ...claimedByMe.map((o) => orderCard(o, (id) => go('/orders/' + id)))));
-    }
-  }
-
-  // --- Eigene Bestellungen -------------------------------------------------
-  const recentMine = mine.slice(0, 4);
-  mount.append(el('div.section-title', {}, t('dash.recent')));
-  mount.append(
-    recentMine.length
-      ? el('div.grid.cols2', {}, ...recentMine.map((o) => orderCard(o, (id) => go('/orders/' + id))))
+  if (myTasks.length) mount.append(el('section.dash-panel.dash-section', {},
+    heading(t('dash.tile.tasks'), myTasks.length, t('dash.show'), () => go('/tasks')),
+    ...myTasks.slice(0, 5).map((task) => el('button.dash-task-row', { type: 'button', onclick: () => go('/tasks/' + task.id) },
+      el('strong', { text: task.title }),
+      el('span', { text: [t('task.status.' + task.status), task.due_date ? t('task.due') + ' ' + task.due_date : null].filter(Boolean).join(' · ') })
+    ))
+  ));
+  if (claimedByMe.length) mount.append(el('section.dash-section', {},
+    heading(t('dash.my_jobs'), claimedByMe.length),
+    el('div.dash-order-list', {}, ...claimedByMe.map((o) => orderCard(o, (id) => go('/orders/' + id), { showImages: true })))
+  ));
+  mount.append(el('section.dash-section', {},
+    heading(t('dash.recent'), null, t('dash.show'), () => go('/orders')),
+    mine.length ? el('div.dash-order-list', {}, ...mine.slice(0, 4).map((o) => orderCard(o, (id) => go('/orders/' + id), { showImages: true })))
       : emptyState(t('orders.none'), t('orders.none_sub'))
-  );
-
+  ));
 }
 
-function kachel({ head, value, sub, link, onclick, tone }) {
-  return el('div.tile' + (tone ? '.tile-' + tone : ''), {},
-    el('div.t-head', {}, el('span', { text: head })),
-    el('div.t-val', { text: String(value) }),
-    sub ? el('div.t-sub', { text: sub }) : null,
-    link && onclick ? el('button.t-link', { type: 'button', text: link + ' →', onclick }) : null
+function mapArtwork(src, fallback) {
+  const image = el('img.dash-map-art', { src, alt: '', loading: 'lazy' });
+  image.addEventListener('error', () => {
+    if (fallback && image.getAttribute('src') !== fallback) image.src = fallback;
+    else image.remove();
+  });
+  return image;
+}
+function heading(title, count, action, onclick, icon) {
+  return el('div.dash-heading', {}, icon ? el('span.dash-heading-icon', { 'aria-hidden': 'true', text: icon }) : null, el('h2', { text: title }),
+    count !== null && count !== undefined ? el('span.dash-count', { text: String(count) }) : null,
+    action && onclick ? el('button.dash-heading-link', { type: 'button', text: action + ' →', onclick }) : null);
+}
+function metric(icon, title, count, detail, onclick, kind) {
+  return el('button.dash-metric.dash-metric-' + kind + (kind === 'urgent' && count ? '.is-urgent' : ''), { type: 'button', onclick },
+    el('span.dash-metric-icon', { 'aria-hidden': 'true', text: icon }),
+    el('span.dash-metric-copy', {}, el('strong', { text: String(count) }), el('span.dash-metric-label', { text: title }),
+      el('span.dash-metric-detail', { text: detail })), el('span.dash-metric-arrow', { 'aria-hidden': 'true', text: '›' }));
+}
+function featuredOrder(order, go) {
+  const first = order.items?.[0];
+  const title = first?.item_name || t('nav.orders');
+  const image = first?.item_key === 'rex_egg' && !first.image_path
+    ? el('img.dash-order-special', { src: '/assets/rex_egg_dashboard.webp', alt: '', loading: 'lazy' })
+    : first ? itemBild(first, 120) : null;
+  const opened = () => go('/orders/' + order.id);
+  const issued = order.items?.filter((it) => it.status === 'issued').length || 0;
+  const total = order.items?.length || 1;
+  return el('article.dash-featured-order', { role: 'button', tabindex: '0', 'aria-label': title,
+    onclick: opened, onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); opened(); } } },
+    el('div.dash-order-art', {}, image,
+      el('span.dash-order-type', { text: first ? t('type.' + first.product_type) : t('nav.orders') })),
+    el('div.dash-order-body', {},
+      el('strong.dash-order-title', { text: title }),
+      el('span.dash-order-amount', { text: first ? '× ' + first.quantity + (total > 1 ? '  ·  +' + (total - 1) : '') : '' }),
+      el('div.dash-order-progress', {}, el('span', { style: `width:${Math.round(issued / total * 100)}%` })),
+      el('div.dash-order-foot', {}, el('span.dash-avatar', { 'aria-hidden': 'true', text: (order.member_username || '?').slice(0, 1).toUpperCase() }),
+        el('span', { text: order.member_username || '' }), el('small', { text: timeAgo(order.created_at) }))
+    )
+  );
+}
+function markerIcon(category) {
+  return { base: '⌂', resource: '◆', cave: '⬡', dino: '♞', boss: '⚠', loot: '✦' }[category] || '●';
+}
+function statusLine(icon, title, count, onclick, detail) {
+  return el('button.dash-status-line', { type: 'button', onclick },
+    el('span.dash-status-icon', { 'aria-hidden': 'true', text: icon }),
+    el('span.dash-status-copy', {}, el('strong', { text: String(count) }), el('span', { text: title }),
+      detail ? el('small', { text: detail }) : null));
+}
+function chatPanel(messages, user, go) {
+  const previewMessages = [...messages];
+  const previewLog = el('div.dashboard-chat-log', { role: 'log', 'aria-live': 'polite' });
+  const chatStatus = el('p.hint', { role: 'status' });
+  const chatInput = el('textarea', { id: 'dashboard-chat-body', rows: 1, maxlength: 2000, required: true, placeholder: t('chat.placeholder'), 'aria-label': t('chat.message') });
+  const chatSend = el('button.btn.sm.primary', { type: 'submit', text: '➤', 'aria-label': t('chat.send') });
+  function drawChatPreview() {
+    previewLog.replaceChildren(...(previewMessages.length
+      ? previewMessages.slice(-3).map((message) => el('div.dash-chat-row', {},
+        el('span.dash-avatar', { 'aria-hidden': 'true', text: (message.author_name || '?').slice(0, 1).toUpperCase() }),
+        el('span.dash-chat-copy', {}, el('span', {}, el('strong', { text: message.author_name }),
+          el('small', { text: timeAgo(message.created_at) })), el('span', { text: message.body }))
+      )) : [el('p.dash-empty-note', { text: t('chat.empty') })]));
+  }
+  drawChatPreview();
+  return el('section.card.dashboard-chat-card.dash-panel', {},
+    heading(t('nav.chat'), null, t('dash.show'), () => go('/chat'), '☷'),
+    previewLog,
+    el('form.dashboard-chat-composer', { onsubmit: async (event) => {
+      event.preventDefault();
+      const body = chatInput.value.trim();
+      if (!body || chatSend.disabled) return;
+      chatSend.disabled = true;
+      chatInput.readOnly = true;
+      try {
+        const { message } = await api.sendChatMessage(body);
+        previewMessages.push(message);
+        chatInput.value = '';
+        chatStatus.textContent = '';
+        drawChatPreview();
+      } catch (err) {
+        chatStatus.textContent = err.message;
+      } finally {
+        chatSend.disabled = false;
+        chatInput.readOnly = false;
+        chatInput.focus();
+      }
+    } }, chatInput, chatSend, chatStatus)
   );
 }

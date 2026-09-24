@@ -16,6 +16,8 @@ export async function renderVoice(mount, ctx) {
   let localStream = null;
   let lastSignalId = 0;
   let polling = false;
+  let joining = false;
+  let generation = 0;
   let pollTimer = null;
   let credentialRefreshTimer = null;
   let refreshingIce = false;
@@ -213,21 +215,25 @@ export async function renderVoice(mount, ctx) {
   async function pollVoice() {
     if (polling || shuttingDown || !activeChannelId || !mount.isConnected) return;
     polling = true;
+    const run = generation;
+    const channelId = activeChannelId;
     try {
       const [{ signals }, channelResult] = await Promise.all([
-        api.voiceSignals(activeChannelId, lastSignalId),
+        api.voiceSignals(channelId, lastSignalId),
         api.voiceChannels(),
       ]);
+      if (run !== generation || shuttingDown || !mount.isConnected) return;
       channels = channelResult.channels;
       for (const message of signals) {
         lastSignalId = Math.max(lastSignalId, Number(message.id));
+        if (run !== generation) return;
         await handleSignal(message);
       }
       await reconcilePeers();
       draw();
     } catch (err) {
       connectionState.textContent = err.message;
-      if ([401, 403, 404].includes(err.status)) await stopLocal(false);
+      if ([400, 401, 403, 404].includes(err.status)) await stopLocal(false);
     } finally {
       polling = false;
       if (activeChannelId && mount.isConnected && !shuttingDown) pollTimer = setTimeout(pollVoice, 1800);
@@ -235,10 +241,12 @@ export async function renderVoice(mount, ctx) {
   }
 
   async function join(channelId) {
+    if (joining || shuttingDown || !mount.isConnected) return;
     if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
       toast(t('voice.unsupported'), 'err');
       return;
     }
+    joining = true;
     connectionState.textContent = t('voice.mic_request');
     try {
       if (activeChannelId) await stopLocal(true);
@@ -249,7 +257,12 @@ export async function renderVoice(mount, ctx) {
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: false,
       });
+      if (!mount.isConnected) { localStream.getTracks().forEach(track => track.stop()); localStream = null; return; }
       await api.voiceJoin(channelId);
+      if (!mount.isConnected) {
+        localStream?.getTracks().forEach(track => track.stop()); localStream = null;
+        await api.voiceLeave(channelId).catch(() => {}); return;
+      }
       activeChannelId = Number(channelId);
       lastSignalId = 0;
       connectionState.textContent = t('voice.joined_audio');
@@ -259,22 +272,25 @@ export async function renderVoice(mount, ctx) {
       scheduleCredentialRefresh();
       pollVoice();
     } catch (err) {
-      localStream?.getTracks().forEach((track) => track.stop());
-      localStream = null;
+      await stopLocal(true);
       connectionState.textContent = err?.name === 'NotAllowedError' ? t('voice.mic_denied') : (err.message || t('common.error'));
       toast(connectionState.textContent, 'err');
-    }
+    } finally { joining = false; }
   }
 
   async function stopLocal(notifyServer = true) {
     if (shuttingDown) return;
     shuttingDown = true;
+    generation += 1;
     clearTimeout(pollTimer);
     clearTimeout(credentialRefreshTimer);
     pollTimer = null;
     credentialRefreshTimer = null;
     const channelId = activeChannelId;
     const otherIds = [...peers.keys()];
+    localStream?.getTracks().forEach((track) => track.stop());
+    localStream = null;
+    for (const id of otherIds) stopPeer(id);
     if (notifyServer && channelId) {
       await Promise.all(otherIds.map((id) => signal(id, 'bye', null))).catch(() => {});
       await api.voiceLeave(channelId).catch(() => {});

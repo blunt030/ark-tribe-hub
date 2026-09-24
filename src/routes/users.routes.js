@@ -1,3 +1,5 @@
+import { createRateLimiter } from '../lib/rateLimiter.js';
+import { emailTokenHash } from '../lib/emailTokens.js';
 import { Router } from '../lib/router.js';
 import { readJsonBody, sendJson, notFound, badRequest, unauthorized } from '../lib/http.js';
 import { optionalString, requireEmail, parseIdParam, requirePassword } from '../lib/validate.js';
@@ -51,6 +53,8 @@ async function serializeProfile(db, target, requester) {
 
 export function buildUsersRouter(db) {
   const router = new Router();
+  // Shared across email/password reauthentication to prevent endpoint hopping.
+  const limitCredentialChecks = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
 
   router.get('/api/users/me', requireActive, async (req, res) => {
     sendJson(res, 200, { user: await serializeProfile(db, req.user, req.user) });
@@ -67,7 +71,14 @@ export function buildUsersRouter(db) {
     let neueBestaetigung = null;
     if (body.email !== undefined) {
       const neueEmail = body.email ? requireEmail(body.email) : null;
-      const bisherige = await db.get('SELECT email FROM users WHERE id = ?', [req.user.id]);
+      const bisherige = await db.get('SELECT email, password_hash FROM users WHERE id = ?', [req.user.id]);
+      if (neueEmail !== bisherige?.email) {
+        limitCredentialChecks(req.user.id);
+        if (!await verifyPassword(body.currentPassword, bisherige.password_hash)) throw unauthorized('Das aktuelle Passwort stimmt nicht');
+        updates.email_verified = 0;
+        updates.email_verify_token = null;
+        updates.email_verify_expires_at = null;
+      }
       updates.email = neueEmail;
       if (neueEmail && neueEmail !== bisherige?.email) {
         const belegt = await db.get('SELECT id FROM users WHERE email = ? AND id != ?', [neueEmail, req.user.id]);
@@ -78,7 +89,7 @@ export function buildUsersRouter(db) {
           email: neueEmail,
         };
         updates.email_verified = 0;
-        updates.email_verify_token = neueBestaetigung.token;
+        updates.email_verify_token = emailTokenHash(neueBestaetigung.token);
         updates.email_verify_expires_at = neueBestaetigung.expires;
       }
     }
@@ -113,6 +124,7 @@ export function buildUsersRouter(db) {
   // fliegt damit sofort raus, die eigene Sitzung bleibt aber bestehen.
   router.post('/api/users/me/password', requireActive, requireCsrf, async (req, res) => {
     const body = await readJsonBody(req);
+    limitCredentialChecks(req.user.id);
     const currentPassword = body.currentPassword || '';
     const newPassword = requirePassword(body.newPassword);
 

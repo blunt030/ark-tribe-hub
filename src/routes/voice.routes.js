@@ -19,6 +19,7 @@ export function buildVoiceRouter(db) {
   });
 
   router.get('/api/voice/config', requireActive, async (req, res) => {
+    tribeIdOf(req);
     sendJson(res, 200, await resolveVoiceIceConfig(config, req.user.id));
   });
 

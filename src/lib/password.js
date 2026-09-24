@@ -1,29 +1,30 @@
 import { scrypt, scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
+const derive = promisify(scrypt);
+const OPTIONS = { N: 16384, r: 8, p: 5, maxmem: 32 * 1024 * 1024 };
+const PREFIX = 'scrypt-v2';
+const validPassword = value => typeof value === 'string' && value.length > 0 && value.length <= 200;
 
-const scryptAsync = promisify(scrypt);
-const KEY_LEN = 64;
-
-// Format: "<salt-hex>:<derivedkey-hex>". Niemals das Klartextpasswort speichern.
-
+// OWASP scrypt profile: 16 MiB, p=5. Explicit version allows safe legacy upgrades.
 export async function hashPassword(password) {
+  if (!validPassword(password)) throw new TypeError('Invalid password');
   const salt = randomBytes(16).toString('hex');
-  const derivedKey = await scryptAsync(password, salt, KEY_LEN);
-  return `${salt}:${derivedKey.toString('hex')}`;
+  const key = await derive(password, salt, 64, OPTIONS);
+  return `${PREFIX}:${salt}:${key.toString('hex')}`;
 }
-
 export async function verifyPassword(password, stored) {
-  if (!stored || typeof stored !== 'string' || !stored.includes(':')) return false;
-  const [salt, hashHex] = stored.split(':');
-  const derivedKey = await scryptAsync(password, salt, KEY_LEN);
-  const storedBuf = Buffer.from(hashHex, 'hex');
-  if (storedBuf.length !== derivedKey.length) return false;
-  return timingSafeEqual(storedBuf, derivedKey);
+  if (!validPassword(password) || typeof stored !== 'string') return false;
+  const modern = stored.startsWith(`${PREFIX}:`);
+  const parts = stored.split(':');
+  if (parts.length !== (modern ? 3 : 2)) return false;
+  const [salt, hash] = modern ? parts.slice(1) : parts;
+  if (!/^[a-f0-9]{32}$/.test(salt) || !/^[a-f0-9]{128}$/.test(hash)) return false;
+  const key = await derive(password, salt, 64, modern ? OPTIONS : {});
+  return timingSafeEqual(Buffer.from(hash, 'hex'), key);
 }
-
-/** Synchrone Variante – ausschließlich für den Seed-Vorgang beim Serverstart (einmalig, unkritisch). */
+export const needsPasswordRehash = stored => !stored.startsWith(`${PREFIX}:`);
 export function hashPasswordSync(password) {
+  if (!validPassword(password)) throw new TypeError('Invalid password');
   const salt = randomBytes(16).toString('hex');
-  const derivedKey = scryptSync(password, salt, KEY_LEN);
-  return `${salt}:${derivedKey.toString('hex')}`;
+  return `${PREFIX}:${salt}:${scryptSync(password, salt, 64, OPTIONS).toString('hex')}`;
 }

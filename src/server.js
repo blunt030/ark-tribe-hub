@@ -40,6 +40,7 @@ const STATIC_MIME = {
   '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
@@ -76,7 +77,7 @@ function serveStatic(req, res) {
   const data = readFileSync(finalPath);
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'"
+    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"
   );
   res.writeHead(200, {
     'Content-Type': STATIC_MIME[ext] || 'application/octet-stream',
@@ -131,7 +132,7 @@ function buildUploadsRouter(db) {
       res.writeHead(200, {
         'Content-Type': row.mime || UPLOAD_MIME[ext] || 'application/octet-stream',
         'Content-Length': buffer.length,
-        'Cache-Control': 'private, no-cache', // Dateiname ist jetzt pro Besitzer stabil (users/items-ID) -
+        'Cache-Control': 'private, no-store', // Dateiname ist jetzt pro Besitzer stabil (users/items-ID) -
       // ein neuer Upload ersetzt denselben Pfad, 'immutable' waere hier falsch.
       });
       res.end(buffer);
@@ -144,7 +145,7 @@ function buildUploadsRouter(db) {
     res.writeHead(200, {
       'Content-Type': UPLOAD_MIME[ext] || 'application/octet-stream',
       'Content-Length': data.length,
-      'Cache-Control': 'private, no-cache', // Dateiname ist jetzt pro Besitzer stabil (users/items-ID) -
+      'Cache-Control': 'private, no-store', // Dateiname ist jetzt pro Besitzer stabil (users/items-ID) -
       // ein neuer Upload ersetzt denselben Pfad, 'immutable' waere hier falsch.
     });
     res.end(data);
@@ -164,7 +165,7 @@ export async function createApp(dbPath, options = {}) {
   // manuell einen Seed-Befehl auf der laufenden Produktivdatenbank ausführen muss.
   await seed(db);
 
-  const { globalRateLimit, authRateLimit } = createRateLimiters(options.rateLimits);
+  const { ingressRateLimit, globalRateLimit, authRateLimit } = createRateLimiters(options.rateLimits);
 
   const router = new Router();
   const subRouters = [
@@ -189,7 +190,7 @@ export async function createApp(dbPath, options = {}) {
 
   router.get('/api/health', async (req, res) => sendJson(res, 200, { status: 'ok' }));
 
-  const globalMiddlewares = [securityHeaders, cors, globalRateLimit, attachSession(db)];
+  const globalMiddlewares = [securityHeaders, cors, ingressRateLimit, attachSession(db), globalRateLimit];
 
   const server = http.createServer((req, res) => {
     let idx = 0;
@@ -207,9 +208,10 @@ export async function createApp(dbPath, options = {}) {
         return;
       }
       // Frontend zuerst: alles, was keine API-Route ist, kommt aus public/.
-      const url = new URL(req.url, 'http://localhost');
-      req.pathname = decodeURIComponent(url.pathname);
       try {
+        const url = new URL(req.url, 'http://localhost');
+        try { req.pathname = decodeURIComponent(url.pathname); }
+        catch { sendJson(res, 400, { error: { code: 'BAD_REQUEST', message: 'Ungültiger URL-Pfad' } }); return; }
         if (serveStatic(req, res)) return;
       } catch (e) {
         sendError(res, e);

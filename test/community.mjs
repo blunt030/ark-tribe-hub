@@ -104,6 +104,13 @@ test('Community APIs: permissions, isolation, persistence and rate limits', asyn
       const bytes=new Uint8Array(await res.arrayBuffer()); assert.equal(bytes[0],137); assert.equal(bytes[1],80);
       assert.equal(bytes[25],6,`${key}.png muss einen echten Alpha-Kanal besitzen`);
     }
+    for(const name of ['dashboard-command-hero','dashboard-sidebar','rex_egg_dashboard']) {
+      const res=await fetch(base()+'/assets/'+name+'.webp');
+      assert.equal(res.headers.get('content-type'),'image/webp');
+      const bytes=new Uint8Array(await res.arrayBuffer());
+      assert.equal(Buffer.from(bytes.subarray(0,4)).toString(),'RIFF');
+      assert.equal(Buffer.from(bytes.subarray(8,12)).toString(),'WEBP');
+    }
   });
 });
 

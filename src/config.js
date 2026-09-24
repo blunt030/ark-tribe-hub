@@ -29,6 +29,13 @@ const rootDir = path.resolve(__dirname, '..');
 
 loadDotEnv(path.join(rootDir, '.env'));
 
+// The supervised local preview passes --port to npm run dev; production keeps
+// using Render's PORT environment variable as before.
+const devPortFlag = process.argv.indexOf('--port');
+const previewPort = process.env.NODE_ENV !== 'production' && devPortFlag !== -1
+  ? process.argv[devPortFlag + 1]
+  : null;
+
 /**
  * Server-Secret für abgeleitete Tokens (CSRF). Reihenfolge:
  * 1. Umgebungsvariable SESSION_SECRET (so gehört es in Produktion)
@@ -48,6 +55,9 @@ loadDotEnv(path.join(rootDir, '.env'));
  * SESSION_SECRET explizit und dauerhaft (generateValue: true).
  */
 function resolveSessionSecret() {
+  if (process.env.NODE_ENV === 'production' && (process.env.SESSION_SECRET || '').length < 32) {
+    throw new Error('Production requires a persistent SESSION_SECRET of at least 32 characters');
+  }
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
   const secretFile = path.join(rootDir, 'data', '.session-secret');
   if (existsSync(secretFile)) return readFileSync(secretFile, 'utf8').trim();
@@ -59,7 +69,7 @@ function resolveSessionSecret() {
 
 export const config = {
   rootDir,
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: parseInt(process.env.PORT || previewPort || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   isProduction: (process.env.NODE_ENV || 'development') === 'production',
   dbPath: path.resolve(rootDir, process.env.DB_PATH || './data/ark-tribe-hub.db'),

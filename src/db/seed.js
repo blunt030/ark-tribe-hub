@@ -246,7 +246,7 @@ export async function seed(db) {
     // Zusätzlich lässt sich das Passwort über SEED_DEMO_PASSWORD überschreiben,
     // damit selbst lokal kein fest verdrahtetes Passwort nötig ist.
     // ----------------------------------------------------------------------
-    if (config.databaseUrl) {
+    if (config.isProduction || config.databaseUrl || db.kind === 'postgres') {
       console.log('[SEED] Produktionsdatenbank erkannt - Demo-Konten werden bewusst NICHT angelegt.');
       return;
     }

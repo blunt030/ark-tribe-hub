@@ -41,6 +41,10 @@ function navItems() {
   const main = [
     { path: '/', icon: '◈', label: t('nav.dashboard') },
     { path: '/orders/new', icon: '＋', label: t('nav.new'), primary: true },
+    { path: '/orders', icon: '▤', label: t('nav.orders') },
+    ...(user.tribeId ? [{ path: '/tasks', icon: '☑', label: t('nav.tasks') }, { path: '/servers', icon: '◇', label: t('nav.servers') },
+      { path: '/chat', icon: '☷', label: t('nav.chat') }, { path: '/voice', icon: '♩', label: t('nav.voice') },
+      { path: '/members', icon: '♙', label: t('nav.members') }] : []),
     { path: '/profile', icon: '◐', label: t('nav.profile') },
     { path: '/notifications', icon: '◔', label: t('nav.notifications'), badge: () => unreadCount },
   ];
@@ -52,12 +56,7 @@ function navItems() {
   const tools = [];
   if (user.tribeId) {
     tools.push({ path: '/alliances', icon: '🤝', label: t('nav.alliances') });
-    tools.push({ path: '/chat', icon: '☏', label: t('nav.chat') });
-    tools.push({ path: '/servers', icon: '🗺️', label: t('nav.servers') });
-    tools.push({ path: '/tasks', icon: '✓', label: t('nav.tasks') });
     tools.push({ path: '/dinos', icon: '▥', label: t('nav.animal_stats') });
-    tools.push({ path: '/members', icon: '⚌', label: t('nav.members') });
-    tools.push({ path: '/voice', icon: '🎙️', label: t('nav.voice') });
   } else if (isDev) {
     // Developer haben plattformweite Rechte, aber KEINEN eigenen Tribe - die
     // Werkzeuge arbeiten aber alle tribe-bezogen. Sie hier trotzdem zu zeigen ist
@@ -134,6 +133,8 @@ function buildShell() {
       ...(platform.length ? [el('div.nav-group-label', { text: t('nav.group.platform') }), ...platform.map(navLink)] : [])
     ),
     el('div.sidebar-foot', {},
+      user.tribeId ? el('div.sidebar-tribe-mark', {}, el('span', { 'aria-hidden': 'true', text: '△' }),
+        el('strong', { text: user.tribeName || t('dash.tribe') })) : null,
       el('div.who', {}, el('b', { text: user.username }),
         el('span', { text: user.roles.map((r) => t('role.' + r)).join(', ') })
       ),
@@ -194,7 +195,6 @@ function buildShell() {
   const bottomMain = MOBIL_FEST.map((p) => main.find((m) => m.path === p)).filter(Boolean);
   const bottomExtra = [
     ...main.filter((m) => !MOBIL_FEST.includes(m.path)),
-    { path: '/orders', icon: '☰', label: t('nav.orders') },
     ...tools, ...tribe, ...platform,
   ];
 

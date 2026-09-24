@@ -58,13 +58,18 @@ export function createRateLimiters({
   globalMax = config.rateLimitGlobalMax,
   authMax = config.rateLimitAuthMax,
 } = {}) {
+  const ingressLimiter = createRateLimiter({ windowMs, max: Math.max(globalMax * 10, 1200) });
   const globalLimiter = createRateLimiter({ windowMs, max: globalMax });
   const authLimiter = createRateLimiter({ windowMs, max: authMax });
 
   return {
+    ingressRateLimit(req, res, next) {
+      try { ingressLimiter(clientIp(req)); } catch (err) { return next(err); }
+      return next();
+    },
     globalRateLimit(req, res, next) {
       try {
-        globalLimiter(clientIp(req));
+        globalLimiter(req.user ? `user:${req.user.id}` : `ip:${clientIp(req)}`);
       } catch (err) {
         return next(err);
       }

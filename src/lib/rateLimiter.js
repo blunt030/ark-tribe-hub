@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import { tooMany } from './http.js';
 
 /**
@@ -51,7 +52,7 @@ export function createRateLimiter({ windowMs, max }) {
  */
 export function clientIp(req, trustedHops = Number(process.env.TRUSTED_PROXY_HOPS ?? 0)) {
   const direkt = req.socket?.remoteAddress || 'unknown';
-  if (!trustedHops) return direkt;
+  if (!Number.isInteger(trustedHops) || trustedHops <= 0) return direkt;
 
   const roh = req.headers?.['x-forwarded-for'];
   if (!roh) return direkt;
@@ -62,5 +63,5 @@ export function clientIp(req, trustedHops = Number(process.env.TRUSTED_PROXY_HOP
   // Von rechts: der letzte Eintrag wurde vom naechsten Proxy gesetzt und ist
   // vertrauenswuerdig; bei mehreren Hops entsprechend weiter nach links.
   const index = kette.length - trustedHops;
-  return kette[index] || kette[0] || direkt;
+  return index >= 0 && isIP(kette[index]) ? kette[index] : direkt;
 }

@@ -38,3 +38,20 @@ test('PostgreSQL engine: additive schema migration, CRUD, constraints and retent
   assert.equal((await db.query('SELECT author_id FROM tribe_messages')).rows[0].author_id,null);
   assert.equal((await db.query('DELETE FROM tribe_relationships WHERE id=$1 AND tribe_id=$2 RETURNING id',[relation.id,tribe.id])).rows[0].id,relation.id);
 });
+
+test('PostgreSQL: email token migration is repeatable and links are single-use', async t => {
+  const { migrateEmailTokens, emailTokenHash } = await import('../src/lib/emailTokens.js');
+  const { verifyEmail } = await import('../src/services/authService.js');
+  const pg = new PGlite();
+  t.after(() => pg.close());
+  await pg.exec(readFileSync(new URL('../src/db/schema.postgres.sql', import.meta.url), 'utf8'));
+  const query = (sql,args=[]) => {let n=0;return pg.query(sql.replace(/\?/g,()=>`$${++n}`),args);};
+  const db = {all:async(s,a)=>(await query(s,a)).rows,get:async(s,a)=>(await query(s,a)).rows[0],run:query};
+  const token='b'.repeat(48);
+  await db.run("INSERT INTO users (username,password_hash,email_verify_token,email_verify_expires_at) VALUES ('token-test','unused',?,?)",[token,new Date(Date.now()+60000).toISOString()]);
+  await migrateEmailTokens(db); await migrateEmailTokens(db);
+  assert.equal((await db.get('SELECT email_verify_token FROM users')).email_verify_token,emailTokenHash(token));
+  assert.equal((await verifyEmail(db,emailTokenHash(token))).ok,false);
+  assert.equal((await verifyEmail(db,token)).ok,true);
+  assert.equal((await verifyEmail(db,token)).ok,false);
+});

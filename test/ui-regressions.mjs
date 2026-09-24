@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('Katalogbilder bleiben auf den Bestellablauf begrenzt', async () => {
+test('Passende Katalogbilder erscheinen auf Bestellungen und der neuen Startseite', async () => {
   const [dashboard, inventory, catalog, orders, ui] = await Promise.all([
     read('public/js/views/dashboard.js'),
     read('public/js/views/inventory.js'),
@@ -13,7 +13,9 @@ test('Katalogbilder bleiben auf den Bestellablauf begrenzt', async () => {
     read('public/js/ui.js'),
   ]);
 
-  assert.doesNotMatch(dashboard, /itemIcon|itemBild|iconFuerItem/);
+  assert.match(dashboard, /featuredOrder\(o, go\)/);
+  assert.match(dashboard, /itemBild\(first, 120\)/);
+  assert.match(dashboard, /rex_egg_dashboard\.webp/);
   assert.doesNotMatch(inventory, /itemIcon|itemBild|iconFuerItem/);
   assert.doesNotMatch(catalog, /itemIcon|itemBild|iconFuerItem/);
   assert.match(orders, /showImages: true/);
@@ -79,7 +81,7 @@ test('Chat, Voice, Tribe-Login und AFK-Abmeldung sind verdrahtet', async () => {
   assert.match(dashboard, /card\.dashboard-chat-card/);
   assert.match(dashboard, /dashboard-chat-composer/);
   assert.match(dashboard, /sendChatMessage/);
-  assert.match(dashboard, /tone:\s*'urgent'/);
+  assert.match(dashboard, /is-urgent/);
   assert.match(css, /\.chat-window\s*\{[\s\S]*?border:\s*2px/);
   assert.match(css, /\.tile\.tile-urgent/);
   assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important;/);
@@ -109,6 +111,7 @@ test('vorhandene Katalogbilder sind transparente PNGs und werden nicht beschnitt
     read('public/css/app.css'),
   ]);
   assert.match(icons, /return `\/assets\/\$\{key\}\.png`/);
+  assert.match(icons, /item\.key \|\| item\.item_key/);
   assert.doesNotMatch(icons, /createElementNS|<svg|innerHTML/);
   assert.doesNotMatch(icons, /object-fit:cover/);
   assert.match(css, /\.catalog-image[\s\S]*?object-fit: contain;[\s\S]*?object-position: center;/);

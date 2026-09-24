@@ -177,11 +177,13 @@ export async function renderProfile(mount, ctx) {
   // verschickt eine neue Bestätigungsmail - der Sicherheitsbereich unten zeigt
   // danach entsprechend "noch nicht bestätigt".
   const emailInput = el('input', { type: 'email', value: me.email || '', id: 'p-email', autocomplete: 'email' });
+  const emailPassword = el('input', { type: 'password', id: 'p-email-password', autocomplete: 'current-password' });
   const emailSaveBtn = el('button.btn.primary', { text: t('profile.save') });
   emailSaveBtn.addEventListener('click', async () => {
     emailSaveBtn.disabled = true;
     try {
-      const res = await api.updateProfile({ email: emailInput.value.trim() });
+      const res = await api.updateProfile({ email: emailInput.value.trim(), currentPassword: emailPassword.value });
+      emailPassword.value = '';
       toast(t('profile.email_saved'));
       if (res?.user) setzeSicherheitszustand(res.user.emailVerified);
     } catch (err) { toast(err.message, 'err'); }
@@ -272,6 +274,7 @@ export async function renderProfile(mount, ctx) {
   );
   const emailPanel = panel(
     el('div.field', {}, el('label', { for: 'p-email', text: t('profile.email') }), emailInput),
+    el('div.field', {}, el('label', { for: 'p-email-password', text: t('pw.current') }), emailPassword),
     emailSaveBtn
   );
   const prefPanel = panel(
