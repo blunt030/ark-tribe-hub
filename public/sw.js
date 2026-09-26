@@ -5,7 +5,7 @@
 // vertraulich und veralten schnell - sie kommen immer frisch vom Server, damit
 // niemand nach einer Abmeldung noch alte Bestellungen aus dem Cache sieht.
 
-const CACHE = 'ath-shell-command-center-v4';
+const CACHE = 'ath-shell-command-center-v5';
 const SHELL = [
   '/',
   '/index.html',
@@ -20,6 +20,8 @@ const SHELL = [
   '/js/views/dashboard.js',
   '/js/views/orders.js',
   '/js/views/misc.js',
+  '/js/views/servers.js',
+  '/js/icons.js',
   '/assets/logo.png',
   '/assets/icon-192.png',
   '/manifest.webmanifest',

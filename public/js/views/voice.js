@@ -1,4 +1,4 @@
-import { el, spinner, emptyState, toast, confirmDialog } from '../ui.js';
+import { el, spinner, toast, confirmDialog, pageHead, avatar, avatarSrc, kebabMenu, emptyBlock, pill } from '../ui.js';
 import { t } from '../i18n.js';
 import { api } from '../api.js';
 import { uiIcon } from '../ui-icons.js';
@@ -24,6 +24,7 @@ export async function renderVoice(mount, ctx) {
   let refreshingIce = false;
   let shuttingDown = false;
   let audioContext = null;
+  let soundOff = false;
   const peers = new Map();
   const audioStage = el('div.voice-audio-stage', { 'aria-live': 'polite' });
   const listBox = el('div.voice-channel-list');
@@ -52,7 +53,7 @@ export async function renderVoice(mount, ctx) {
     await prepareAudioPlayback();
     let blocked = false;
     for (const { audio } of peers.values()) {
-      audio.muted = false;
+      audio.muted = soundOff;
       audio.volume = 1;
       try { await audio.play(); } catch { blocked = true; }
     }
@@ -96,7 +97,7 @@ export async function renderVoice(mount, ctx) {
     for (const track of localStream?.getTracks() || []) pc.addTrack(track, localStream);
 
     const audio = el('audio', { autoplay: true, playsinline: true, dataset: { peerId: String(peerId) } });
-    audio.muted = false;
+    audio.muted = soundOff;
     audio.volume = 1;
     audioStage.append(audio);
     const entry = { pc, audio, offered: false, pendingIce: [] };
@@ -315,53 +316,80 @@ export async function renderVoice(mount, ctx) {
     draw();
   }
 
+  // Nur lokal: Ton der anderen Teilnehmer stummschalten ("Kopfhoerer"). Das
+  // eigene Mikrofon bleibt davon unberuehrt; es wird ueber setMuted gesteuert.
+  function setSoundOff(value) {
+    soundOff = value;
+    for (const { audio } of peers.values()) audio.muted = soundOff;
+    draw();
+  }
+  let settingsOpenFor = null;
+  const isAdminUser = user.roles.includes('admin') || user.roles.includes('developer');
+  const SLOTS = 5;
+
   function draw() {
     const mine = channelForMe();
     if (mine && localStream) activeChannelId = Number(mine.id);
+    const online = channels.reduce((sum, c) => sum + c.participants.length, 0);
+    onlineLabel.replaceChildren(pill(t('voice.online_n', { n: online }), online ? 'done' : 'muted', 'microphone'));
     listBox.replaceChildren(
       ...(channels.length ? channels.map((channel) => {
         const me = channel.participants.find((participant) => Number(participant.user_id) === Number(user.id));
         const iAmIn = Boolean(me) && Number(activeChannelId) === Number(channel.id) && Boolean(localStream);
-        return el('article.voice-channel' + (iAmIn ? '.active' : ''), {},
-          el('div.voice-channel-main', {},
-            el('div.voice-channel-heading', {},
-              uiIcon('microphone'),
-              el('h2', { text: channel.name }),
-              el('div.hint', { text: t('voice.participants_count', { n: channel.participants.length }) })
-            ),
-            el('div.chips', {},
-              iAmIn ? el('button.btn.sm', {
-                text: me.is_muted ? t('voice.unmute') : t('voice.mute'),
-                onclick: () => setMuted(channel.id, !me.is_muted),
-              }) : null,
-              iAmIn ? el('button.btn.sm.danger', {
-                text: t('voice.leave'), onclick: async () => { await stopLocal(true); channels = (await api.voiceChannels()).channels; draw(); },
-              }) : el('button.btn.sm.primary', { text: t('voice.join'), onclick: () => join(channel.id) }),
-              (user.roles.includes('admin') || user.roles.includes('developer')) ? el('button.btn.sm.ghost', {
-                text: '✕', 'aria-label': t('common.delete'), onclick: async () => {
-                  if (!await confirmDialog({ title: t('voice.delete_confirm', { name: channel.name }), danger: true })) return;
-                  try { await api.deleteVoiceChannel(channel.id); channels = (await api.voiceChannels()).channels; draw(); }
-                  catch (err) { toast(err.message, 'err'); }
-                },
-              }) : null
-            )
-          ),
-          channel.participants.length ? el('div.voice-participants', {}, ...channel.participants.map((participant) =>
-            el('span.voice-person' + (Number(participant.user_id) === Number(user.id) ? '.is-self' : ''), {},
-              el('span.command-avatar', { text: (participant.username || '?').slice(0, 2).toUpperCase(), 'aria-hidden': 'true' }),
-              el('strong', { text: participant.username }),
-              
-              uiIcon('microphone', participant.is_muted ? 'is-muted' : ''))
-          )) : null
+        const people = channel.participants.map((participant) =>
+          el('span.voice-slot' + (Number(participant.user_id) === Number(user.id) ? '.is-self' : ''), { title: participant.username },
+            avatar(participant.username, { src: avatarSrc(participant) }),
+            participant.is_muted ? el('span.mute-mark', { title: t('voice.muted') }, uiIcon('microphone-slash')) : null,
+            el('small', { text: Number(participant.user_id) === Number(user.id) ? t('voice.you') : participant.username })));
+        const free = Math.max(0, SLOTS - people.length);
+        const settings = settingsOpenFor === channel.id ? el('div.voice-settings', {},
+          el('div.voice-status-row', {}, el('span.hint', { text: t('voice.network') + ':' }), networkBadge),
+          !rtcConfig.turnConfigured ? el('p.hint', { text: t('voice.turn_hint') }) : null) : null;
+        return el('article.voice-channel' + (iAmIn ? '.active' : '') + (people.length ? '.has-people' : ''), {},
+          el('header.voice-head', {},
+            uiIcon('waveform', 'voice-wave'),
+            el('div', {}, el('h2', { text: channel.name }), el('small', { text: t('voice.online_n', { n: channel.participants.length }) })),
+            isAdminUser ? kebabMenu([{ label: t('voice.delete_channel'), icon: 'trash', danger: true, onclick: async () => {
+              if (!await confirmDialog({ title: t('voice.delete_confirm', { name: channel.name }), danger: true })) return;
+              try { await api.deleteVoiceChannel(channel.id); channels = (await api.voiceChannels()).channels; draw(); }
+              catch (err) { toast(err.message, 'err'); }
+            } }]) : null),
+          el('div.voice-people', {}, ...people,
+            ...Array.from({ length: free }, () => el('span.voice-slot.is-empty', { 'aria-hidden': 'true' }, el('span.empty-ring'), el('small', { text: t('voice.empty_slot') })))),
+          el('div.voice-controls', {},
+            iAmIn
+              ? el('button.voice-join.is-leave', { type: 'button', onclick: async () => { await stopLocal(true); channels = (await api.voiceChannels()).channels; draw(); } },
+                uiIcon('sign-out'), el('span', { text: t('voice.leave') }))
+              : el('button.voice-join.is-join', { type: 'button', disabled: joining, onclick: () => join(channel.id) },
+                uiIcon('sign-in'), el('span', { text: t('voice.join') })),
+            el('button.icon-btn', {
+              type: 'button', disabled: !iAmIn, 'aria-pressed': iAmIn && me?.is_muted ? 'true' : 'false',
+              title: iAmIn && me?.is_muted ? t('voice.unmute') : t('voice.mute'), 'aria-label': iAmIn && me?.is_muted ? t('voice.unmute') : t('voice.mute'),
+              onclick: () => setMuted(channel.id, !me.is_muted),
+            }, uiIcon(iAmIn && me?.is_muted ? 'microphone-slash' : 'microphone')),
+            el('button.icon-btn', {
+              type: 'button', disabled: !iAmIn, 'aria-pressed': soundOff ? 'true' : 'false',
+              title: soundOff ? t('voice.sound_on') : t('voice.sound_off'), 'aria-label': soundOff ? t('voice.sound_on') : t('voice.sound_off'),
+              onclick: () => setSoundOff(!soundOff),
+            }, uiIcon(soundOff ? 'speaker-high' : 'headphones')),
+            el('button.icon-btn', {
+              type: 'button', 'aria-expanded': settingsOpenFor === channel.id ? 'true' : 'false', title: t('voice.settings'), 'aria-label': t('voice.settings'),
+              onclick: () => { settingsOpenFor = settingsOpenFor === channel.id ? null : channel.id; draw(); },
+            }, uiIcon('gear-six'))),
+          settings
         );
-      }) : [emptyState(t('voice.none'))])
+      }) : [emptyBlock('microphone', t('voice.none'))])
     );
   }
 
-  const newChannelInput = el('input', { type: 'text', placeholder: t('voice.new_ph') });
-  const createButton = el('button.btn.primary', {
-    text: '+ ' + t('voice.new'),
-    onclick: async () => {
+  const onlineLabel = el('span.voice-online');
+  const newChannelInput = el('input', { type: 'text', placeholder: t('voice.new_ph'), 'aria-label': t('voice.new_channel'), maxlength: 60 });
+  const createButton = el('button.btn.primary.lux', {
+    type: 'submit',
+  }, uiIcon('plus'), el('span', { text: t('voice.new') }));
+  const createForm = el('form.ark-panel.voice-create', {
+    onsubmit: async (e) => {
+      e.preventDefault();
       if (!newChannelInput.value.trim()) return;
       try {
         await api.createVoiceChannel({ name: newChannelInput.value.trim() });
@@ -370,16 +398,16 @@ export async function renderVoice(mount, ctx) {
         draw();
       } catch (err) { toast(err.message, 'err'); }
     },
-  });
+  }, uiIcon('microphone', 'ark-panel-icon'), newChannelInput, createButton);
 
-  mount.replaceChildren(...[
-    el('div.page-head', {}, el('div', {}, el('h1', { text: t('voice.title') }), el('p', { text: t('voice.audio_sub') }))),
-    !rtcConfig.turnConfigured ? el('div.notice.note', { text: t('voice.turn_hint') }) : null,
-    el('div.voice-status-row', {}, connectionState, networkBadge, audioUnlockButton),
-    el('div.card.voice-create', {}, newChannelInput, createButton),
-    listBox,
-    audioStage
-  ].filter(Boolean));
+  mount.replaceChildren(
+    pageHead({ title: t('voice.title'), sub: t('page.voice.sub'), icon: 'microphone', extra: el('div.banner-row', {}, onlineLabel) }),
+    el('div.voice-layout', {},
+      el('div.voice-topline', {}, el('div.voice-status-row', {}, connectionState, audioUnlockButton)),
+      listBox,
+      createForm,
+      audioStage)
+  );
   updateNetworkBadge();
   draw();
 

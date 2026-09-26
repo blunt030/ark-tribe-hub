@@ -1,7 +1,15 @@
-import { el, spinner, emptyState, toast, confirmDialog, fileToBase64 } from '../ui.js';
-import { t, timeAgo, LANGS, getLang, setLang } from '../i18n.js';
+import { el, spinner, emptyState, toast, confirmDialog, fileToBase64, pageHead, pill, avatar, avatarSrc, kebabMenu, tabBar, panel as arkPanel, emptyBlock } from '../ui.js';
+import { t, timeAgo, fmtDate, LANGS, getLang, setLang } from '../i18n.js';
 import { api } from '../api.js';
 import { uiIcon } from '../ui-icons.js';
+
+function notifIcon(type) {
+  if (type.startsWith('task')) return 'check-square';
+  if (type.startsWith('member')) return 'users';
+  if (type.startsWith('item')) return 'package';
+  if (type === 'new_comment') return 'chat-circle-dots';
+  return 'clipboard-text';
+}
 
 /* ========================================================================== */
 /* Mitteilungen                                                               */
@@ -13,81 +21,55 @@ export async function renderNotifications(mount, ctx) {
   mount.append(spinner());
 
   const { notifications } = await api.notifications();
+  const unread = notifications.filter((n) => !n.is_read).length;
 
-  mount.replaceChildren();
-  mount.append(
-    el('div.page-head', {},
-      el('div', {}, el('h1', { text: t('notif.title') })),
-      el('div.chips', {},
-      notifications.some((n) => n.is_read)
-        ? el('button.btn.sm.ghost', {
-            text: t('notif.clear_read'),
-            onclick: async (e) => {
-              e.target.disabled = true;
-              await api.clearReadNotifications();
-              await refreshBadges();
-              go('/notifications', true);
-            },
-          })
-        : null,
-      notifications.some((n) => !n.is_read)
-        ? el('button.btn.sm.ghost', {
-            text: t('notif.read_all'),
-            onclick: async (e) => {
-              e.target.disabled = true;
-              await api.markAllRead();
-              await refreshBadges();
-              go('/notifications', true);
-            },
-          })
-        : null
-      )
-    )
-  );
+  const target = (n) => n.payload?.orderId ? '/orders/' + n.payload.orderId : n.payload?.taskId ? '/tasks/' + n.payload.taskId : null;
 
-  mount.append(
+  mount.replaceChildren(
+    pageHead({
+      title: t('notif.title'), sub: t('page.notifications.sub'), icon: 'bell',
+      extra: unread ? el('div.banner-row', {}, pill(t('notif.unread_n', { n: unread }), 'open', 'bell')) : null,
+      actions: [
+        unread ? el('button.btn.sm', { type: 'button', onclick: async (e) => {
+          e.currentTarget.disabled = true;
+          await api.markAllRead();
+          await refreshBadges();
+          go('/notifications', true);
+        } }, uiIcon('check-circle'), el('span', { text: t('notif.read_all') })) : null,
+        notifications.some((n) => n.is_read) ? el('button.btn.sm.ghost', { type: 'button', onclick: async (e) => {
+          e.currentTarget.disabled = true;
+          await api.clearReadNotifications();
+          await refreshBadges();
+          go('/notifications', true);
+        } }, uiIcon('trash'), el('span', { text: t('notif.clear_read') })) : null,
+      ],
+    }),
     notifications.length
-      ? el('div.list', {},
-          ...notifications.map((n) =>
-            el('div.notif' + (n.is_read ? '' : '.unread'), {},
-              el('div', { style: 'flex:1' },
-                el('div.nt', { text: t('n.' + n.type) }),
-                el('div.nd', { text: timeAgo(n.created_at) })
-              ),
-              n.payload?.orderId
-                ? el('button.btn.sm', {
-                    text: t('order.detail'),
-                    onclick: async () => {
-                      if (!n.is_read) { await api.markRead(n.id); await refreshBadges(); }
-                      go('/orders/' + n.payload.orderId);
-                    },
-                  })
-                : null,
-              el('button.btn.sm.ghost', {
-                text: '✕',
-                title: t('common.delete'),
-                onclick: async () => {
-                  try {
-                    await api.deleteNotification(n.id);
-                    await refreshBadges();
-                    go('/notifications', true);
-                  } catch (err) { toast(err.message, 'err'); }
-                },
-              })
-            )
-          )
-        )
-      : emptyState(t('notif.none'))
-  );
-
-  // Die Einstellungen (welche Art von Benachrichtigung man erhält) leben jetzt im
-  // Profil unter "Einstellungen" - hier auf dieser Seite geht es nur noch um den
-  // eigentlichen Posteingang, das war vorher vermischt.
-  mount.append(
-    el('p.hint', { style: 'margin-top:16px;text-align:center' },
-      t('notif.settings_moved'), ' ',
-      el('a', { href: '#/profile', text: t('nav.profile') })
-    )
+      ? arkPanel({ title: t('notif.title'), icon: 'bell', count: notifications.length },
+          el('div.notif-list', {},
+            ...notifications.map((n) => {
+              const path = target(n);
+              return el('div.notif-row' + (n.is_read ? '' : '.is-unread'), {},
+                el('span.notif-icon', {}, uiIcon(notifIcon(n.type))),
+                el('div.notif-copy', {},
+                  el('b', { text: t('n.' + n.type) }),
+                  el('small', { text: [n.payload?.title, timeAgo(n.created_at)].filter(Boolean).join(' · ') })),
+                el('div.notif-actions', {},
+                  path ? el('button.btn.sm', { type: 'button', onclick: async () => {
+                    if (!n.is_read) { await api.markRead(n.id); await refreshBadges(); }
+                    go(path);
+                  } }, el('span', { text: t('notif.open') }), uiIcon('arrow-right')) : null,
+                  el('button.icon-btn.is-danger', { type: 'button', title: t('common.delete'), 'aria-label': t('common.delete'), onclick: async () => {
+                    try {
+                      await api.deleteNotification(n.id);
+                      await refreshBadges();
+                      go('/notifications', true);
+                    } catch (err) { toast(err.message, 'err'); }
+                  } }, uiIcon('x'))));
+            })))
+      : emptyBlock('bell', t('notif.none')),
+    // Die Einstellungen, welche Mitteilungen man erhaelt, liegen im Profil.
+    el('p.page-foot-note', {}, t('notif.settings_moved'), ' ', el('a', { href: '#/profile', text: t('nav.profile') }))
   );
 }
 
@@ -100,9 +82,8 @@ export async function renderProfile(mount, ctx) {
   const { user, onSignOut, reloadUser, go } = ctx;
   mount.append(spinner());
 
-  // Kennzahlen fuer "Meine Uebersicht". Alles einzeln abgesichert: das
-  // Developer-Konto gehoert keinem Tribe an, Aufgaben und Bestand antworten
-  // dort mit einem Fehler - die Seite darf daran nicht scheitern.
+  // Kennzahlen einzeln abgesichert: Developer-Konten haben keinen Tribe,
+  // Aufgaben und Bestand antworten dort mit Fehlern.
   const [{ user: me }, tribe, { preferences }, ordersRes, tasksRes, dinosRes, notifRes] = await Promise.all([
     api.profile(),
     api.myTribe().catch(() => null),
@@ -113,56 +94,54 @@ export async function renderProfile(mount, ctx) {
     api.notifications().catch(() => ({ notifications: [] })),
   ]);
 
-  mount.replaceChildren();
-
   const meineBestellungen = ordersRes.orders.filter((o) => o.member_id === me.id).length;
-  const meineAufgaben = tasksRes.tasks.filter(
-    (tk) => tk.assignee_id === me.id && !['done', 'cancelled'].includes(tk.status)
-  ).length;
+  const meineAufgaben = tasksRes.tasks.filter((tk) => tk.assignee_id === me.id && !['done', 'cancelled'].includes(tk.status)).length;
   const tierStatEintraege = dinosRes.dinos.length;
   const mitteilungen = notifRes.notifications.length;
 
-  /* ---------------------------------------------------------------- Felder */
-
-  const server = el('input', { type: 'text', value: me.server || '', id: 'p-server' });
-  const map = el('input', { type: 'text', value: me.map || '', id: 'p-map' });
-  const saveBtn = el('button.btn.primary', { text: t('profile.save') });
-
+  /* ---------------------------------------------------- Profil bearbeiten */
+  const server = el('input', { type: 'text', value: me.server || '', id: 'p-server', maxlength: 100 });
+  const map = el('input', { type: 'text', value: me.map || '', id: 'p-map', maxlength: 100 });
+  const saveBtn = el('button.btn.primary.lux.block', { type: 'button' }, uiIcon('floppy-disk'), el('span', { text: t('profile.save') }));
   saveBtn.addEventListener('click', async () => {
     saveBtn.disabled = true;
     try {
-      await api.updateProfile({
-        server: server.value.trim(),
-        map: map.value.trim(),
-      });
+      await api.updateProfile({ server: server.value.trim(), map: map.value.trim() });
       toast(t('profile.saved'));
     } catch (err) { toast(err.message, 'err'); }
     finally { saveBtn.disabled = false; }
   });
 
-  const avatarImg = el('img', {
-    src: me.avatarPath ? '/uploads/' + me.avatarPath : '/assets/command-brand-v3.webp',
-    alt: '',
-    style: 'width:76px;height:76px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--raised)',
-  });
-  const fileInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', style: 'display:none' });
+  const avatarSlot = el('span.profile-avatar-slot', {}, avatar(me.username, { size: 'xl', src: avatarSrc(me) }));
+  const fileInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', hidden: true });
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files[0];
     if (!file) return;
     try {
       const base64 = await fileToBase64(file);
       const res = await api.uploadAvatar({ imageBase64: base64, mimeType: file.type });
-      avatarImg.src = '/uploads/' + res.avatarPath + '?v=' + Date.now();
+      avatarSlot.replaceChildren(avatar(me.username, { size: 'xl', src: '/uploads/' + res.avatarPath + '?v=' + Date.now() }));
       toast(t('profile.saved'));
       await reloadUser();
     } catch (err) { toast(err.message, 'err'); }
   });
 
-  // Passwortwechsel - vorher gab es GAR KEINE Möglichkeit, das Passwort zu ändern.
+  const editPanel = el('div.profile-form', {},
+    el('div.setting-row', {}, uiIcon('hard-drives'), el('label', { for: 'p-server', text: t('profile.server') }), server),
+    el('div.setting-row', {}, uiIcon('map'), el('label', { for: 'p-map', text: t('profile.map') }), map),
+    el('div.setting-row', {}, uiIcon('vault'), el('span.setting-label', { text: t('members.vault') }),
+      el('div.readonly-field', {},
+        el('div.readonly-box', {}, uiIcon('lock-simple'), el('span', { text: me.personalVaultNumber || t('profile.vault_unassigned') })),
+        el('span.readonly-tag', { title: t('profile.vault_admin_hint'), text: t('profile.readonly') }))),
+    el('p.profile-form-note', { text: t('profile.visibility') }),
+    saveBtn
+  );
+
+  /* ------------------------------------------------------ Passwort, E-Mail */
   const pwCurrentInput = el('input', { type: 'password', autocomplete: 'current-password', id: 'pw-cur' });
   const pwNewInput = el('input', { type: 'password', autocomplete: 'new-password', id: 'pw-new' });
   const pwRepeatInput = el('input', { type: 'password', autocomplete: 'new-password', id: 'pw-rep' });
-  const pwSaveBtn = el('button.btn.primary', { text: t('pw.save') });
+  const pwSaveBtn = el('button.btn.primary', { type: 'button', text: t('pw.save') });
   pwSaveBtn.addEventListener('click', async () => {
     if (pwNewInput.value !== pwRepeatInput.value) { toast(t('pw.mismatch'), 'err'); return; }
     if (pwNewInput.value.length < 8) { toast(t('pw.too_short'), 'err'); return; }
@@ -175,12 +154,11 @@ export async function renderProfile(mount, ctx) {
     finally { pwSaveBtn.disabled = false; }
   });
 
-  // E-Mail-Wechsel. Das Backend setzt dabei den Bestätigungsstatus zurück und
-  // verschickt eine neue Bestätigungsmail - der Sicherheitsbereich unten zeigt
-  // danach entsprechend "noch nicht bestätigt".
+  // E-Mail-Wechsel: Das Backend setzt den Bestaetigungsstatus zurueck und
+  // verschickt eine neue Bestaetigungsmail.
   const emailInput = el('input', { type: 'email', value: me.email || '', id: 'p-email', autocomplete: 'email' });
   const emailPassword = el('input', { type: 'password', id: 'p-email-password', autocomplete: 'current-password' });
-  const emailSaveBtn = el('button.btn.primary', { text: t('profile.save') });
+  const emailSaveBtn = el('button.btn.primary', { type: 'button', text: t('profile.save') });
   emailSaveBtn.addEventListener('click', async () => {
     emailSaveBtn.disabled = true;
     try {
@@ -192,98 +170,29 @@ export async function renderProfile(mount, ctx) {
     finally { emailSaveBtn.disabled = false; }
   });
 
-  // Einstellungen -> Benachrichtigungen: jede Art einzeln schaltbar, plus
-  // "Alle an/aus" für den schnellen Fall.
-  const prefChanged = new Map();
-  const prefSaveBtn = el('button.btn.primary', { text: t('profile.save'), disabled: true });
-  const prefBoxes = [];
-
-  function markChanged() { prefSaveBtn.disabled = false; }
-
-  const prefList = el('div.list', {},
-    ...preferences.map((p) => {
-      const box = el('input', { type: 'checkbox', style: 'width:auto', id: 'p-' + p.type });
-      box.checked = p.enabled;
-      box.addEventListener('change', () => { prefChanged.set(p.type, box.checked); markChanged(); });
-      prefBoxes.push(box);
-      return el('label.row', { for: 'p-' + p.type, style: 'cursor:pointer' },
-        box,
-        el('div.grow', {}, el('div.rt', { text: t('n.' + p.type) }))
-      );
-    })
-  );
-
-  prefSaveBtn.addEventListener('click', async () => {
-    prefSaveBtn.disabled = true;
-    try {
-      await api.saveNotifPrefs([...prefChanged].map(([type, enabled]) => ({ type, enabled })));
-      toast(t('notif.saved'));
-      prefChanged.clear();
-    } catch (err) { toast(err.message, 'err'); prefSaveBtn.disabled = false; }
-  });
-
-  const setAll = (enabled) => {
-    for (const box of prefBoxes) {
-      if (box.checked !== enabled) { box.checked = enabled; box.dispatchEvent(new Event('change')); }
-    }
-  };
-
-  /* ------------------------------------------------- Aufklappbare Bereiche */
-
-  // Jeder Konto-Bereich ist ein eigenes Feld, das erst auf Klick erscheint.
-  // Vorher standen Passwortfelder und Profildaten dauerhaft untereinander -
-  // auf dem Handy war das eine sehr lange Rolle.
-  function panel(...kinder) {
-    return el('div.panel', { style: 'display:none;margin:4px 0 10px' }, ...kinder);
-  }
-  const editPanel = panel(
-    el('div', { style: 'margin-bottom:10px' },
-      el('button.btn.sm', { text: t('profile.upload'), onclick: () => fileInput.click() }),
-      fileInput
-    ),
-    el('div.field', {}, el('label', { for: 'p-server', text: t('profile.server') }), server),
-    el('div.field', {}, el('label', { for: 'p-map', text: t('profile.map') }), map),
-    el('div.field', {},
-      el('label', { text: t('profile.vault') }),
-      el('div.readonly-value', { text: me.personalVaultNumber || t('profile.vault_unassigned') }),
-      el('span.hint', { text: t('profile.vault_admin_hint') })
-    ),
-    el('p.hint', { text: t('profile.visibility'), style: 'margin:-6px 0 14px' }),
-    saveBtn
-  );
-  const pwPanel = panel(
+  const pwPanel = el('div.disclosure-body', {},
     el('p.hint', { style: 'margin:0 0 10px', text: t('pw.hint') }),
     el('div.field', {}, el('label', { for: 'pw-cur', text: t('pw.current') }), pwCurrentInput),
     el('div.field', {}, el('label', { for: 'pw-new', text: t('pw.new') }), pwNewInput),
     el('div.field', {}, el('label', { for: 'pw-rep', text: t('pw.repeat') }), pwRepeatInput),
-    pwSaveBtn
-  );
-  const emailPanel = panel(
+    pwSaveBtn);
+  const emailPanel = el('div.disclosure-body', {},
     el('div.field', {}, el('label', { for: 'p-email', text: t('profile.email') }), emailInput),
     el('div.field', {}, el('label', { for: 'p-email-password', text: t('pw.current') }), emailPassword),
-    emailSaveBtn
-  );
-  const prefPanel = panel(
-    el('p', { style: 'color:var(--muted);font-size:.86rem;margin:0 0 12px', text: t('notif.settings_hint') }),
-    el('div.chips', { style: 'margin-bottom:12px' },
-      el('button.btn.sm', { text: t('notif.enable_all'), onclick: () => setAll(true) }),
-      el('button.btn.sm', { text: t('notif.disable_all'), onclick: () => setAll(false) })
-    ),
-    prefList,
-    el('div', { style: 'margin-top:14px' }, prefSaveBtn)
-  );
+    emailSaveBtn);
+  const disclosure = (title, icon, content) => el('details.disclosure', {},
+    el('summary', {}, uiIcon(icon), el('span', { text: title }), uiIcon('caret-right', 'caret')), content);
 
-  // Sicherheitszeile: wird nach einem E-Mail-Wechsel direkt aktualisiert.
-  const secState = el('span.sec-state');
+  const secState = el('span.sec-pill');
+  const secLabel = el('span');
   function setzeSicherheitszustand(verified) {
-    secState.className = 'sec-state ' + (verified ? 'ok' : 'warn');
-    secState.textContent = verified ? '✓' : '✕';
     secLabel.textContent = verified ? t('profile.email_verified') : t('profile.email_unverified');
+    secState.replaceChildren(pill(verified ? '✓' : '!', verified ? 'done' : 'high'));
   }
-  const secLabel = el('span.lr-label');
   setzeSicherheitszustand(Boolean(me.emailVerified));
+
   const pinStatus = el('span.hint', { role: 'status' });
-  const pinButton = el('button.btn.sm', { type: 'button', text: t('profile.pin_generate') });
+  const pinButton = el('button.btn.sm', { type: 'button' }, uiIcon('key'), el('span', { text: t('profile.pin_generate') }));
   pinButton.addEventListener('click', async () => {
     pinButton.disabled = true;
     pinStatus.textContent = t('profile.pin_sending');
@@ -297,118 +206,125 @@ export async function renderProfile(mount, ctx) {
     } finally { pinButton.disabled = false; }
   });
 
-  /* ------------------------------------------------------ Benachrichtigungen */
+  /* ------------------------------------------------ Benachrichtigungen */
+  const prefChanged = new Map();
+  const prefSaveBtn = el('button.btn.primary.sm', { type: 'button', text: t('profile.save'), disabled: true });
+  const prefBoxes = [];
+  const prefPanel = el('div.pref-list', {},
+    ...preferences.map((p) => {
+      const box = el('input', { type: 'checkbox', id: 'p-' + p.type, role: 'switch' });
+      box.checked = p.enabled;
+      box.addEventListener('change', () => { prefChanged.set(p.type, box.checked); prefSaveBtn.disabled = false; });
+      prefBoxes.push(box);
+      return el('label.pref-row', { for: 'p-' + p.type },
+        uiIcon(notifIcon(p.type)),
+        el('span.pref-copy', {}, el('b', { text: t('n.' + p.type) })),
+        el('span.switch', {}, box, el('span', { 'aria-hidden': 'true' })));
+    }));
+  prefSaveBtn.addEventListener('click', async () => {
+    prefSaveBtn.disabled = true;
+    try {
+      await api.saveNotifPrefs([...prefChanged].map(([type, enabled]) => ({ type, enabled })));
+      toast(t('notif.saved'));
+      prefChanged.clear();
+    } catch (err) { toast(err.message, 'err'); prefSaveBtn.disabled = false; }
+  });
+  const setAll = (enabled) => {
+    for (const box of prefBoxes) {
+      if (box.checked !== enabled) { box.checked = enabled; box.dispatchEvent(new Event('change')); }
+    }
+  };
+
+  const langSelect = el('select', { 'aria-label': t('profile.language'), onchange: (e) => { setLang(e.target.value); location.reload(); } },
+    ...LANGS.map((l) => el('option', { value: l.code, text: l.label, selected: getLang() === l.code })));
 
   const letzteMeldungen = notifRes.notifications.slice(0, 5);
-  const notifBody = el('div.profile-notifications', {},
-    letzteMeldungen.length
-      ? el('div.feed', {},
-          ...letzteMeldungen.map((n) =>
-            el('div.feed-item' + (n.is_read ? '' : '.unread'), {},
-              el('span.fi-dot'),
-              el('div.fi-body', {},
-                el('div.fi-text', { text: t('n.' + n.type) }),
-                el('div.fi-time', { text: timeAgo(n.created_at) })
-              )
-            )
-          )
-        )
-      : el('p.hint', { style: 'padding:4px 0', text: t('profile.no_notifications') }),
-    el('button.t-link', { type: 'button', text: t('profile.show_all') + ' →', onclick: () => go('/notifications') })
-  );
-  /* ------------------------------------------------------------- Aufbau */
+  const roleTone = (r) => r === 'admin' ? 'admin' : r === 'breeder_crafter' ? 'breeder' : r === 'developer' ? 'dev' : 'role';
 
-  // Keep the existing validated handlers and reauthentication requirements.
-  // Only the presentation changes: open, clearly labelled account sections.
-  for (const content of [editPanel, pwPanel, emailPanel, prefPanel]) {
-    content.style.display = 'block';
-    content.classList.add('profile-form');
-  }
-  function profileSection(title, icon, content) {
-    return el('section.card.profile-section', {},
-      el('div.profile-section-heading', {}, uiIcon(icon), el('h2', { text: title })), content);
-  }
-  function securityDisclosure(title, icon, content) {
-    return el('details.profile-disclosure', {},
-      el('summary', {}, uiIcon(icon), el('span', { text: title }), uiIcon('caret-right')),
-      content);
-  }
-  mount.append(
-    el('section.profile-banner.command-page-banner', {},
-      el('h1', { text: t('profile.my_profile') }),
-      el('div.profile-identity', {}, avatarImg,
-        el('div', {}, el('h2', { text: me.username }),
-          el('div.profile-identity-meta', {}, uiIcon('users'), el('span', { text: tribe?.tribe?.name || '—' }),
-            ...me.roles.map(r => el('span.badge.b-role', { text: t('role.' + r) })))))
-    ),
-    el('div.profile-layout', {},
-      el('div.profile-main-column', {},
-        profileSection(t('profile.edit'), 'user', editPanel),
-        profileSection(t('profile.overview'), 'chart-bar', el('div.tiles', {},
+  mount.replaceChildren(
+    el('section.profile-hero', {},
+      el('div.profile-avatar-wrap', {}, avatarSlot,
+        el('button.profile-avatar-edit', { type: 'button', title: t('profile.change_image'), 'aria-label': t('profile.change_image'), onclick: () => fileInput.click() }, uiIcon('pencil-simple'))),
+      el('div.profile-id', {},
+        el('h1', { text: me.username }),
+        el('div.profile-id-meta', {}, ...me.roles.map((r) => pill(t('role.' + r), roleTone(r)))),
+        el('div.profile-id-meta', {}, uiIcon('users'), el('span', { text: tribe?.tribe?.name || t('nav.group.platform') }))),
+      el('div.profile-hero-action', {},
+        el('button.btn.primary.lux', { type: 'button', onclick: () => fileInput.click() }, uiIcon('image'), el('span', { text: t('profile.change_image') })),
+        fileInput)),
+    el('div.profile-grid', {},
+      el('div.profile-col', {},
+        profileSection(t('profile.settings'), 'user', editPanel),
+        profileSection(t('profile.overview'), 'chart-bar', el('div.profile-tiles', {},
           uebersichtKachel(meineBestellungen, t('profile.cnt.orders')),
           uebersichtKachel(meineAufgaben, t('profile.cnt.tasks')),
           uebersichtKachel(tierStatEintraege, t('nav.animal_stats')),
-          uebersichtKachel(mitteilungen, t('profile.cnt.notifications'))))),
-      el('aside.profile-side-column', {},
-        profileSection(t('profile.security'), 'shield-check', el('div.profile-security-controls', {},
-          securityDisclosure(t('pw.title'), 'shield-check', pwPanel),
-          securityDisclosure(t('profile.email_change'), 'envelope', emailPanel))),
-        profileSection(t('notif.settings'), 'bell', prefPanel),
-        profileSection(t('profile.security'), 'shield-check', el('div.profile-security-body', {},
-          el('div.sec-row', {}, uiIcon('envelope'), secLabel, secState),
-          el('div.access-pin-row', {}, el('div.grow', {},
-            el('div.rt', { text: t('profile.pin_title') }), el('div.rs', { text: t('profile.pin_hint') })), pinButton),
+          uebersichtKachel(mitteilungen, t('profile.cnt.notifications')))),
+        profileSection(t('profile.notifications'), 'bell', el('div', {},
+          letzteMeldungen.length
+            ? el('div.feed-list', {}, ...letzteMeldungen.map((n) => el('div.feed-row' + (n.is_read ? '' : '.unread'), {},
+                el('span.fi-dot'), el('span', { text: t('n.' + n.type) }), el('small', { text: timeAgo(n.created_at) }))))
+            : el('p.hint', { text: t('profile.no_notifications') }),
+          el('button.ark-panel-link', { type: 'button', onclick: () => go('/notifications'), style: 'margin-top:8px' }, el('span', { text: t('profile.show_all') }), uiIcon('arrow-right')))),
+        adminLinks(user, go)),
+      el('div.profile-col', {},
+        profileSection(t('profile.security_settings'), 'shield-check', el('div', {},
+          disclosure(t('pw.title'), 'key', pwPanel),
+          disclosure(t('profile.email_change'), 'envelope', emailPanel),
+          el('div.sec-status', {}, uiIcon('envelope'), secLabel, secState),
+          el('div.pin-block', {},
+            el('div', {}, el('b', { text: t('profile.pin_title') }), el('p', { text: t('profile.pin_hint') })),
+            pinButton),
           pinStatus,
-          el('button.btn.danger', { text: t('auth.logout'), onclick: onSignOut }))),
-        profileSection(t('profile.language'), 'globe', el('div.chips', {},
-          ...LANGS.map(l => el('button.btn.sm' + (getLang() === l.code ? '.primary' : ''), {
-            text: l.label, onclick: () => { setLang(l.code); location.reload(); }
-          })))),
-        profileSection(t('profile.notifications'), 'bell', notifBody),
-        adminLinks(user, go)))
+          el('div.pref-head', {}, uiIcon('bell'), el('h3', { text: t('profile.notify_types') }),
+            el('div.chips', {},
+              el('button.chip', { type: 'button', text: t('notif.enable_all'), onclick: () => setAll(true) }),
+              el('button.chip', { type: 'button', text: t('notif.disable_all'), onclick: () => setAll(false) }))),
+          prefPanel,
+          el('div.form-actions', {}, prefSaveBtn),
+          el('div.lang-row', {}, uiIcon('globe'), el('span.setting-label', { text: t('profile.language') }), langSelect))),
+        el('button.btn.danger.block', { type: 'button', onclick: onSignOut }, uiIcon('sign-out'), el('span', { text: t('auth.logout') }))))
   );
+}
+
+function profileSection(title, icon, content) {
+  return arkPanel({ title, icon, className: 'profile-section' }, content);
 }
 
 function uebersichtKachel(n, label) {
-  return el('div.tile', {},
-    el('div.t-val', { text: String(n) }),
-    el('div.t-sub', { text: label })
-  );
+  return el('div.profile-tile', {}, el('strong', { text: String(n) }), el('span', { text: label }));
 }
 
 /**
- * Verwaltungsbereiche als Kacheln auf der Profilseite. Auf dem Desktop stehen sie
- * zusaetzlich in der Seitenleiste; auf dem Handy ist das hier der Weg dorthin,
- * weil die untere Leiste bewusst bei fuenf festen Eintraegen bleibt.
+ * Verwaltungsbereiche als Links auf der Profilseite. Auf dem Desktop stehen sie
+ * zusaetzlich in der Seitenleiste; auf dem Handy liegen sie im Mehr-Menue.
  */
 function adminLinks(user, go) {
   const links = [];
-  // "Offene Bestellungen" ist aus der Hauptnavigation entfernt (Punkt 18), die
-  // Funktion bleibt aber vollstaendig erhalten und ist hier erreichbar.
-  links.push(['/orders', t('nav.orders')]);
-  if (!user.roles.includes('developer') && user.tribeId) {
-    links.push(['/dinos', t('nav.animal_stats')], ['/servers', t('nav.servers')], ['/tasks', t('nav.tasks')], ['/voice', t('nav.voice')]);
+  links.push(['/orders', t('nav.orders'), 'clipboard-text']);
+  if (user.tribeId) {
+    links.push(['/dinos', t('nav.animal_stats'), 'chart-bar'], ['/servers', t('nav.servers'), 'map'], ['/tasks', t('nav.tasks'), 'check-square'], ['/voice', t('nav.voice'), 'microphone']);
   }
   if (user.roles.includes('admin') || user.roles.includes('developer')) {
-    links.push(['/members', t('nav.members')], ['/news', t('nav.news')], ['/audit', t('nav.audit')]);
+    links.push(['/members', t('nav.members'), 'users'], ['/news', t('nav.news'), 'newspaper'], ['/audit', t('nav.audit'), 'scroll']);
   }
   if (user.roles.includes('developer')) {
-    links.push(['/tribes', t('nav.tribes')], ['/users', t('nav.users')], ['/catalog', t('nav.catalog')]);
+    links.push(['/tribes', t('nav.tribes'), 'users-three'], ['/users', t('nav.users'), 'users'], ['/catalog', t('nav.catalog'), 'squares-four']);
   }
-  if (!links.length) return null;
-
-  const group = user.roles.includes('developer') ? t('nav.group.platform') : t('nav.group.tribe');
-  return el('div', {},
-    el('div.section-title', {}, group),
-    el('div.chips', {},
-      ...links.map(([path, label]) => el('button.btn.sm', { text: label, onclick: () => go(path) }))
-    )
-  );
+  return profileSection(t('profile.more_areas'), 'squares-four', el('div.area-links', {},
+    ...links.map(([path, label, icon]) => el('button.btn.sm', { type: 'button', onclick: () => go(path) }, uiIcon(icon), el('span', { text: label })))));
 }
 
 /* ========================================================================== */
-/* Admin – Mitglieder                                                         */
+/* Mitglieder                                                                 */
 /* ========================================================================== */
+
+const ROLE_ORDER = ['developer', 'admin', 'breeder_crafter', 'member'];
+function rolePill(role) {
+  const tone = role === 'admin' ? 'admin' : role === 'breeder_crafter' ? 'breeder' : role === 'developer' ? 'dev' : 'role';
+  const icon = role === 'admin' ? 'crown' : role === 'breeder_crafter' ? 'leaf' : role === 'developer' ? 'wrench' : null;
+  return pill(t('role.' + role), tone, icon);
+}
 
 export async function renderMembers(mount, ctx) {
   const canManage = ctx.user.roles.includes('admin') || ctx.user.roles.includes('developer');
@@ -418,56 +334,53 @@ export async function renderMembers(mount, ctx) {
   try {
     members = (await api.members()).members;
   } catch (err) {
-    mount.replaceChildren(emptyState(err.message));
+    mount.replaceChildren(pageHead({ title: t('admin.members'), icon: 'users' }), emptyState(err.message));
     return;
   }
+  let query = '';
 
   function draw() {
-    mount.replaceChildren();
-    const modeSwitch = canManage
-      ? el('div.seg', {},
-          el('button' + (mode === 'overview' ? '.on' : ''), { text: t('members.overview'), onclick: () => { mode = 'overview'; draw(); } }),
-          el('button' + (mode === 'access' ? '.on' : ''), { text: t('members.access'), onclick: () => { mode = 'access'; draw(); } })
-        )
-      : null;
-    mount.append(el('div.page-head', {},
-      el('div', {}, el('h1', { text: t('admin.members') }), el('p', { text: t('members.visible_roles') })),
-      modeSwitch
-    ));
-
     const pending = members.filter((m) => m.status === 'pending_approval');
     const active = members.filter((m) => m.status !== 'pending_approval');
+    const head = pageHead({
+      title: t('admin.members'), sub: t('page.members.sub'), icon: 'users',
+      extra: el('div.banner-row', {}, pill(t('members.count', { n: active.length }), 'role', 'users')),
+    });
+    const modeSwitch = canManage ? tabBar([
+      { key: 'overview', label: t('members.overview') },
+      { key: 'access', label: t('members.access') },
+    ], mode, (key) => { mode = key; draw(); }) : null;
 
     if (mode === 'access') {
-      mount.append(
+      mount.replaceChildren(head, el('div.task-toolbar', {}, modeSwitch),
         el('div.notice.note', { text: t('members.access_hint') }),
-        el('div.list.member-access-list', {}, ...active.map(accessRow))
-      );
+        el('div.list.member-access-list', {}, ...active.map(accessRow)));
       return;
     }
 
-    if (canManage) {
-      mount.append(el('div.section-title', {}, t('admin.pending'), el('span.c', { text: pending.length })));
-      mount.append(
-        pending.length
-          ? el('div.list', {}, ...pending.map(pendingRow))
-          : emptyState(t('admin.no_pending'))
-      );
-    }
-
-    mount.append(el('div.section-title', {}, t('admin.members'), el('span.c', { text: active.length })));
-    const roster = el('div.member-roster', {}, ...active.map(memberRow));
+    const roster = el('div.member-list');
     const noMatches = el('p.hint', { text: t('common.no_results'), hidden: true, role: 'status' });
-    const search = el('input', { type: 'search', placeholder: t('common.search'), 'aria-label': t('common.search'), oninput: (event) => {
-      const query = event.target.value.trim().toLocaleLowerCase();
-      let visible = 0;
-      [...roster.children].forEach((row, index) => {
-        row.hidden = !active[index].username.toLocaleLowerCase().includes(query);
-        if (!row.hidden) visible++;
-      });
-      noMatches.hidden = visible !== 0;
-    } });
-    mount.append(el('div.card.member-search', {}, search), roster, noMatches);
+    const drawRoster = () => {
+      const q = query.trim().toLocaleLowerCase();
+      const rows = active.filter((m) => !q || m.username.toLocaleLowerCase().includes(q)
+        || (m.roles || []).some((r) => t('role.' + r).toLocaleLowerCase().includes(q)));
+      roster.replaceChildren(...rows.map(memberRow));
+      noMatches.hidden = rows.length !== 0;
+    };
+    const search = el('input', { type: 'search', value: query, placeholder: t('common.search'), 'aria-label': t('common.search'),
+      oninput: (e) => { query = e.target.value; drawRoster(); } });
+
+    mount.replaceChildren(...[
+      head,
+      modeSwitch ? el('div.task-toolbar', {}, modeSwitch) : null,
+      el('div.members-layout', {},
+        canManage && pending.length ? arkPanel({ title: t('admin.pending'), icon: 'warning', count: pending.length },
+          ...pending.map(pendingRow)) : null,
+        arkPanel({ title: t('admin.members'), icon: 'users', count: active.length },
+          el('div.search-field.member-search', {}, uiIcon('magnifying-glass'), search),
+          roster, noMatches)),
+    ].filter(Boolean));
+    drawRoster();
   }
 
   async function reload() {
@@ -476,77 +389,62 @@ export async function renderMembers(mount, ctx) {
   }
 
   function pendingRow(m) {
-    return el('div.row', {},
-      el('div.grow', {},
-        el('div.rt', { text: m.username }),
-        el('div.rs', { text: timeAgo(m.created_at) })
-      ),
-      el('button.btn.sm.primary', {
-        text: t('admin.approve'),
-        onclick: async (e) => {
-          e.target.disabled = true;
-          try { await api.approve(m.id); toast(t('admin.approved')); await reload(); }
-          catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
-        },
-      }),
-      el('button.btn.sm.danger', {
-        text: t('admin.reject'),
-        onclick: async () => {
-          const ok = await confirmDialog({ title: t('admin.reject') + ' – ' + m.username, danger: true });
-          if (!ok) return;
-          try { await api.reject(m.id); toast(t('admin.rejected')); await reload(); }
-          catch (err) { toast(err.message, 'err'); }
-        },
-      })
-    );
+    return el('div.pending-line', {},
+      avatar(m.username, { src: avatarSrc(m) }),
+      el('div.member-name', {}, el('strong', { text: m.username }), el('small', { text: timeAgo(m.created_at) })),
+      el('div.chips', {},
+        el('button.btn.sm.primary', {
+          type: 'button',
+          onclick: async (e) => {
+            e.currentTarget.disabled = true;
+            try { await api.approve(m.id); toast(t('admin.approved')); await reload(); }
+            catch (err) { toast(err.message, 'err'); e.currentTarget.disabled = false; }
+          },
+        }, uiIcon('check-circle'), el('span', { text: t('admin.approve') })),
+        el('button.btn.sm.danger', {
+          type: 'button',
+          onclick: async () => {
+            const ok = await confirmDialog({ title: t('admin.reject') + ' – ' + m.username, danger: true });
+            if (!ok) return;
+            try { await api.reject(m.id); toast(t('admin.rejected')); await reload(); }
+            catch (err) { toast(err.message, 'err'); }
+          },
+        }, uiIcon('x'), el('span', { text: t('admin.reject') }))));
   }
 
   function memberRow(m) {
-    const isBreeder = m.roles.includes('breeder_crafter');
-    const istAdmin = (m.roles || []).includes('admin');
-    return el('article.row.member-card', {},
-      el('span.command-avatar', { text: (m.username || '?').slice(0, 2).toUpperCase(), 'aria-hidden': 'true' }),
-      el('div.grow', {},
-        el('div.rt', { text: m.username }),
-        el('div.rs', {}, ...m.roles.map((r) => el('span.badge.b-role', { text: t('role.' + r), style: 'margin-right:4px' })))
-      ),
-      canManage && m.status !== 'active' ? el('span.badge.b-pending', { text: t('ustatus.' + m.status) }) : null,
-      canManage ? el('button.btn.sm' + (isBreeder ? '.primary' : ''), {
-        text: t('admin.make_breeder'),
-        onclick: async (e) => {
-          e.target.disabled = true;
-          try { await api.setBreeder(m.id, !isBreeder); toast(t('admin.role_saved')); await reload(); }
-          catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
-        },
-      }) : null,
-      // Adminrechte vergeben/entziehen. Der Server prüft zusätzlich, dass der
-      // letzte Admin sich die Rolle nicht selbst entziehen kann.
-      canManage ? el('button.btn.sm' + (istAdmin ? '.primary' : ''), {
-        text: t('admin.make_admin'),
-        onclick: async (e) => {
-          e.target.disabled = true;
-          try { await api.setTribeAdmin(m.id, !istAdmin); toast(t('admin.role_saved')); await reload(); }
-          catch (err) { toast(err.message, 'err'); e.target.disabled = false; }
-        },
-      }) : null,
-      canManage && m.status === 'active'
-        ? el('button.btn.sm.danger', {
-            text: t('admin.disable'),
-            onclick: async () => {
-              const ok = await confirmDialog({ title: t('admin.disable') + ' – ' + m.username, danger: true });
-              if (!ok) return;
-              try { await api.disableMember(m.id); toast(t('admin.disabled')); await reload(); }
-              catch (err) { toast(err.message, 'err'); }
-            },
-          })
-        : null
-    );
+    const roles = [...(m.roles || [])].sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b));
+    const isBreeder = roles.includes('breeder_crafter');
+    const istAdmin = roles.includes('admin');
+    const isSelf = Number(m.id) === Number(ctx.user.id);
+    const run = (fn, ok) => async () => {
+      try { await fn(); toast(ok); await reload(); }
+      catch (err) { toast(err.message, 'err'); }
+    };
+    // Rollenaenderungen prueft der Server zusaetzlich (z. B. letzter Admin).
+    const menu = canManage ? kebabMenu([
+      { label: isBreeder ? t('members.revoke_breeder') : t('members.grant_breeder'), icon: 'leaf', onclick: run(() => api.setBreeder(m.id, !isBreeder), t('admin.role_saved')) },
+      { label: istAdmin ? t('members.revoke_admin') : t('members.grant_admin'), icon: 'crown', onclick: run(() => api.setTribeAdmin(m.id, !istAdmin), t('admin.role_saved')) },
+      m.status === 'active' && !isSelf ? { label: t('admin.disable'), icon: 'x-circle', danger: true, onclick: async () => {
+        const ok = await confirmDialog({ title: t('admin.disable') + ' – ' + m.username, danger: true });
+        if (!ok) return;
+        try { await api.disableMember(m.id); toast(t('admin.disabled')); await reload(); }
+        catch (err) { toast(err.message, 'err'); }
+      } } : null,
+    ], t('members.more')) : null;
+    return el('article.member-line' + (isSelf ? '.is-self' : ''), {},
+      avatar(m.username, { src: avatarSrc(m) }),
+      el('div.member-name', {}, el('strong', { text: m.username }),
+        isSelf ? el('small', { text: t('members.you') }) : canManage && m.created_at ? el('small', { text: t('members.joined', { date: fmtDate(m.created_at) }) }) : null),
+      el('div.member-roles', {}, ...roles.map(rolePill)),
+      el('span.member-meta', {}, canManage && m.status && m.status !== 'active' ? pill(t('ustatus.' + m.status), 'muted') : null),
+      menu || el('span'));
   }
 
   function accessRow(m) {
     const pin = el('input', { type: 'text', inputmode: 'numeric', maxlength: '6', value: m.personalPin || '', placeholder: '000000', 'aria-label': t('members.pin') });
     const vault = el('input', { type: 'text', maxlength: '50', value: m.personal_vault_number || '', placeholder: t('members.vault'), 'aria-label': t('members.vault') });
-    const save = el('button.btn.sm.primary', { text: t('profile.save') });
+    const save = el('button.btn.sm.primary', { type: 'button', text: t('profile.save') });
     const random = el('button.btn.sm', {
       type: 'button', text: t('members.pin_random'), onclick: () => {
         const values = new Uint32Array(1);
@@ -564,7 +462,8 @@ export async function renderMembers(mount, ctx) {
     });
     return el('div.card.member-access-card', {},
       el('div.member-access-head', {},
-        el('div', {}, el('div.rt', { text: m.username }), el('div.rs', { text: (m.roles || []).map((r) => t('role.' + r)).join(' · ') })),
+        avatar(m.username, { src: avatarSrc(m) }),
+        el('div.member-name', {}, el('strong', { text: m.username }), el('small', { text: (m.roles || []).map((r) => t('role.' + r)).join(' · ') })),
         save
       ),
       el('div.member-access-fields', {},

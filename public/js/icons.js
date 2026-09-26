@@ -29,19 +29,85 @@ export function mitgeliefertesBild(item) {
   if (key === 'attack_drone') return '/assets/attack_drone.webp';
   if (EXAKTE_BILDER.has(key)) return `/assets/${key}.png`;
 
-  // Ei und Embryo gehören im Katalog zu einer konkreten Kreatur. Ihre Schlüssel
-  // lauten z. B. "rex_egg" bzw. "direwolf_embryo". In der Bestellung soll daher
-  // das wirklich passende Tier erscheinen und nicht bei allen Einträgen dasselbe
-  // allgemeine Ei-/Embryo-Symbol. Ist das Tierbild noch nicht vorhanden, bleibt
-  // der Bildplatz leer, bis die entsprechende Grafik ergänzt wurde.
+  // Ei und Embryo zeigen das Ei bzw. den Embryo selbst - nicht das Tier. Welches
+  // Tier gemeint ist, zeigt ein kleines Abzeichen (siehe itemArt/creatureOf).
   const type = String(item.product_type || item.productType || '');
-  if (type === 'egg' || type === 'embryo') {
-    const suffix = `_${type}`;
-    const creatureKey = key.endsWith(suffix) ? key.slice(0, -suffix.length) : '';
-    if (EXAKTE_BILDER.has(creatureKey)) return `/assets/${creatureKey}.png`;
-  }
+  if (type === 'egg') return key === 'rex_egg' ? '/assets/rex_egg_dashboard.webp' : '/assets/items/egg.webp';
+  if (type === 'embryo') return '/assets/items/embryo.webp';
 
   return null;
+}
+
+/** Zu Ei/Embryo gehoerende Kreatur, sofern dafuer ein passendes Bild existiert. */
+export function creatureOf(item) {
+  const key = String(item.key || item.item_key || '');
+  const type = String(item.product_type || item.productType || '');
+  if (type !== 'egg' && type !== 'embryo') return null;
+  const creatureKey = key.endsWith('_' + type) ? key.slice(0, -type.length - 1) : '';
+  return EXAKTE_BILDER.has(creatureKey) ? `/assets/${creatureKey}.png` : null;
+}
+
+// Fotoartige Motive fuellen die Bildflaeche; freigestellte PNGs stehen auf einer
+// atmosphaerischen, unscharfen Buehne und werden nie beschnitten.
+const SZENISCH = new Set(['/assets/tek_generator.webp', '/assets/attack_drone.webp', '/assets/rex_egg_dashboard.webp']);
+
+/**
+ * Grosse Bildflaeche fuer Karten und Details. Reihenfolge: Upload > passendes
+ * mitgeliefertes Motiv > Ausschnitt aus einem Bildatlas > gestalteter
+ * Platzhalter mit Typsymbol (kein fremdes oder falsches Bild).
+ */
+export function itemArt(item, { className = '' } = {}) {
+  const type = String(item.product_type || item.productType || '');
+  const upload = item.image_path ? '/uploads/' + item.image_path : null;
+  const bundled = mitgeliefertesBild(item);
+  const stage = document.createElement('span');
+  stage.className = 'item-art' + (className ? ' ' + className : '') + ' type-' + (type || 'other');
+  const showPlaceholder = () => {
+    stage.classList.add('is-placeholder');
+    const atlas = catalogRegion(item);
+    if (atlas) {
+      const [x, y, width, height] = atlas.region;
+      const tile = document.createElement('span');
+      tile.className = 'item-art-atlas';
+      tile.setAttribute('aria-hidden', 'true');
+      tile.style.cssText = `aspect-ratio:${width}/${height};background-image:url(${atlas.source});background-size:${atlas.width / width * 100}% ${atlas.height / height * 100}%;background-position:${x / (atlas.width - width) * 100}% ${y / (atlas.height - height) * 100}%`;
+      stage.classList.remove('is-placeholder');
+      stage.classList.add('is-cutout');
+      stage.replaceChildren(tile);
+      return;
+    }
+    const glyph = document.createElement('span');
+    glyph.className = 'item-art-glyph';
+    glyph.setAttribute('aria-hidden', 'true');
+    stage.replaceChildren(glyph);
+  };
+  const sources = [upload, bundled].filter(Boolean);
+  const next = () => {
+    const src = sources.shift();
+    if (!src) { showPlaceholder(); return; }
+    const img = document.createElement('img');
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.className = 'item-art-img';
+    stage.classList.toggle('is-scenic', SZENISCH.has(src) || src === upload);
+    stage.classList.toggle('is-cutout', !(SZENISCH.has(src) || src === upload));
+    img.addEventListener('error', next, { once: true });
+    img.src = src;
+    stage.replaceChildren(img);
+    const creature = creatureOf(item);
+    if (creature && src !== upload) {
+      const badge = document.createElement('img');
+      badge.className = 'item-art-badge';
+      badge.alt = '';
+      badge.loading = 'lazy';
+      badge.addEventListener('error', () => badge.remove(), { once: true });
+      badge.src = creature;
+      stage.append(badge);
+    }
+  };
+  next();
+  return stage;
 }
 
 /**
