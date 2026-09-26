@@ -102,7 +102,7 @@ test('Die große Kartenansicht bleibt auf dem Desktop kompakt', async () => {
 
 test('Profil bearbeitet das Profil an genau einer Stelle', async () => {
   const profile = await read('public/js/views/misc.js');
-  assert.equal((profile.match(/linkRow\(t\('profile\.edit'\), editPanel/g) || []).length, 1);
+  assert.equal((profile.match(/profileSection\(t\('profile\.edit'\), 'user', editPanel/g) || []).length, 1);
 });
 
 test('vorhandene Katalogbilder sind transparente PNGs und werden nicht beschnitten', async () => {
@@ -131,7 +131,7 @@ test('Bestellbereiche und Mitteilungen sind visuell klar begrenzt', async () => 
   assert.match(css, /\.order-groups \.acc-group\[data-group="structures"\]/);
   assert.match(notifications, /mount\.classList\.add\('notifications-page'\)/);
   assert.match(notifications, /const prefPanel = panel/);
-  assert.match(notifications, /linkRow\(t\('notif\.settings'\), prefPanel/);
+  assert.match(notifications, /profileSection\(t\('notif\.settings'\), 'bell', prefPanel/);
   assert.match(css, /\.notifications-page \{ max-width: 920px;/);
 });
 

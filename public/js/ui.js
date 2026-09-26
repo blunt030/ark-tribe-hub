@@ -109,7 +109,7 @@ export function orderTitle(order) {
  * Bestellkarte. Zeigt laut Spezifikation Benutzer + Tribe im Kopf statt einer
  * Bestellnummer, die Positionen mit ihrem Einzelstatus und keine Teilmengen.
  */
-export function orderCard(order, onOpen, { showImages = false } = {}) {
+export function orderCard(order, onOpen, { showImages = false, illustrated = false } = {}) {
   const items = order.items.map((it) =>
     el('div.line-item', {},
       showImages ? itemBild(it, 36) : el('span.dot.s-' + it.status),
@@ -118,27 +118,40 @@ export function orderCard(order, onOpen, { showImages = false } = {}) {
     )
   );
 
-  return el('article.order-card.prio-' + order.priority, {
+  const first = order.items[0];
+  const artwork = illustrated && first ? (first.item_key === 'rex_egg' && !first.image_path
+    ? el('img.order-cover-image', { src: '/assets/rex_egg_dashboard.webp', alt: '', loading: 'lazy' })
+    : itemBild(first, 280)) : null;
+  const issued = order.items.filter((item) => item.status === 'issued').length;
+  return el('article.order-card' + (illustrated ? '.illustrated-order' : '') + '.prio-' + order.priority, {
     onclick: () => onOpen(order.id),
     tabindex: '0',
     role: 'button',
     onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(order.id); } },
   },
+    illustrated ? el('div.order-cover', {}, artwork,
+      first ? el('span.order-cover-type', { text: t('type.' + first.product_type) }) : null,
+      el('div.order-cover-status', {}, statusBadge(order.status))) : null,
+    illustrated && first ? el('h2.order-cover-title', { text: first.item_name }) : null,
     el('div.oc-top', {},
       el('div', {},
         el('div.oc-who', { text: orderTitle(order) }),
         el('div.oc-meta', { text: timeAgo(order.created_at) })
       ),
-      el('div.chips', {}, priorityBadge(order.priority), statusBadge(order.status))
+      el('div.chips', {}, priorityBadge(order.priority), !illustrated ? statusBadge(order.status) : null)
     ),
     el('div.oc-items', {}, items),
+    illustrated ? el('div.order-completion', {},
+      el('progress', { value: issued, max: Math.max(1, order.items.length), 'aria-label': t('istatus.issued') }),
+      el('small', { text: `${issued} / ${order.items.length} · ${t('istatus.issued')}` })) : null,
     el('div.oc-foot', {},
       el('span.oc-meta', {
         text: order.assigned_username
           ? t('order.assigned_to', { name: order.assigned_username })
           : t('order.unassigned'),
       })
-    )
+    ),
+    illustrated ? el('div.order-open-label', { text: t('order.detail') + ' →' }) : null
   );
 }
 

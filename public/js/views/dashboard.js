@@ -3,6 +3,7 @@ import { t, timeAgo } from '../i18n.js';
 import { api } from '../api.js';
 import { mitgeliefertesKartenbild } from '../map-images.js';
 import { itemBild } from '../icons.js';
+import { uiIcon } from '../ui-icons.js';
 
 /** Existing data and routes, presented as a tribe command center. */
 export async function renderDashboard(mount, ctx) {
@@ -45,9 +46,8 @@ export async function renderDashboard(mount, ctx) {
 
   mount.replaceChildren();
   const ticker = newsTicker(newsRes.news);
-  if (ticker) mount.append(ticker);
   mount.append(el('section.dash-hero', {},
-    mapArtwork('/assets/dashboard-command-hero.webp', '/assets/dashboard-hero.png'),
+    mapArtwork('/assets/command-hero-v3.webp', '/assets/dashboard-hero.png', true),
     el('div.dash-hero-content', {},
       el('h1', { text: hasTribe ? tribeName : t('dash.platform') }),
       el('div.dash-eyebrow', { text: t('dash.command') }),
@@ -57,10 +57,11 @@ export async function renderDashboard(mount, ctx) {
         !server ? el('span', { text: hasTribe ? t('dash.no_server') : t('dash.welcome_back', { name: user.username }) }) : null
       ),
       el('div.dash-hero-actions', {},
-        el('button.btn.primary.dash-hero-cta', { type: 'button', text: '+  ' + t('order.new'), onclick: () => go('/orders/new') })
+        el('button.btn.primary.dash-hero-cta', { type: 'button', onclick: () => go('/orders/new') }, uiIcon('plus'), el('span', { text: t('order.new') }))
       )
     )
   ));
+  if (ticker) { ticker.classList.add('dash-news'); mount.append(ticker); }
   mount.append(el('section.dash-metrics', { 'aria-label': t('dash.overview') },
     metric('▤', t('dash.tile.orders'), openAll.length, t('dash.available_n', { n: unclaimed.length }), () => go('/orders'), 'orders'),
     hasTribe ? metric('☑', t('dash.tile.tasks'), myTasks.length, t('dash.tasks_open_n', { n: myTasks.length }), () => go('/tasks'), 'tasks') : null,
@@ -86,7 +87,7 @@ export async function renderDashboard(mount, ctx) {
           .slice(0, 10).map((m) => el('button.dash-map-pin', {
             type: 'button', style: `left:${Math.min(100, Math.max(0, Number(m.coord_x)))}%;top:${Math.min(100, Math.max(0, Number(m.coord_y)))}%`,
             title: m.name, 'aria-label': m.name, onclick: () => go('/servers/' + server.id)
-          }, el('span', { text: markerIcon(m.category) }), el('small', { text: m.name })))
+          }, uiIcon(markerIcon(m.category)), el('small', { text: m.name })))
       ) : el('div.dash-map-empty', {},
         el('p', { text: t('dash.no_server') }),
         el('button.btn.sm', { type: 'button', text: t('nav.servers'), onclick: () => go('/servers') })
@@ -108,7 +109,7 @@ export async function renderDashboard(mount, ctx) {
       heading(t('dash.activities'), null, t('dash.show'), () => go('/notifications'), '◷'),
       notifications.length ? el('div.dash-activity-list', {}, ...notifications.slice(0, 4).map((n) =>
         el('button.dash-activity-row', { type: 'button', onclick: () => go(n.payload?.orderId ? '/orders/' + n.payload.orderId : '/notifications') },
-          el('span.dash-activity-dot', { 'aria-hidden': 'true', text: '✦' }),
+          uiIcon('clipboard-text', 'dash-activity-dot'),
           el('span', {}, el('strong', { text: t('n.' + n.type) }), el('small', { text: timeAgo(n.created_at) }))
         ))) : el('p.dash-empty-note', { text: t('dash.no_activities') })
     )
@@ -140,8 +141,8 @@ export async function renderDashboard(mount, ctx) {
   ));
 }
 
-function mapArtwork(src, fallback) {
-  const image = el('img.dash-map-art', { src, alt: '', loading: 'lazy' });
+function mapArtwork(src, fallback, eager = false) {
+  const image = el('img.dash-map-art', { src, alt: '', loading: eager ? 'eager' : 'lazy', fetchpriority: eager ? 'high' : 'auto' });
   image.addEventListener('error', () => {
     if (fallback && image.getAttribute('src') !== fallback) image.src = fallback;
     else image.remove();
@@ -149,15 +150,15 @@ function mapArtwork(src, fallback) {
   return image;
 }
 function heading(title, count, action, onclick, icon) {
-  return el('div.dash-heading', {}, icon ? el('span.dash-heading-icon', { 'aria-hidden': 'true', text: icon }) : null, el('h2', { text: title }),
+  return el('div.dash-heading', {}, icon ? uiIcon(icon, 'dash-heading-icon') : null, el('h2', { text: title }),
     count !== null && count !== undefined ? el('span.dash-count', { text: String(count) }) : null,
-    action && onclick ? el('button.dash-heading-link', { type: 'button', text: action + ' →', onclick }) : null);
+    action && onclick ? el('button.dash-heading-link', { type: 'button', onclick }, el('span', { text: action }), uiIcon('arrow-right')) : null);
 }
 function metric(icon, title, count, detail, onclick, kind) {
   return el('button.dash-metric.dash-metric-' + kind + (kind === 'urgent' && count ? '.is-urgent' : ''), { type: 'button', onclick },
-    el('span.dash-metric-icon', { 'aria-hidden': 'true', text: icon }),
+    uiIcon(icon, 'dash-metric-icon'),
     el('span.dash-metric-copy', {}, el('strong', { text: String(count) }), el('span.dash-metric-label', { text: title }),
-      el('span.dash-metric-detail', { text: detail })), el('span.dash-metric-arrow', { 'aria-hidden': 'true', text: '›' }));
+      el('span.dash-metric-detail', { text: detail })), uiIcon('caret-right', 'dash-metric-arrow'));
 }
 function featuredOrder(order, go) {
   const first = order.items?.[0];
@@ -182,11 +183,11 @@ function featuredOrder(order, go) {
   );
 }
 function markerIcon(category) {
-  return { base: '⌂', resource: '◆', cave: '⬡', dino: '♞', boss: '⚠', loot: '✦' }[category] || '●';
+  return { base: 'house', resource: 'mountains', cave: 'diamond', dino: 'skull', boss: 'warning', loot: 'diamond' }[category] || 'map';
 }
 function statusLine(icon, title, count, onclick, detail) {
   return el('button.dash-status-line', { type: 'button', onclick },
-    el('span.dash-status-icon', { 'aria-hidden': 'true', text: icon }),
+    uiIcon(icon, 'dash-status-icon'),
     el('span.dash-status-copy', {}, el('strong', { text: String(count) }), el('span', { text: title }),
       detail ? el('small', { text: detail }) : null));
 }
@@ -195,7 +196,7 @@ function chatPanel(messages, user, go) {
   const previewLog = el('div.dashboard-chat-log', { role: 'log', 'aria-live': 'polite' });
   const chatStatus = el('p.hint', { role: 'status' });
   const chatInput = el('textarea', { id: 'dashboard-chat-body', rows: 1, maxlength: 2000, required: true, placeholder: t('chat.placeholder'), 'aria-label': t('chat.message') });
-  const chatSend = el('button.btn.sm.primary', { type: 'submit', text: '➤', 'aria-label': t('chat.send') });
+  const chatSend = el('button.btn.sm.primary', { type: 'submit', 'aria-label': t('chat.send') }, uiIcon('paper-plane-tilt'));
   function drawChatPreview() {
     previewLog.replaceChildren(...(previewMessages.length
       ? previewMessages.slice(-3).map((message) => el('div.dash-chat-row', {},

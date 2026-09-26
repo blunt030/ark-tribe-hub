@@ -2,6 +2,7 @@ import { el, spinner, orderCard, orderTitle, emptyState, statusBadge, priorityBa
 import { itemBild } from '../icons.js';
 import { t, timeAgo } from '../i18n.js';
 import { api, ApiError } from '../api.js';
+import { uiIcon } from '../ui-icons.js';
 
 /* ========================================================================== */
 /* Liste                                                                      */
@@ -9,22 +10,32 @@ import { api, ApiError } from '../api.js';
 
 export async function renderOrders(mount, ctx) {
   const { user, go } = ctx;
+  mount.classList.add('orders-page');
   let scope = 'open';
+  let cachedOrders = [];
+  let loadVersion = 0;
+  const search = el('input', { type: 'search', placeholder: t('common.search'), 'aria-label': t('common.search') });
 
   const listBox = el('div');
 
+  function drawOrders() {
+    const query = search.value.trim().toLocaleLowerCase();
+    const filtered = cachedOrders.filter((order) => (!query || [order.member_username, order.note, ...order.items.map(i => i.item_name)].join(' ').toLocaleLowerCase().includes(query)));
+    listBox.replaceChildren(filtered.length
+      ? el('div.illustrated-orders-grid', {}, ...filtered.map(o => orderCard(o, id => go('/orders/' + id), { showImages: true, illustrated: true })))
+      : emptyState(t('orders.none'), scope === 'open' ? t('orders.none_sub') : null));
+  }
+  search.addEventListener('input', drawOrders);
   async function load() {
+    const version = ++loadVersion;
     listBox.replaceChildren(spinner());
     try {
       const { orders } = await api.orders(scope === 'all' ? undefined : scope);
-      const filtered = scope === 'mine' ? orders.filter((o) => o.member_id === user.id) : orders;
-      listBox.replaceChildren(
-        filtered.length
-          ? el('div.grid.cols2', {}, ...filtered.map((o) => orderCard(o, (id) => go('/orders/' + id), { showImages: true })))
-          : emptyState(t('orders.none'), scope === 'open' ? t('orders.none_sub') : null)
-      );
+      if (version !== loadVersion) return;
+      cachedOrders = scope === 'mine' ? orders.filter((o) => o.member_id === user.id) : orders;
+      drawOrders();
     } catch (err) {
-      listBox.replaceChildren(emptyState(err.message));
+      if (version === loadVersion) listBox.replaceChildren(emptyState(err.message));
     }
   }
 
@@ -44,10 +55,11 @@ export async function renderOrders(mount, ctx) {
   );
 
   mount.append(
-    el('div.page-head', {},
-      el('div', {}, el('h1', { text: t('orders.title') }), seg),
-      el('button.btn.primary', { text: '+ ' + t('order.new'), onclick: () => go('/orders/new') })
+    el('div.page-head.command-page-banner', {},
+      el('div', {}, el('h1', { text: t('orders.title') })),
+      el('button.btn.primary', { onclick: () => go('/orders/new') }, uiIcon('plus'), el('span', { text: t('order.new') }))
     ),
+    el('div.orders-toolbar', {}, seg, search),
     listBox
   );
   load();
@@ -59,6 +71,7 @@ export async function renderOrders(mount, ctx) {
 
 export async function renderNewOrder(mount, ctx) {
   const { go } = ctx;
+  mount.classList.add('new-order-page');
   const chosen = []; // { itemId, name, emoji, product_type, quantity }
   let priority = 'normal';
   let renderToken = 0; // schützt vor überholten Antworten: Gruppen-Vorschau und Suche
@@ -374,7 +387,7 @@ export async function renderNewOrder(mount, ctx) {
   });
 
   mount.append(
-    el('div.page-head', {},
+    el('div.page-head.command-page-banner', {},
       el('div', {},
         el('button.btn.sm.ghost', { text: '← ' + t('common.back'), onclick: () => go('/orders') }),
         el('h1', { text: t('order.new'), style: 'margin-top:8px' })

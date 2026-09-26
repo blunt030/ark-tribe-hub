@@ -1,6 +1,7 @@
 import { el, spinner, emptyState, toast, confirmDialog, fileToBase64 } from '../ui.js';
 import { t, timeAgo, LANGS, getLang, setLang } from '../i18n.js';
 import { api } from '../api.js';
+import { uiIcon } from '../ui-icons.js';
 
 /* ========================================================================== */
 /* Mitteilungen                                                               */
@@ -95,6 +96,7 @@ export async function renderNotifications(mount, ctx) {
 /* ========================================================================== */
 
 export async function renderProfile(mount, ctx) {
+  mount.classList.add('profile-page');
   const { user, onSignOut, reloadUser, go } = ctx;
   mount.append(spinner());
 
@@ -139,7 +141,7 @@ export async function renderProfile(mount, ctx) {
   });
 
   const avatarImg = el('img', {
-    src: me.avatarPath ? '/uploads/' + me.avatarPath : '/assets/logo.png',
+    src: me.avatarPath ? '/uploads/' + me.avatarPath : '/assets/command-brand-v3.webp',
     alt: '',
     style: 'width:76px;height:76px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--raised)',
   });
@@ -234,22 +236,6 @@ export async function renderProfile(mount, ctx) {
   function panel(...kinder) {
     return el('div.panel', { style: 'display:none;margin:4px 0 10px' }, ...kinder);
   }
-  function toggle(panelNode) {
-    const auf = panelNode.style.display === 'none';
-    panelNode.style.display = auf ? 'block' : 'none';
-    if (auf) panelNode.scrollIntoView({ block: 'nearest' });
-  }
-  function linkRow(label, panelNode, symbol) {
-    return el('button.link-row', {
-      type: 'button',
-      onclick: () => toggle(panelNode),
-    },
-      symbol ? el('span', { text: symbol }) : null,
-      el('span.lr-label', { text: label }),
-      el('span.lr-caret', { text: '→' })
-    );
-  }
-
   const editPanel = panel(
     el('div', { style: 'margin-bottom:10px' },
       el('button.btn.sm', { text: t('profile.upload'), onclick: () => fileInput.click() }),
@@ -314,7 +300,7 @@ export async function renderProfile(mount, ctx) {
   /* ------------------------------------------------------ Benachrichtigungen */
 
   const letzteMeldungen = notifRes.notifications.slice(0, 5);
-  const notifBody = el('div.acc-body', {},
+  const notifBody = el('div.profile-notifications', {},
     letzteMeldungen.length
       ? el('div.feed', {},
           ...letzteMeldungen.map((n) =>
@@ -330,101 +316,50 @@ export async function renderProfile(mount, ctx) {
       : el('p.hint', { style: 'padding:4px 0', text: t('profile.no_notifications') }),
     el('button.t-link', { type: 'button', text: t('profile.show_all') + ' →', onclick: () => go('/notifications') })
   );
-  const notifGruppe = el('div.acc-group.open', {},
-    el('button.acc-head', {
-      type: 'button',
-      'aria-expanded': 'true',
-      onclick: (e) => {
-        const gruppe = e.currentTarget.parentElement;
-        const offen = gruppe.classList.toggle('open');
-        e.currentTarget.setAttribute('aria-expanded', offen ? 'true' : 'false');
-        e.currentTarget.querySelector('.acc-caret').textContent = offen ? '▾' : '▸';
-      },
-    },
-      el('span', { text: '🔔' }),
-      el('span.acc-title', { text: t('profile.notifications') }),
-      el('span.acc-caret', { text: '▾' })
-    ),
-    notifBody
-  );
-
   /* ------------------------------------------------------------- Aufbau */
 
+  // Keep the existing validated handlers and reauthentication requirements.
+  // Only the presentation changes: open, clearly labelled account sections.
+  for (const content of [editPanel, pwPanel, emailPanel, prefPanel]) {
+    content.style.display = 'block';
+    content.classList.add('profile-form');
+  }
+  function profileSection(title, icon, content) {
+    return el('section.card.profile-section', {},
+      el('div.profile-section-heading', {}, uiIcon(icon), el('h2', { text: title })), content);
+  }
   mount.append(
-    el('div.page-head', {}, el('div', {}, el('h1', { text: t('profile.title') }))),
-
-    // Mein Profil
-    el('div.section-title', {}, '👤 ' + t('profile.my_profile')),
-    el('div.card', {},
-      el('div', { style: 'display:flex;gap:16px;align-items:center' },
-        avatarImg,
-        el('div', { style: 'min-width:0' },
-          el('div', { style: 'font-family:var(--ff-display);font-size:1.3rem;font-weight:700', text: me.username }),
-          el('div', { style: 'color:var(--muted);font-size:.86rem', text: tribe?.tribe?.name || '—' }),
-          el('div.chips', { style: 'margin-top:7px' },
-            ...me.roles.map((r) => el('span.badge.b-role', { text: t('role.' + r) }))
-          )
-        )
-      ),
-      el('div', { style: 'margin-top:12px' }, linkRow(t('profile.edit'), editPanel, '✏️')),
-      editPanel
+    el('section.profile-banner.command-page-banner', {},
+      el('h1', { text: t('profile.my_profile') }),
+      el('div.profile-identity', {}, avatarImg,
+        el('div', {}, el('h2', { text: me.username }),
+          el('div.profile-identity-meta', {}, uiIcon('users'), el('span', { text: tribe?.tribe?.name || '—' }),
+            ...me.roles.map(r => el('span.badge.b-role', { text: t('role.' + r) })))))
     ),
-
-    // Meine Übersicht
-    el('div.section-title', {}, '📊 ' + t('profile.overview')),
-    el('div.tiles', {},
-      uebersichtKachel(meineBestellungen, t('profile.cnt.orders')),
-      uebersichtKachel(meineAufgaben, t('profile.cnt.tasks')),
-      uebersichtKachel(tierStatEintraege, t('nav.animal_stats')),
-      uebersichtKachel(mitteilungen, t('profile.cnt.notifications'))
-    ),
-
-    // Benachrichtigungen (aufklappbar)
-    el('div.acc', { style: 'margin-top:16px' }, notifGruppe),
-
-    // Einstellungen: alle Optionen bleiben kompakt, bis der Nutzer sie braucht.
-    el('div.section-title', {}, '⚙️ ' + t('profile.settings')),
-    el('div.card', {},
-      linkRow(t('pw.title'), pwPanel, '🔑'),
-      pwPanel,
-      linkRow(t('profile.email_change'), emailPanel, '✉️'),
-      emailPanel,
-      linkRow(t('notif.settings'), prefPanel, '🔔'),
-      prefPanel
-    ),
-
-    // Sicherheit
-    el('div.section-title', {}, '🛡️ ' + t('profile.security')),
-    el('div.card', {},
-      el('div.sec-row', {}, el('span', { text: '✉️' }), secLabel, secState),
-      el('div.access-pin-row', {},
-        el('div.grow', {},
-          el('div.rt', { text: t('profile.pin_title') }),
-          el('div.rs', { text: t('profile.pin_hint') })
-        ),
-        pinButton
-      ),
-      pinStatus,
-      el('div', { style: 'margin-top:12px' },
-        el('button.btn.danger', { text: t('auth.logout'), onclick: onSignOut })
-      )
-    ),
-
-    // Sprache
-    el('div.card', { style: 'margin-top:14px' },
-      el('div.field', {}, el('label', { text: t('profile.language') }),
-        el('div.chips', {},
-          ...LANGS.map((l) =>
-            el('button.btn.sm' + (getLang() === l.code ? '.primary' : ''), {
-              text: `${l.code.toUpperCase()} · ${l.label}`,
-              onclick: () => { setLang(l.code); location.reload(); },
-            })
-          )
-        )
-      )
-    ),
-
-    adminLinks(user, go)
+    el('div.profile-layout', {},
+      el('div.profile-main-column', {},
+        profileSection(t('profile.edit'), 'user', editPanel),
+        profileSection(t('profile.email_change'), 'envelope', emailPanel),
+        profileSection(t('pw.title'), 'shield-check', pwPanel),
+        profileSection(t('notif.settings'), 'bell', prefPanel)),
+      el('aside.profile-side-column', {},
+        profileSection(t('profile.overview'), 'chart-bar', el('div.tiles', {},
+          uebersichtKachel(meineBestellungen, t('profile.cnt.orders')),
+          uebersichtKachel(meineAufgaben, t('profile.cnt.tasks')),
+          uebersichtKachel(tierStatEintraege, t('nav.animal_stats')),
+          uebersichtKachel(mitteilungen, t('profile.cnt.notifications')))),
+        profileSection(t('profile.security'), 'shield-check', el('div.profile-security-body', {},
+          el('div.sec-row', {}, uiIcon('envelope'), secLabel, secState),
+          el('div.access-pin-row', {}, el('div.grow', {},
+            el('div.rt', { text: t('profile.pin_title') }), el('div.rs', { text: t('profile.pin_hint') })), pinButton),
+          pinStatus,
+          el('button.btn.danger', { text: t('auth.logout'), onclick: onSignOut }))),
+        profileSection(t('profile.language'), 'globe', el('div.chips', {},
+          ...LANGS.map(l => el('button.btn.sm' + (getLang() === l.code ? '.primary' : ''), {
+            text: l.label, onclick: () => { setLang(l.code); location.reload(); }
+          })))),
+        profileSection(t('profile.notifications'), 'bell', notifBody),
+        adminLinks(user, go)))
   );
 }
 

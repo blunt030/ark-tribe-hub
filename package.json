@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "node --no-warnings src/server.js",
+    "dev:design": "node test/visual-server.mjs",
     "start": "node --no-warnings src/server.js",
     "seed": "node --no-warnings src/db/seed.js",
     "test": "node --no-warnings --test test/run.mjs test/community.mjs test/new-features.mjs test/turn-service.mjs test/ui-regressions.mjs test/security-hardening.mjs test/email-tokens.mjs",

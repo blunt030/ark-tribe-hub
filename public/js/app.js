@@ -13,6 +13,7 @@ import { renderServers, renderServerDetail } from './views/servers.js';
 import { renderTasks, renderTaskForm, renderTaskDetail } from './views/tasks.js';
 import { renderAlliances, renderChat } from './views/community.js';
 import { renderVoice } from './views/voice.js';
+import { uiIcon } from './ui-icons.js';
 
 const root = document.getElementById('root');
 let user = null;
@@ -93,7 +94,7 @@ function buildShell() {
 
   const navLink = (item) => {
     const a = el('a', { href: '#' + item.path, dataset: { path: item.path } },
-      el('span.ico', { text: item.icon }),
+      uiIcon(item.icon, 'ico'),
       el('span', { text: item.label })
     );
     const n = item.badge ? item.badge() : 0;
@@ -107,7 +108,7 @@ function buildShell() {
         title: t('nav.dashboard'),
         'aria-label': t('nav.dashboard'),
         onclick: () => go('/'),
-      }, el('img', { src: '/assets/logo.png', alt: 'ARK Tribe Hub', width: '42', height: '42' })),
+      }, el('img', { src: '/assets/command-brand-v3.webp', alt: 'ARK Tribe Hub', width: '42', height: '42' })),
       // Tribe und eigener Rang direkt neben dem Logo (Punkt 19). Beides kommt aus
       // der aktuellen Sitzung, nichts fest verdrahtet. Beim eingeklappten
       // Seitenmenue wird der Block per CSS ausgeblendet.
@@ -133,7 +134,7 @@ function buildShell() {
       ...(platform.length ? [el('div.nav-group-label', { text: t('nav.group.platform') }), ...platform.map(navLink)] : [])
     ),
     el('div.sidebar-foot', {},
-      user.tribeId ? el('div.sidebar-tribe-mark', {}, el('span', { 'aria-hidden': 'true', text: '△' }),
+      user.tribeId ? el('div.sidebar-tribe-mark', {}, el('img', { src: '/assets/command-brand-v3.webp', alt: '', width: 74, height: 74 }),
         el('strong', { text: user.tribeName || t('dash.tribe') })) : null,
       el('div.who', {}, el('b', { text: user.username }),
         el('span', { text: user.roles.map((r) => t('role.' + r)).join(', ') })
@@ -163,7 +164,7 @@ function buildShell() {
       title: t('nav.dashboard'),
       'aria-label': t('nav.dashboard'),
       onclick: () => go('/'),
-    }, el('img', { src: '/assets/logo.png', alt: 'ARK Tribe Hub' })),
+    }, el('img', { src: '/assets/command-brand-v3.webp', alt: 'ARK Tribe Hub' })),
     // Tribe + Rang auch mobil (Punkt 19). Die Seitenleiste ist hier ausgeblendet,
     // deshalb muss der Block zusaetzlich in der Topbar stehen.
     el('div.brand-ident', {},
@@ -174,7 +175,7 @@ function buildShell() {
     el('button.tb-btn', {
       'aria-label': t('nav.notifications'),
       onclick: () => go('/notifications'),
-    }, '◔', unreadCount > 0 ? el('span.count', { text: String(unreadCount) }) : null)
+    }, uiIcon('bell'), unreadCount > 0 ? el('span.count', { text: String(unreadCount) }) : null)
   );
 
   const content = el('main.content', { id: 'view' });
@@ -200,7 +201,7 @@ function buildShell() {
 
   const bottomLink = (item) => {
     const a = el('a', { href: '#' + item.path, dataset: { path: item.path } },
-      el('span.ico', { text: item.icon }),
+      uiIcon(item.icon, 'ico'),
       el('span', { text: item.label })
     );
     const n = item.badge ? item.badge() : 0;
@@ -209,7 +210,7 @@ function buildShell() {
   };
 
   const moreBtn = el('button.more-btn', { type: 'button' },
-    el('span.ico', { text: '⋯' }),
+    uiIcon('dots-three', 'ico'),
     el('span', { text: t('nav.more') })
   );
   // Ungelesene Mitteilungen liegen jetzt hinter "Mehr" - der Zähler muss deshalb
@@ -222,7 +223,7 @@ function buildShell() {
         el('div.sheet-grip'),
         ...bottomExtra.map((item) =>
           el('a.sheet-item', { href: '#' + item.path, onclick: () => sheet.remove() },
-            el('span.ico', { text: item.icon }),
+            uiIcon(item.icon, 'ico'),
             el('span', { text: item.label }),
             item.badge && item.badge() > 0 ? el('span.count', { text: String(item.badge()) }) : null
           )
@@ -238,7 +239,7 @@ function buildShell() {
   );
 
   clear(root);
-  root.append(el('div.app', {}, sidebar, el('div.main', {}, topbar, content, bottomnav)));
+  root.append(el('div.app.ark-theme', {}, sidebar, el('div.main', {}, topbar, content, bottomnav)));
   return content;
 }
 
