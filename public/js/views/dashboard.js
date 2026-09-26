@@ -59,7 +59,7 @@ export async function renderDashboard(mount, ctx) {
   mount.append(el('section.dash-hero', {},
     heroImg,
     el('div.dash-hero-content', {},
-      el('h1.dash-tribe', { text: hasTribe ? tribeName : t('dash.platform') }),
+      el('h1.dash-tribe-name', { text: hasTribe ? tribeName : t('dash.platform') }),
       el('div.dash-eyebrow', { text: t('dash.command') }),
       el('div.dash-hero-meta', {},
         server ? el('span', {}, uiIcon('map'), el('span', { text: server.name })) : null,

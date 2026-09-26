@@ -18,7 +18,7 @@ const CATEGORY_TILES = [
 
 function categoryTile(tile, active, onclick) {
   return el('button.cat-tile' + (active ? '.on' : ''), { type: 'button', onclick, 'aria-pressed': active ? 'true' : 'false' },
-    itemArt(tile.art),
+    itemArt(tile.art, { eggFirst: true }),
     el('span.cat-tile-label', { text: tile.label() }));
 }
 

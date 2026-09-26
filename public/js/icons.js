@@ -23,18 +23,12 @@ const EXAKTE_BILDER = new Set([
   'chemistry_bench', 'refrigerator', 'generator', 'auto_turret',
 ]);
 
-export function mitgeliefertesBild(item) {
+/** Bild des Eis/Embryos selbst (fuer das kleine Abzeichen oder Kategorie-Kacheln). */
+export function eggImage(item) {
   const key = String(item.key || item.item_key || '');
-  if (key === 'tek_generator') return '/assets/tek_generator.webp';
-  if (key === 'attack_drone') return '/assets/attack_drone.webp';
-  if (EXAKTE_BILDER.has(key)) return `/assets/${key}.png`;
-
-  // Ei und Embryo zeigen das Ei bzw. den Embryo selbst - nicht das Tier. Welches
-  // Tier gemeint ist, zeigt ein kleines Abzeichen (siehe itemArt/creatureOf).
   const type = String(item.product_type || item.productType || '');
   if (type === 'egg') return key === 'rex_egg' ? '/assets/rex_egg_dashboard.webp' : '/assets/items/egg.webp';
   if (type === 'embryo') return '/assets/items/embryo.webp';
-
   return null;
 }
 
@@ -47,6 +41,20 @@ export function creatureOf(item) {
   return EXAKTE_BILDER.has(creatureKey) ? `/assets/${creatureKey}.png` : null;
 }
 
+export function mitgeliefertesBild(item) {
+  const key = String(item.key || item.item_key || '');
+  if (key === 'tek_generator') return '/assets/tek_generator.webp';
+  if (key === 'attack_drone') return '/assets/attack_drone.webp';
+  if (EXAKTE_BILDER.has(key)) return `/assets/${key}.png`;
+
+  // Ei und Embryo: das Tier gross, das Ei bzw. der Embryo erscheint als kleines
+  // Abzeichen (itemArt). Ohne Tierbild wird das Ei/der Embryo selbst gezeigt.
+  const type = String(item.product_type || item.productType || '');
+  if (type === 'egg' || type === 'embryo') return creatureOf(item) || eggImage(item);
+
+  return null;
+}
+
 // Fotoartige Motive fuellen die Bildflaeche; freigestellte PNGs stehen auf einer
 // atmosphaerischen, unscharfen Buehne und werden nie beschnitten.
 const SZENISCH = new Set(['/assets/tek_generator.webp', '/assets/attack_drone.webp', '/assets/rex_egg_dashboard.webp']);
@@ -56,10 +64,10 @@ const SZENISCH = new Set(['/assets/tek_generator.webp', '/assets/attack_drone.we
  * mitgeliefertes Motiv > Ausschnitt aus einem Bildatlas > gestalteter
  * Platzhalter mit Typsymbol (kein fremdes oder falsches Bild).
  */
-export function itemArt(item, { className = '' } = {}) {
+export function itemArt(item, { className = '', eggFirst = false } = {}) {
   const type = String(item.product_type || item.productType || '');
   const upload = item.image_path ? '/uploads/' + item.image_path : null;
-  const bundled = mitgeliefertesBild(item);
+  const bundled = eggFirst ? (eggImage(item) || mitgeliefertesBild(item)) : mitgeliefertesBild(item);
   const stage = document.createElement('span');
   stage.className = 'item-art' + (className ? ' ' + className : '') + ' type-' + (type || 'other');
   const showPlaceholder = () => {
@@ -95,14 +103,16 @@ export function itemArt(item, { className = '' } = {}) {
     img.addEventListener('error', next, { once: true });
     img.src = src;
     stage.replaceChildren(img);
+    // Kleines Abzeichen: beim Tierbild das Ei/den Embryo, bei eggFirst das Tier.
     const creature = creatureOf(item);
-    if (creature && src !== upload) {
+    const badgeSrc = !creature || src === upload ? null : eggFirst ? creature : src === creature ? eggImage(item).replace('/assets/rex_egg_dashboard.webp', '/assets/items/egg.webp') : null;
+    if (badgeSrc) {
       const badge = document.createElement('img');
       badge.className = 'item-art-badge';
       badge.alt = '';
       badge.loading = 'lazy';
       badge.addEventListener('error', () => badge.remove(), { once: true });
-      badge.src = creature;
+      badge.src = badgeSrc;
       stage.append(badge);
     }
   };

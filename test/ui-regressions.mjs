@@ -18,8 +18,9 @@ test('Passende Katalogbilder erscheinen auf Bestellungen und der neuen Startseit
   assert.match(dashboard, /orderCard\(o, \(id\) => go\('\/orders\/' \+ id\), \{ illustrated: true/);
   assert.match(ui, /first \? itemArt\(first\) : null/);
   assert.match(icons, /rex_egg_dashboard\.webp/);
-  // Eier und Embryos zeigen das Ei bzw. den Embryo, das Tier nur als Abzeichen.
-  assert.match(icons, /type === 'egg'\) return key === 'rex_egg' \? '\/assets\/rex_egg_dashboard\.webp' : '\/assets\/items\/egg\.webp'/);
+  // Eier und Embryos: das Tier gross, Ei bzw. Embryo als kleines Abzeichen.
+  assert.match(icons, /if \(type === 'egg' \|\| type === 'embryo'\) return creatureOf\(item\) \|\| eggImage\(item\);/);
+  assert.match(icons, /src === creature \? eggImage\(item\)/);
   assert.match(icons, /type === 'embryo'\) return '\/assets\/items\/embryo\.webp'/);
   assert.match(icons, /item-art-badge/);
   assert.doesNotMatch(inventory, /itemIcon|itemBild|iconFuerItem/);
