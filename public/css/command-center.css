@@ -265,3 +265,75 @@
 @media(max-width:600px) { .dash-map-canvas { height:235px; } }
 
 .order-cover-status .badge { background: #0b1c27ed; color: #e7eff4; border: 1px solid #84969f; padding: 3px 8px; }
+
+/* Production/mobile follow-up: bounded artwork and the reference's camp menu. */
+.ark-theme .dash-hero h1 { font-family: Rajdhani,sans-serif; }
+/* The same command-center materials across every member tool. */
+.ark-theme .view-page > .page-head:has(h1):not(.command-page-banner) { min-height: 132px; padding: 24px 28px; border: 1px solid #736b58; border-radius: 7px; background: #071119a8 url('/assets/dashboard-sidebar.webp') center 60% / cover; background-blend-mode: multiply; box-shadow: inset 0 0 40px #02060a88; margin-bottom: 20px; }
+.ark-theme .view-page > .page-head h1 { color: #f0d5a3; font-weight: 600; letter-spacing: .02em; }
+.ark-theme .view-page > .page-head p { color: #c1ccd2; margin-top: 7px; }
+.ark-theme .view-page .list { border: 1px solid #555d60; border-radius: 7px; overflow: hidden; background: #0d171e; }
+.ark-theme .view-page .list .row { padding: 17px 20px; border-bottom: 1px solid #3d484e; min-height: 72px; }
+.ark-theme .view-page .list .row:last-child { border-bottom: 0; }
+.ark-theme .view-page .list .row:hover { background: #1b2830; }
+.ark-theme .view-page .rt { font-size: 20px; font-weight: 600; }
+.ark-theme .view-page .rs { color: #aabac4; font-size: 15px; margin-top: 4px; }
+.ark-theme .field > label { color: #d9c39b; font-size: 16px; font-weight: 600; }
+.ark-theme .field input, .ark-theme .field select { min-height: 44px; }
+.ark-theme .empty { background: #0d171e; border: 1px solid #48545b; border-radius: 7px; color: #b6c4cd; }
+.ark-theme .chat-window { background: #0b151c; border: 1px solid #555d60; border-radius: 7px; }
+.ark-theme .chat-message { background: #14232d; border: 1px solid #344c5a; border-radius: 6px; padding: 14px 17px; }
+.ark-theme .chat-message.mine { background: #29271e; border-color: #7d6844; }
+.ark-theme .chat-meta { color: #b6d3e8; }
+.ark-theme .chat-composer { margin-top: 14px; }
+.ark-theme .voice-channel { background: #0f1b23; border: 1px solid #52616a; border-radius: 7px; padding: 22px; box-shadow: inset 0 1px 0 #c4e0ed18; }
+.ark-theme .voice-channel.active { border-color: #84be90; background: #14251f; }
+.ark-theme .voice-channel h2, .ark-theme .voice-channel h3 { color: #ecd2a2; }
+.ark-theme .server-map-card { border: 1px solid #73715d; border-radius: 7px; overflow: hidden; background: #0f1b23; color: #eef0ed; }
+.ark-theme .server-map-copy { padding: 18px; }
+.ark-theme .server-map-copy strong { font: 600 24px var(--ff-display); color: #ecd2a2; }
+.ark-theme .notice { border-radius: 6px; }
+@media(max-width:600px) {
+  .ark-theme .view-page > .page-head:has(h1):not(.command-page-banner) { min-height: 112px; padding: 18px; flex-wrap: wrap; gap: 12px; }
+  .ark-theme .view-page > .page-head h1 { font-size: 29px; }
+  .ark-theme .view-page .list .row { padding: 14px; flex-wrap: wrap; gap: 9px; }
+  .ark-theme .voice-channel { padding: 16px; }
+  .ark-theme .seg { max-width: 100%; overflow-x: auto; }
+  .ark-theme .seg button { padding: 8px 12px; white-space: nowrap; }
+}
+.dash-order-art { display: flex; align-items: center; justify-content: center; }
+.dash-order-art .icon-box, .order-cover > .icon-box { min-width: 0; min-height: 0; max-width: 100%; max-height: 100%; overflow: hidden; }
+.dash-order-art .catalog-image, .order-cover .catalog-image { min-width: 0; min-height: 0; max-width: 100%; max-height: 100%; object-fit: contain; padding: 8px; }
+.dash-news .nt-track-wrap { min-height: 28px; height: 28px; }
+.dash-news .nt-track { height: 28px; }
+.dash-news .nt-item { font-size: 14px; line-height: 28px; }
+.command-menu { align-items: stretch; justify-content: flex-start; }
+.command-menu-panel.sheet { width: min(310px, 86vw); max-height: 100dvh; height: 100%; border: 1px solid #7b6b50; border-radius: 0 8px 8px 0; padding: 15px 16px max(24px,env(safe-area-inset-bottom)); background: #09131b url('/assets/dashboard-sidebar.webp') center bottom / cover; box-shadow: 12px 0 45px #000b; color: #e2e8ed; font-family: 'Barlow Semi Condensed',sans-serif; }
+.command-menu-brand { display: flex; align-items: flex-start; justify-content: center; position: relative; padding-bottom: 16px; }
+.command-menu-brand img { width: 134px; height: 112px; object-fit: contain; }
+.command-menu-close { position: absolute; right: 0; top: 0; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #756a56; border-radius: 4px; background: #0a141de8; color: #ead0a2; }
+.command-menu .sheet-item { min-height: 45px; padding: 9px 10px; gap: 13px; border-radius: 4px; border: 1px solid #64707755; background: #08131bd9; margin-bottom: 5px; font: 400 17px/1.25 'Barlow Semi Condensed',sans-serif; }
+.command-menu .sheet-item:hover, .command-menu .sheet-item:focus-visible { background: #4b3929; border-color: #d6ae70; }
+.command-menu .sheet-item .ui-icon { color: #dcc08b; }
+@media (max-width:600px) {
+  .dash-hero { min-height: 240px; }
+  .dash-hero-content { padding: 86px 16px 15px; }
+  .dash-hero h1 { font-family: Rajdhani,sans-serif; font-size: 58px; transform: scaleX(1.25); transform-origin: left center; }
+  .dash-eyebrow { font-size: 14px; }
+  .dash-hero-meta span { font-size: 14px; }
+  .dash-hero .dash-hero-cta { min-height: 40px; min-width: 180px; font-size: 18px; }
+  .dash-metric { min-height: 86px; }
+  .dash-metric strong { font-size: 30px; }
+  .dash-metric-label { font-size: 15px; }
+  .dash-featured-orders { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); overflow: visible; gap: 8px; padding: 8px; }
+  .dash-featured-order { min-width: 0; }
+  .dash-order-art { height: 105px; }
+  .dash-order-body { padding: 8px; }
+  .dash-order-title { font-size: 17px; white-space: normal; line-height: 1.15; }
+  .dash-order-foot { gap: 5px; font-size: 12px; }
+  .dash-order-foot .dash-avatar { width: 25px; height: 25px; flex-basis: 25px; font-size: 13px; }
+  .dash-order-foot small { width: 100%; padding-left: 30px; font-size: 11px; }
+  .dash-heading h2 { font-size: 19px; }
+  .dash-chat-copy { font-size: 14px; }
+  .dash-status-copy > span { font-size: 16px; }
+}

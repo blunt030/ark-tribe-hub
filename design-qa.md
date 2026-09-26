@@ -39,4 +39,13 @@ Der Gesamtvergleich zeigt Quelle und Anwendung gemeinsam bei identischen 1491 ×
 - Produktionsdaten ändern Anzahl, Höhe und Inhalt der Karten. Es werden keine fiktiven Lagerquoten oder Online-Zahlen gezeigt. Die konkrete Serverkarte unterscheidet sich daher vom dekorativen Inselpanorama der Vorlage.
 - Bildabdeckung des Gesamtkatalogs ist weiterhin unvollständig; echtes Audio zwischen zwei Geräten steht aus. Dieser Durchlauf ist visuelle und funktionale Frontendprüfung, kein vollständiger Penetrationstest.
 
+## Nachprüfung 26.09.2026 – Mitgliederseiten
+
+- Desktop erneut bei identischen 1491 × 1055 Viewports verglichen: `docs/desktop-followup.jpg`. Mobile Ansichten bei 390 px: `docs/mobile-followup.jpg`, `docs/menu-followup.jpg`, `docs/member-pages-followup.jpg`.
+- P1 behoben: öffentliche Bilder/Icons verbrauchten API-Limit. Regression prüft 130 Asset-Abrufe, danach API-Sperre mit Retry-After, inklusive kodiertem API-Pfad. Ingress-Schutz bleibt vorgeschaltet. Fehlerantworten gelangen nicht mehr in den Asset-Cache.
+- P2 behoben: doppelte Navigation durch go()/hashchange; abgeschnittene Kartenbilder; mobile Kartenbreite; ungestaltetes Mehr-Menü. Menüöffnung und Navigation zu Aufgaben im Browser geprüft.
+- Durchgängige gemeinsame Gestaltung für Aufgaben, Server, Chat, Voice, Mitglieder und weitere Seiten mit Überschrift; Bestell- und Profilgestaltung bleibt integriert.
+- 78 Tests bestanden, keine fehlgeschlagen. Sichtbare UI im Browser geprüft; keine App-Konsolenfehler, nur Fehler einer Browsererweiterung. Vorschau verwendet isolierte Beispieldaten, keine Produktionseinträge.
+- Grenzen bleiben: keine pixelidentische Kopie, fehlende einzelne Katalogbilder, kein echter Zwei-Geräte-Audiotest. Fehlende Echtzeit-/Lagerwerte werden nicht erfunden.
+
 **final result: passed**

@@ -61,6 +61,9 @@ export function sendJson(res, status, body) {
 
 export function sendError(res, err) {
   if (err instanceof ApiError) {
+    if (err.status === 429 && !res.headersSent) {
+      res.setHeader('Retry-After', String(Number.isFinite(err.retryAfter) ? err.retryAfter : 60));
+    }
     sendJson(res, err.status, { error: { code: err.code, message: err.message } });
     return;
   }

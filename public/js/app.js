@@ -218,10 +218,25 @@ function buildShell() {
   if (unreadCount > 0) moreBtn.append(el('span.count', { text: String(unreadCount) }));
 
   moreBtn.addEventListener('click', () => {
-    const sheet = el('div.sheet-bg', { onclick: (e) => { if (e.target === sheet) sheet.remove(); } },
-      el('div.sheet', {},
-        el('div.sheet-grip'),
-        ...bottomExtra.map((item) =>
+    const closeMenu = () => { sheet.remove(); moreBtn.focus(); };
+    const sheet = el('div.sheet-bg.command-menu', {
+      onclick: (e) => { if (e.target === sheet) closeMenu(); },
+      onkeydown: (e) => {
+        if (e.key === 'Escape') closeMenu();
+        if (e.key === 'Tab') {
+          const controls = [...sheet.querySelectorAll('a,button')];
+          const first = controls[0], last = controls.at(-1);
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      },
+    },
+      el('div.sheet.command-menu-panel', { role: 'dialog', 'aria-modal': 'true', 'aria-label': t('nav.more') },
+        el('div.command-menu-brand', {},
+          el('img', { src: '/assets/command-brand-v3.webp', alt: 'ARK Tribe Hub' }),
+          el('button.command-menu-close', { type: 'button', 'aria-label': t('common.close'), onclick: closeMenu }, uiIcon('x'))
+        ),
+        ...[...bottomMain, ...bottomExtra].map((item) =>
           el('a.sheet-item', { href: '#' + item.path, onclick: () => sheet.remove() },
             uiIcon(item.icon, 'ico'),
             el('span', { text: item.label }),
@@ -231,6 +246,7 @@ function buildShell() {
       )
     );
     document.getElementById('modal-root').append(sheet);
+    sheet.querySelector('button')?.focus();
   });
 
   const bottomnav = el('nav.bottomnav', {},
@@ -285,9 +301,9 @@ const ROUTES = [
 ];
 
 export function go(path, replace = false) {
+  if (location.hash === '#' + path) { route(); return; }
   if (replace) location.replace('#' + path);
   else location.hash = path;
-  if (('#' + path) === location.hash) route();
 }
 
 async function route() {
@@ -304,6 +320,7 @@ async function route() {
   // Inhalte der vorherigen Seite. Ein abgeloester Container faellt beim
   // naechsten replaceChildren einfach heraus.
   const seite = el('div.view-page');
+  seite.dataset.section = path.split('/')[1] || 'dashboard';
   view.replaceChildren(seite);
   markActive(path);
   (document.querySelector('.main') || window).scrollTo(0, 0);

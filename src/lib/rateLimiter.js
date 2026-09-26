@@ -28,7 +28,9 @@ export function createRateLimiter({ windowMs, max }) {
     }
     entry.count += 1;
     if (entry.count > max) {
-      throw tooMany();
+      const error = tooMany();
+      error.retryAfter = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+      throw error;
     }
   };
 }

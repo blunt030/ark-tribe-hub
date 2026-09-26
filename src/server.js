@@ -190,7 +190,20 @@ export async function createApp(dbPath, options = {}) {
 
   router.get('/api/health', async (req, res) => sendJson(res, 200, { status: 'ok' }));
 
-  const globalMiddlewares = [securityHeaders, cors, ingressRateLimit, attachSession(db), globalRateLimit];
+  // Public assets have no session data. Keep ingress protection, but do not
+  // charge fonts/icons/images against the authenticated API request budget.
+  // Normalize first so encoded API/upload paths cannot bypass their protection.
+  const publicAssets = (req, res, next) => {
+    try {
+      req.pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    } catch {
+      sendJson(res, 400, { error: { code: 'BAD_REQUEST', message: 'Ungültiger URL-Pfad' } });
+      return;
+    }
+    try { if (serveStatic(req, res)) return; } catch (err) { return next(err); }
+    return next();
+  };
+  const globalMiddlewares = [securityHeaders, cors, ingressRateLimit, publicAssets, attachSession(db), globalRateLimit];
 
   const server = http.createServer((req, res) => {
     let idx = 0;
@@ -205,16 +218,6 @@ export async function createApp(dbPath, options = {}) {
         Promise.resolve()
           .then(() => mw(req, res, next))
           .catch((e) => sendError(res, e));
-        return;
-      }
-      // Frontend zuerst: alles, was keine API-Route ist, kommt aus public/.
-      try {
-        const url = new URL(req.url, 'http://localhost');
-        try { req.pathname = decodeURIComponent(url.pathname); }
-        catch { sendJson(res, 400, { error: { code: 'BAD_REQUEST', message: 'Ungültiger URL-Pfad' } }); return; }
-        if (serveStatic(req, res)) return;
-      } catch (e) {
-        sendError(res, e);
         return;
       }
       router.handle(req, res).catch((e) => sendError(res, e));
