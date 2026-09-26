@@ -214,7 +214,7 @@ export async function renderTaskDetail(mount, ctx, idParam) {
   mount.replaceChildren();
   mount.append(...[
     el('div.page-head', {}, el('button.btn.sm', { text: '← ' + t('common.back'), onclick: () => go('/tasks') })),
-    el('div.card', {},
+    el('div.card.task-detail-summary', {},
       el('div', { style: 'display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px' },
         el('div', {},
           el('div', { style: 'font-family:var(--ff-display);font-size:1.3rem;font-weight:700', text: data.title }),

@@ -207,12 +207,11 @@ export async function renderServerDetail(mount, ctx, idParam) {
         )
       )
     ),
-    el('div.section-title', { style: 'margin-top:18px' },
-      t('srv.markers'), ' ',
-      el('button.btn.sm.primary', { style: 'margin-left:10px', text: '+ ' + t('srv.new_marker'), onclick: () => openMarkerDialog(null, id, reload) })
-    ),
-    mapBox,
-    listBox,
+    el('div.server-command-layout', {}, mapBox,
+      el('aside.server-marker-panel', {},
+        el('div.section-title', {}, t('srv.markers'),
+          el('button.btn.sm.primary', { text: '+ ' + t('srv.new_marker'), onclick: () => openMarkerDialog(null, id, reload) })),
+        listBox)),
     // Nie ein rohes null direkt an mount.append() übergeben - siehe dieselbe
     // Lektion in dinos.js: das native append() würde es sonst als Text "null"
     // anzeigen. Deshalb hier ueber ein gefiltertes Array spreaden.

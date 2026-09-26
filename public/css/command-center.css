@@ -373,3 +373,47 @@
   .dash-chat-copy { font-size: 14px; }
   .dash-status-copy > span { font-size: 16px; }
 }
+
+/* Shared member identity and purpose-built interior page layouts. */
+.ark-theme .command-avatar { display:inline-grid; place-items:center; flex:0 0 44px; width:44px; height:44px; border:1px solid #ba945d; border-radius:50%; background:#20323b; color:#f3dfbc; font:600 19px var(--ff-display); }
+.ark-theme .member-roster { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+.ark-theme .member-card { display:flex; align-items:center; flex-wrap:wrap; gap:14px; padding:22px; background:#101c24; border:1px solid #70634e; border-radius:7px; box-shadow:inset 0 1px #e8d3a51a; }
+.ark-theme .member-card[hidden] { display:none; }
+.ark-theme .member-card .grow { min-width:160px; }
+.ark-theme .member-card .rt { font:600 24px var(--ff-display); margin-bottom:8px; }
+.ark-theme .member-card .btn { font-size:14px; }
+.ark-theme .member-search { padding:14px; margin-bottom:18px; }
+.ark-theme .member-search input { max-width:480px; }
+.ark-theme .server-command-layout { display:grid; grid-template-columns:minmax(0,2fr) minmax(280px,1fr); gap:18px; align-items:start; }
+.ark-theme .server-command-layout .map-grid-wrap { margin:0; border:1px solid #887452; border-radius:7px; overflow:hidden; }
+.ark-theme .server-marker-panel { min-width:0; padding:18px; background:#0f1b23; border:1px solid #625d4e; border-radius:7px; }
+.ark-theme .server-marker-panel .section-title { margin:0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+.ark-theme .server-marker-panel .row { flex-wrap:wrap; }
+.ark-theme .view-page[data-section="chat"] .chat-window { padding:20px; border:1px solid #6d634f; border-radius:7px 7px 0 0; background:#0d1820; }
+.ark-theme .view-page[data-section="chat"] .chat-message { display:grid; grid-template-columns:44px minmax(0,1fr); column-gap:12px; max-width:92%; margin:14px 0; }
+.ark-theme .view-page[data-section="chat"] .chat-message .command-avatar { grid-row:1 / 3; }
+.ark-theme .view-page[data-section="chat"] .chat-message p { grid-column:2; overflow-wrap:anywhere; }
+.ark-theme .view-page[data-section="chat"] .chat-message.mine { margin-left:auto; }
+.ark-theme .view-page[data-section="chat"] .chat-composer { margin-top:0; border-top:0; border-radius:0 0 7px 7px; }
+.ark-theme .voice-channel-heading { display:grid; grid-template-columns:42px 1fr; column-gap:14px; }
+.ark-theme .voice-channel-heading > .ui-icon { grid-row:1 / 3; width:38px; height:38px; color:#d8b578; align-self:center; }
+.ark-theme .voice-channel-heading .hint { grid-column:2; }
+.ark-theme .voice-participants { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; border-top:1px solid #465254; padding-top:18px; margin-top:18px; }
+.ark-theme .voice-person { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid #384c54; border-radius:5px; background:#0a151d; }
+.ark-theme .voice-person strong { flex:1; }
+.ark-theme .voice-person > .ui-icon { color:#87ca97; }
+.ark-theme .voice-person > .is-muted { color:#b78b84; opacity:.5; }
+.ark-theme .task-detail-summary { border-color:#8b7652; padding:28px; }
+.ark-theme .task-detail-summary > div:first-child > div > div:first-child { font-size:30px!important; color:#eddbb7; }
+@media(max-width:800px) {
+ .ark-theme .server-command-layout { grid-template-columns:1fr; }
+ .ark-theme .member-roster { grid-template-columns:1fr; }
+ .ark-theme .view-page[data-section="chat"] .chat-window { padding:10px; }
+ .ark-theme .view-page[data-section="chat"] .chat-message { max-width:100%; padding:12px; }
+ .ark-theme .voice-channel-main { flex-wrap:wrap; gap:16px; }
+ .ark-theme .task-detail-summary { padding:18px; }
+}
+/* Luminous brass accents from the approved reference. */
+.app.ark-theme .brand-link img, .app.ark-theme .tb-brand img, .command-menu-brand img { filter:brightness(1.18) drop-shadow(0 0 9px #e7bc6866); }
+.ark-theme .btn.primary, .dash-hero .btn.primary.dash-hero-cta { background-color:#be853d; border-color:#f2ce89; box-shadow:inset 0 0 0 2px #f4cb8066,inset 0 2px 5px #fff7,0 0 18px #df9e3e55; }
+.ark-theme .btn.primary:focus-visible { outline:2px solid #ffe4a6; outline-offset:4px; }

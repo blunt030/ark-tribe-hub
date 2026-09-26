@@ -1,6 +1,7 @@
 import { el, spinner, emptyState, toast, confirmDialog } from '../ui.js';
 import { t } from '../i18n.js';
 import { api } from '../api.js';
+import { uiIcon } from '../ui-icons.js';
 
 export async function renderVoice(mount, ctx) {
   const { user } = ctx;
@@ -323,7 +324,8 @@ export async function renderVoice(mount, ctx) {
         const iAmIn = Boolean(me) && Number(activeChannelId) === Number(channel.id) && Boolean(localStream);
         return el('article.voice-channel' + (iAmIn ? '.active' : ''), {},
           el('div.voice-channel-main', {},
-            el('div', {},
+            el('div.voice-channel-heading', {},
+              uiIcon('microphone'),
               el('h2', { text: channel.name }),
               el('div.hint', { text: t('voice.participants_count', { n: channel.participants.length }) })
             ),
@@ -345,9 +347,11 @@ export async function renderVoice(mount, ctx) {
             )
           ),
           channel.participants.length ? el('div.voice-participants', {}, ...channel.participants.map((participant) =>
-            el('span.badge' + (Number(participant.user_id) === Number(user.id) ? '.b-role' : ''), {
-              text: `${participant.is_muted ? '🔇' : '🎤'} ${participant.username}`,
-            })
+            el('span.voice-person' + (Number(participant.user_id) === Number(user.id) ? '.is-self' : ''), {},
+              el('span.command-avatar', { text: (participant.username || '?').slice(0, 2).toUpperCase(), 'aria-hidden': 'true' }),
+              el('strong', { text: participant.username }),
+              
+              uiIcon('microphone', participant.is_muted ? 'is-muted' : ''))
           )) : null
         );
       }) : [emptyState(t('voice.none'))])

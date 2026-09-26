@@ -57,6 +57,7 @@ export function chatMessage(m, currentUserId = null) {
   const mine = currentUserId != null && Number(m.author_id) === Number(currentUserId);
   const colorIndex = Math.abs(Number(m.author_id) || 0) % 6;
   return el(`article.chat-message.author-color-${colorIndex}${mine ? '.mine' : ''}`, { dataset: { messageId: m.id } },
+    el('span.command-avatar', { text: (m.author_name || '?').slice(0, 2).toUpperCase(), 'aria-hidden': 'true' }),
     el('div.chat-meta', {}, el('strong', { text: m.author_name }),
       mine ? el('span.chat-me', { text: t('chat.me') }) : null,
       el('time', { datetime: m.created_at, text: new Date(m.created_at).toLocaleString(getLang()) })),

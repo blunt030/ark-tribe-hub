@@ -456,7 +456,18 @@ export async function renderMembers(mount, ctx) {
     }
 
     mount.append(el('div.section-title', {}, t('admin.members'), el('span.c', { text: active.length })));
-    mount.append(el('div.list', {}, ...active.map(memberRow)));
+    const roster = el('div.member-roster', {}, ...active.map(memberRow));
+    const noMatches = el('p.hint', { text: t('common.no_results'), hidden: true, role: 'status' });
+    const search = el('input', { type: 'search', placeholder: t('common.search'), 'aria-label': t('common.search'), oninput: (event) => {
+      const query = event.target.value.trim().toLocaleLowerCase();
+      let visible = 0;
+      [...roster.children].forEach((row, index) => {
+        row.hidden = !active[index].username.toLocaleLowerCase().includes(query);
+        if (!row.hidden) visible++;
+      });
+      noMatches.hidden = visible !== 0;
+    } });
+    mount.append(el('div.card.member-search', {}, search), roster, noMatches);
   }
 
   async function reload() {
@@ -493,7 +504,8 @@ export async function renderMembers(mount, ctx) {
   function memberRow(m) {
     const isBreeder = m.roles.includes('breeder_crafter');
     const istAdmin = (m.roles || []).includes('admin');
-    return el('div.row', {},
+    return el('article.row.member-card', {},
+      el('span.command-avatar', { text: (m.username || '?').slice(0, 2).toUpperCase(), 'aria-hidden': 'true' }),
       el('div.grow', {},
         el('div.rt', { text: m.username }),
         el('div.rs', {}, ...m.roles.map((r) => el('span.badge.b-role', { text: t('role.' + r), style: 'margin-right:4px' })))
