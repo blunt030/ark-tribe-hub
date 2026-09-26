@@ -267,6 +267,42 @@
 .order-cover-status .badge { background: #0b1c27ed; color: #e7eff4; border: 1px solid #84969f; padding: 3px 8px; }
 
 /* Production/mobile follow-up: bounded artwork and the reference's camp menu. */
+/* Approved interior design: workshop panoramas, calm profile and native disclosures. */
+.task-group-heading { padding: 12px 20px; margin: 0; font-size: 18px; color: #e6c78c; background: #17252e; border-bottom: 1px solid #53616a; }
+.oc-single-quantity { margin: 0 15px 10px; color: #d5bc92; font-size: 15px; }
+.ark-theme .command-page-banner,
+.ark-theme .view-page > .page-head:has(h1):not(.command-page-banner) {
+  background-image: url('/assets/tribe-workshop.webp'); background-position: center 54%; background-color: #0b141b30;
+}
+.ark-theme .profile-banner.command-page-banner { min-height: 280px; padding-top: 120px; background-position: center 50%; }
+.ark-theme .profile-banner > h1 { font-size: 20px; color: #dfc38e; margin-bottom: 15px; }
+.ark-theme .profile-identity { padding: 15px 20px; background: #071119dd; border: 1px solid #887450; border-radius: 6px; width: fit-content; min-width: 50%; }
+.ark-theme .profile-layout { grid-template-columns: minmax(0,1.2fr) minmax(320px,1fr); }
+.profile-security-controls { padding: 12px; }
+.profile-disclosure { border: 1px solid #43525c; border-radius: 5px; margin-bottom: 9px; background: #0a141c; }
+.profile-disclosure:last-child { margin-bottom: 0; }
+.profile-disclosure summary { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 14px; list-style: none; color: #e9dcc2; }
+.profile-disclosure summary::-webkit-details-marker { display:none; }
+.profile-disclosure summary span:nth-child(2) { flex: 1; }
+.profile-disclosure[open] summary { border-bottom: 1px solid #43525c; }
+.profile-disclosure[open] summary > .ui-icon:last-child { transform: rotate(90deg); }
+.profile-disclosure summary:focus-visible { outline: 2px solid #efc581; outline-offset: 2px; }
+.ark-theme .profile-disclosure .profile-form { padding: 16px; }
+@media(min-width:900px) {
+  .dash-hero { height: auto; min-height: 255px; aspect-ratio: 3 / 1; }
+  .dash-hero > .dash-map-art { object-fit: cover; object-position: center center; }
+}
+@media(max-width:899px) { .ark-theme .profile-layout { grid-template-columns: 1fr; } }
+@media(max-width:600px) {
+  .ark-theme .profile-banner.command-page-banner { min-height: 240px; padding-top: 80px; }
+  .ark-theme .profile-identity { width: 100%; min-width: 0; padding: 12px; }
+  .illustrated-orders-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+  .illustrated-order .order-cover { height: 125px; }
+  .illustrated-order .order-cover-title { font-size: 19px; padding: 10px; }
+  .illustrated-order .oc-top, .illustrated-order .oc-items, .illustrated-order .oc-foot, .illustrated-order .order-completion, .illustrated-order .order-open-label { margin-inline: 10px; }
+  .illustrated-order .oc-who { font-size: 14px; }
+  .illustrated-order .oc-meta { font-size: 12px; }
+}
 .ark-theme .dash-hero h1 { font-family: Rajdhani,sans-serif; }
 /* The same command-center materials across every member tool. */
 .ark-theme .view-page > .page-head:has(h1):not(.command-page-banner) { min-height: 132px; padding: 24px 28px; border: 1px solid #736b58; border-radius: 7px; background: #071119a8 url('/assets/dashboard-sidebar.webp') center 60% / cover; background-blend-mode: multiply; box-shadow: inset 0 0 40px #02060a88; margin-bottom: 20px; }

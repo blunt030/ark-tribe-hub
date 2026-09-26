@@ -140,7 +140,9 @@ export function orderCard(order, onOpen, { showImages = false, illustrated = fal
       ),
       el('div.chips', {}, priorityBadge(order.priority), !illustrated ? statusBadge(order.status) : null)
     ),
-    el('div.oc-items', {}, items),
+    illustrated && order.items.length === 1
+      ? el('div.oc-single-quantity', { text: '× ' + first.quantity })
+      : el('div.oc-items', {}, items),
     illustrated ? el('div.order-completion', {},
       el('progress', { value: issued, max: Math.max(1, order.items.length), 'aria-label': t('istatus.issued') }),
       el('small', { text: `${issued} / ${order.items.length} · ${t('istatus.issued')}` })) : null,

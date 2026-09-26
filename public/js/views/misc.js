@@ -328,6 +328,11 @@ export async function renderProfile(mount, ctx) {
     return el('section.card.profile-section', {},
       el('div.profile-section-heading', {}, uiIcon(icon), el('h2', { text: title })), content);
   }
+  function securityDisclosure(title, icon, content) {
+    return el('details.profile-disclosure', {},
+      el('summary', {}, uiIcon(icon), el('span', { text: title }), uiIcon('caret-right')),
+      content);
+  }
   mount.append(
     el('section.profile-banner.command-page-banner', {},
       el('h1', { text: t('profile.my_profile') }),
@@ -339,15 +344,16 @@ export async function renderProfile(mount, ctx) {
     el('div.profile-layout', {},
       el('div.profile-main-column', {},
         profileSection(t('profile.edit'), 'user', editPanel),
-        profileSection(t('profile.email_change'), 'envelope', emailPanel),
-        profileSection(t('pw.title'), 'shield-check', pwPanel),
-        profileSection(t('notif.settings'), 'bell', prefPanel)),
-      el('aside.profile-side-column', {},
         profileSection(t('profile.overview'), 'chart-bar', el('div.tiles', {},
           uebersichtKachel(meineBestellungen, t('profile.cnt.orders')),
           uebersichtKachel(meineAufgaben, t('profile.cnt.tasks')),
           uebersichtKachel(tierStatEintraege, t('nav.animal_stats')),
-          uebersichtKachel(mitteilungen, t('profile.cnt.notifications')))),
+          uebersichtKachel(mitteilungen, t('profile.cnt.notifications'))))),
+      el('aside.profile-side-column', {},
+        profileSection(t('profile.security'), 'shield-check', el('div.profile-security-controls', {},
+          securityDisclosure(t('pw.title'), 'shield-check', pwPanel),
+          securityDisclosure(t('profile.email_change'), 'envelope', emailPanel))),
+        profileSection(t('notif.settings'), 'bell', prefPanel),
         profileSection(t('profile.security'), 'shield-check', el('div.profile-security-body', {},
           el('div.sec-row', {}, uiIcon('envelope'), secLabel, secState),
           el('div.access-pin-row', {}, el('div.grow', {},

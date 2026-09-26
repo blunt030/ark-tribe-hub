@@ -49,3 +49,7 @@ Der Gesamtvergleich zeigt Quelle und Anwendung gemeinsam bei identischen 1491 ×
 - Grenzen bleiben: keine pixelidentische Kopie, fehlende einzelne Katalogbilder, kein echter Zwei-Geräte-Audiotest. Fehlende Echtzeit-/Lagerwerte werden nicht erfunden.
 
 **final result: passed**
+
+## Freigegebene Entwürfe – nächste Umsetzungsetappe
+
+26.09.2026: Eigenes Werkstattpanorama für Unterseiten ergänzt. Profil in persönliche Daten links und aufklappbare Passwort-/E-Mail-Einstellungen rechts gegliedert; Desktop und 390px-Mobilansicht im Browser geprüft. Öffnen der Passwortsektion zeigt unverändert alle drei Eingaben. Nachweis: `docs/profile-approved.jpg`. Bestellungen mobil zweispaltig, redundante Einzelartikelzeile durch Mengenangabe ersetzt. Aufgaben nach Status gruppiert; Tastaturöffnung ergänzt. Drohnenillustration als Konzeptmotiv ergänzt. Desktop-Hero bewahrt das Seitenverhältnis seiner Bilddatei. 78 Tests bestanden. Diese Etappe ersetzt nicht die noch offene vollständige Katalogbebilderung und den echten Voice-Test.

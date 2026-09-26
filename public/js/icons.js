@@ -26,6 +26,7 @@ const EXAKTE_BILDER = new Set([
 export function mitgeliefertesBild(item) {
   const key = String(item.key || item.item_key || '');
   if (key === 'tek_generator') return '/assets/tek_generator.webp';
+  if (key === 'attack_drone') return '/assets/attack_drone.webp';
   if (EXAKTE_BILDER.has(key)) return `/assets/${key}.png`;
 
   // Ei und Embryo gehören im Katalog zu einer konkreten Kreatur. Ihre Schlüssel

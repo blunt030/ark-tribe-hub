@@ -25,12 +25,14 @@ export async function renderTasks(mount, ctx) {
   const listBox = el('div.list');
 
   function draw() {
-    const filtered = tasks.filter((tk) => !statusFilter || tk.status === statusFilter);
+    const states = ['open', 'in_progress', 'done', 'cancelled'];
+    const filtered = tasks.filter((tk) => !statusFilter || tk.status === statusFilter)
+      .sort((a,b) => states.indexOf(a.status) - states.indexOf(b.status));
     listBox.replaceChildren(
       ...(filtered.length
-        ? filtered.map((tk) => {
+        ? filtered.flatMap((tk, index) => {
             const assignee = members.find((m) => m.id === tk.assignee_id);
-            return el('div.row', { style: 'cursor:pointer', onclick: () => go('/tasks/' + tk.id), role: 'button', tabindex: '0' },
+            const row = el('div.row', { style: 'cursor:pointer', onclick: () => go('/tasks/' + tk.id), role: 'button', tabindex: '0', onkeydown: e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go('/tasks/' + tk.id); } } },
               el('div.grow', {},
                 el('div.rt', { text: tk.title }),
                 el('div.rs', { text: [assignee?.username, tk.due_date ? t('task.due') + ' ' + tk.due_date : null].filter(Boolean).join(' · ') })
@@ -49,6 +51,9 @@ export async function renderTasks(mount, ctx) {
               priorityBadge(tk.priority),
               statusBadge(tk.status)
             );
+            return index === 0 || filtered[index - 1].status !== tk.status
+              ? [el('h2.task-group-heading', { text: t('task.status.' + tk.status) + ' · ' + filtered.filter(x => x.status === tk.status).length }), row]
+              : [row];
           })
         : [emptyState(t('task.none'))])
     );
