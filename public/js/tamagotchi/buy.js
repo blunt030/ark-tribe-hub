@@ -13,6 +13,7 @@ import { icon } from './scene.js';
 import { BY_KEY, svg, creatureThumb } from './common.js';
 import { sheet } from './sheet.js';
 import { sfx } from './sound.js';
+import { LEGAL_DETAILS } from '../legal-details.js';
 
 const price = (key) => formatPrice(priceOf(key), getLang());
 
@@ -68,7 +69,8 @@ export function openBuy(sp) {
       el('h3', { text: sp.name }),
       el('p.tama-muted', { text: `${t('tama.hab.' + sp.hab)} · ${t('tama.diet.' + sp.diet)} · ${t('tama.rarity.' + sp.rarity)}` }),
       el('p', { text: t('tama.buy.lead') }),
-      el('div.tama-buy-price', {}, el('strong', { text: price(sp.key) }), el('small', { text: t('tama.buy.once') }))),
+      el('div.tama-buy-price', {}, el('strong', { text: price(sp.key) }), el('small', { text: t('tama.buy.once') })),
+      el('p.tama-muted', { text: t(LEGAL_DETAILS.smallBusiness ? 'tama.buy.vat_small' : 'tama.buy.vat_incl') })),
     el('label.tama-buy-consent', {}, consent, el('span', { text: t('tama.buy.consent') })),
     legalLinks(),
     el('div.tama-row-actions', {}, pay),
