@@ -5,17 +5,28 @@
 import { el, panel } from '../ui.js';
 import { t } from '../i18n.js';
 import './texts.js';
+import './texts-play.js';
 import * as E from './engine.js';
+import * as P from './progress.js';
 import { petState, petNow, loadPet, onPetChange } from './store.js';
-import { BY_KEY, creatureThumb, dur, svg } from './device.js';
-import { eggArt, icon } from './scene.js';
+import { BY_KEY, creatureThumb, dur, svg, hearts } from './common.js';
+import { icon } from './scene.js';
+import { eggArt } from './props.js';
 import { SPECIES } from './species.js';
 import { toSvgString } from './vdom.js';
 
-function hearts(value) {
-  const full = Math.round(value / 25);
-  return el('span.tama-hearts', { 'aria-label': `${Math.round(value)} %` },
-    [0, 1, 2, 3].map((i) => el('span.tama-heart' + (i < full ? '.is-full' : ''), {}, svg(icon('heart')))));
+/** Kiste und Tagesaufgaben – der Grund, täglich vorbeizuschauen. */
+function daily(doc, p, now) {
+  const pl = doc?.player;
+  if (!pl) return null;
+  const out = [];
+  if (P.dropReady(doc, now) && (p || pl.lastDay)) out.push(el('span.dash-tama-pill.is-drop', {}, svg(icon('crate')), el('span', { text: t('tama.widget.drop') })));
+  if (pl.quests.length && pl.day === P.ENV.dayKey(now)) {
+    const done = pl.quests.filter((q) => q.done).length;
+    out.push(el('span.dash-tama-pill.is-quests', {}, svg(icon('list')), el('span', { text: t('tama.widget.quests', { n: done, total: pl.quests.length }) })));
+  }
+  if (pl.streak > 1 && P.streakInfo(doc, now).streak > 1) out.push(el('span.dash-tama-pill.is-streak', {}, svg(icon('flame')), el('span', { text: String(pl.streak) })));
+  return out.length ? el('span.dash-tama-daily', {}, out) : null;
 }
 
 export async function petWidget({ user, go }) {
@@ -31,7 +42,7 @@ export async function petWidget({ user, go }) {
     if (!p || !sp) {
       body.replaceChildren(el('button.dash-tama-body', { type: 'button', onclick: open },
         el('span.dash-tama-art.is-empty', {}, svg(icon('egg'))),
-        el('span.dash-tama-copy', {}, el('strong', { text: t('tama.widget.empty') }), el('small', { text: t('tama.widget.cta', { n: SPECIES.length }) }))));
+        el('span.dash-tama-copy', {}, el('strong', { text: t('tama.widget.empty') }), el('small', { text: t('tama.widget.cta', { n: SPECIES.length }) }), daily(petState.doc, null, now))));
       return;
     }
     const calls = p.end ? [] : E.calling(p, now);
@@ -49,7 +60,8 @@ export async function petWidget({ user, go }) {
         el('strong', { text: p.name }),
         el('small', { text: `${sp.name} · ${t('tama.stage.' + p.stage)}` }),
         p.stage !== 'egg' && !p.end ? el('span.dash-tama-hearts', {}, hearts(p.m.hunger), hearts(p.m.happy)) : null,
-        status)));
+        status,
+        daily(petState.doc, p, now))));
   }
 
   draw();

@@ -39,11 +39,9 @@ const de = {
   "tama.rarity.common": "Gewöhnlich", "tama.rarity.rare": "Selten", "tama.rarity.epic": "Episch", "tama.rarity.legendary": "Legendär",
   "tama.biome.jungle": "Dschungel", "tama.biome.forest": "Wald", "tama.biome.snow": "Schnee", "tama.biome.desert": "Wüste", "tama.biome.swamp": "Sumpf", "tama.biome.cave": "Aberrations-Höhle", "tama.biome.ocean": "Ozean", "tama.biome.sky": "Himmel", "tama.biome.volcano": "Vulkan", "tama.biome.tek": "Tek-Anlage", "tama.biome.space": "Weltraum", "tama.biome.ruins": "Ruinenstadt", "tama.biome.arena": "Boss-Arena",
 
-  "tama.act.feed": "Füttern", "tama.act.lights": "Licht", "tama.act.play": "Spielen", "tama.act.medicine": "Medizin", "tama.act.clean": "Putzen", "tama.act.status": "Status", "tama.act.discipline": "Erziehen", "tama.act.attention": "Ruf",
+  "tama.act.medicine": "Medizin", "tama.act.clean": "Putzen", "tama.act.discipline": "Erziehen",
   "tama.act.cuddle": "Kuscheln", "tama.act.walk": "Gassi", "tama.act.cryo": "Kryopod", "tama.act.thaw": "Auftauen", "tama.act.warm": "Wärmen",
-  "tama.act.meal": "Mahlzeit", "tama.act.snack": "Kibble", "tama.meal_hint": "Sättigt – {food}", "tama.snack_hint": "Leckerli: hebt die Laune, macht aber dick",
-  "tama.btn.a": "Taste A: nächstes Symbol", "tama.btn.b": "Taste B: bestätigen", "tama.btn.c": "Taste C: zurück",
-  "tama.keys_hint": "A wählt · B bestätigt · C zurück",
+  "tama.act.meal": "Mahlzeit", "tama.meal_hint": "Sättigt – {food}",
 
   "tama.res.meal": "Mampf! Das hat geschmeckt.", "tama.res.snack": "Lecker Kibble!", "tama.res.full": "Satt! {name} will nichts mehr.",
   "tama.res.asleep": "{name} schläft gerade.", "tama.res.egg": "Das Ei muss erst schlüpfen.", "tama.res.frozen": "{name} ruht im Kryopod.", "tama.res.gone": "Dieses Tier lebt nicht mehr.", "tama.res.no_pet": "Du hast noch kein Tier.",
@@ -88,7 +86,7 @@ const de = {
   "tama.mistake.hunger": "Hunger ignoriert", "tama.mistake.happy": "Langeweile ignoriert", "tama.mistake.lights": "Licht angelassen", "tama.mistake.discipline": "Fake-Ruf ignoriert",
   "tama.cause.age": "Altersschwäche", "tama.cause.retired": "Ruhestand", "tama.cause.starvation": "Verhungert", "tama.cause.sickness": "Krankheit", "tama.cause.neglect": "Vernachlässigung", "tama.cause.bred": "Hat Nachwuchs bekommen", "tama.cause.released": "In die Wildnis entlassen",
 
-  "tama.game.title": "Spiel wählen", "tama.game.lr": "Links oder Rechts?", "tama.game.lr_desc": "Der Klassiker von 1996: Errate, wohin dein Tier schaut. 3 von 5 gewinnen.",
+  "tama.game.lr": "Links oder Rechts?", "tama.game.lr_desc": "Der Klassiker von 1996: Errate, wohin dein Tier schaut. 3 von 5 gewinnen.",
   "tama.game.catch": "Beerenregen", "tama.game.catch_desc": "Fang das Futter, weich den Häufchen aus. 20 Sekunden.",
   "tama.game.timing": "Tek-Takt", "tama.game.timing_desc": "Stopp den Zeiger im Leuchtfeld – er wird immer schneller.",
   "tama.game.round": "Runde {n}/{total}", "tama.game.guess": "Wohin schaut {name}?", "tama.game.left": "Links", "tama.game.right": "Rechts",
@@ -108,7 +106,7 @@ const de = {
   "tama.hall.title": "Ahnengalerie", "tama.hall.sub": "Alle Tiere, die du großgezogen hast.", "tama.hall.empty": "Noch leer – deine Tiere finden hier ihren Ehrenplatz.", "tama.hall.gen": "Gen. {n}",
 
   "tama.tribe.title": "Tribe-Gehege", "tama.tribe.sub": "Die Tiere deiner Tribe-Mitglieder – live berechnet.", "tama.tribe.empty": "Noch hat niemand in deinem Tribe ein Tamagotchi. Sei der Erste!",
-  "tama.tribe.no_tribe": "Das Gehege gibt es nur mit Tribe-Konto.", "tama.tribe.you": "Du", "tama.tribe.raised": "{n} Arten aufgezogen",
+  "tama.tribe.no_tribe": "Das Gehege gibt es nur mit Tribe-Konto.", "tama.tribe.you": "Du",
 
   "tama.mood.happy": "Glücklich", "tama.mood.ok": "Zufrieden", "tama.mood.hungry": "Hungrig", "tama.mood.sad": "Traurig", "tama.mood.sick": "Krank", "tama.mood.sleep": "Schläft", "tama.mood.tired": "Müde",
   "tama.mood.cheeky": "Quengelt", "tama.mood.dazed": "Benommen", "tama.mood.frozen": "Im Kryopod", "tama.mood.egg": "Ei", "tama.mood.gone": "Verstorben",
@@ -179,11 +177,9 @@ const en = {
   "tama.rarity.common": "Common", "tama.rarity.rare": "Rare", "tama.rarity.epic": "Epic", "tama.rarity.legendary": "Legendary",
   "tama.biome.jungle": "Jungle", "tama.biome.forest": "Forest", "tama.biome.snow": "Snow", "tama.biome.desert": "Desert", "tama.biome.swamp": "Swamp", "tama.biome.cave": "Aberration cave", "tama.biome.ocean": "Ocean", "tama.biome.sky": "Sky", "tama.biome.volcano": "Volcano", "tama.biome.tek": "Tek facility", "tama.biome.space": "Space", "tama.biome.ruins": "Ruined city", "tama.biome.arena": "Boss arena",
 
-  "tama.act.feed": "Feed", "tama.act.lights": "Lights", "tama.act.play": "Play", "tama.act.medicine": "Medicine", "tama.act.clean": "Clean", "tama.act.status": "Status", "tama.act.discipline": "Discipline", "tama.act.attention": "Call",
+  "tama.act.medicine": "Medicine", "tama.act.clean": "Clean", "tama.act.discipline": "Discipline",
   "tama.act.cuddle": "Cuddle", "tama.act.walk": "Walk", "tama.act.cryo": "Cryopod", "tama.act.thaw": "Thaw", "tama.act.warm": "Warm up",
-  "tama.act.meal": "Meal", "tama.act.snack": "Kibble", "tama.meal_hint": "Fills the belly – {food}", "tama.snack_hint": "Treat: lifts the mood but adds weight",
-  "tama.btn.a": "Button A: next icon", "tama.btn.b": "Button B: confirm", "tama.btn.c": "Button C: back",
-  "tama.keys_hint": "A selects · B confirms · C back",
+  "tama.act.meal": "Meal", "tama.meal_hint": "Fills the belly – {food}",
 
   "tama.res.meal": "Nom! That was tasty.", "tama.res.snack": "Yummy kibble!", "tama.res.full": "Full! {name} doesn't want any more.",
   "tama.res.asleep": "{name} is sleeping.", "tama.res.egg": "The egg has to hatch first.", "tama.res.frozen": "{name} is resting in the cryopod.", "tama.res.gone": "This pet is no longer alive.", "tama.res.no_pet": "You don't have a pet yet.",
@@ -228,7 +224,7 @@ const en = {
   "tama.mistake.hunger": "hunger ignored", "tama.mistake.happy": "boredom ignored", "tama.mistake.lights": "lights left on", "tama.mistake.discipline": "fake call ignored",
   "tama.cause.age": "Old age", "tama.cause.retired": "Retirement", "tama.cause.starvation": "Starved", "tama.cause.sickness": "Illness", "tama.cause.neglect": "Neglect", "tama.cause.bred": "Had offspring", "tama.cause.released": "Released into the wild",
 
-  "tama.game.title": "Choose a game", "tama.game.lr": "Left or Right?", "tama.game.lr_desc": "The 1996 classic: guess where your pet will look. Win 3 of 5.",
+  "tama.game.lr": "Left or Right?", "tama.game.lr_desc": "The 1996 classic: guess where your pet will look. Win 3 of 5.",
   "tama.game.catch": "Berry Rain", "tama.game.catch_desc": "Catch the food, dodge the poop. 20 seconds.",
   "tama.game.timing": "Tek Tempo", "tama.game.timing_desc": "Stop the needle in the glowing zone – it keeps speeding up.",
   "tama.game.round": "Round {n}/{total}", "tama.game.guess": "Where will {name} look?", "tama.game.left": "Left", "tama.game.right": "Right",
@@ -248,7 +244,7 @@ const en = {
   "tama.hall.title": "Ancestor gallery", "tama.hall.sub": "Every pet you have raised.", "tama.hall.empty": "Still empty – your pets will find their place of honor here.", "tama.hall.gen": "Gen. {n}",
 
   "tama.tribe.title": "Tribe pen", "tama.tribe.sub": "Your tribe members' pets – calculated live.", "tama.tribe.empty": "Nobody in your tribe has a Tamagotchi yet. Be the first!",
-  "tama.tribe.no_tribe": "The pen is only available with a tribe account.", "tama.tribe.you": "You", "tama.tribe.raised": "{n} species raised",
+  "tama.tribe.no_tribe": "The pen is only available with a tribe account.", "tama.tribe.you": "You",
 
   "tama.mood.happy": "Happy", "tama.mood.ok": "Content", "tama.mood.hungry": "Hungry", "tama.mood.sad": "Sad", "tama.mood.sick": "Sick", "tama.mood.sleep": "Sleeping", "tama.mood.tired": "Tired",
   "tama.mood.cheeky": "Acting up", "tama.mood.dazed": "Dazed", "tama.mood.frozen": "In cryopod", "tama.mood.egg": "Egg", "tama.mood.gone": "Passed away",
@@ -319,11 +315,9 @@ const fr = {
   "tama.rarity.common": "Commun", "tama.rarity.rare": "Rare", "tama.rarity.epic": "Épique", "tama.rarity.legendary": "Légendaire",
   "tama.biome.jungle": "Jungle", "tama.biome.forest": "Forêt", "tama.biome.snow": "Neige", "tama.biome.desert": "Désert", "tama.biome.swamp": "Marais", "tama.biome.cave": "Grotte d'Aberration", "tama.biome.ocean": "Océan", "tama.biome.sky": "Ciel", "tama.biome.volcano": "Volcan", "tama.biome.tek": "Installation Tek", "tama.biome.space": "Espace", "tama.biome.ruins": "Ville en ruines", "tama.biome.arena": "Arène de boss",
 
-  "tama.act.feed": "Nourrir", "tama.act.lights": "Lumière", "tama.act.play": "Jouer", "tama.act.medicine": "Médicament", "tama.act.clean": "Nettoyer", "tama.act.status": "État", "tama.act.discipline": "Éduquer", "tama.act.attention": "Appel",
+  "tama.act.medicine": "Médicament", "tama.act.clean": "Nettoyer", "tama.act.discipline": "Éduquer",
   "tama.act.cuddle": "Câlin", "tama.act.walk": "Promenade", "tama.act.cryo": "Cryopod", "tama.act.thaw": "Décongeler", "tama.act.warm": "Réchauffer",
-  "tama.act.meal": "Repas", "tama.act.snack": "Croquettes", "tama.meal_hint": "Rassasie – {food}", "tama.snack_hint": "Friandise : remonte le moral mais fait grossir",
-  "tama.btn.a": "Bouton A : icône suivante", "tama.btn.b": "Bouton B : confirmer", "tama.btn.c": "Bouton C : retour",
-  "tama.keys_hint": "A choisit · B confirme · C retour",
+  "tama.act.meal": "Repas", "tama.meal_hint": "Rassasie – {food}",
 
   "tama.res.meal": "Miam ! C'était bon.", "tama.res.snack": "Délicieuses croquettes !", "tama.res.full": "Rassasié ! {name} ne veut plus rien.",
   "tama.res.asleep": "{name} dort.", "tama.res.egg": "L'œuf doit d'abord éclore.", "tama.res.frozen": "{name} se repose dans le cryopod.", "tama.res.gone": "Cet animal n'est plus en vie.", "tama.res.no_pet": "Tu n'as pas encore d'animal.",
@@ -368,7 +362,7 @@ const fr = {
   "tama.mistake.hunger": "faim ignorée", "tama.mistake.happy": "ennui ignoré", "tama.mistake.lights": "lumière restée allumée", "tama.mistake.discipline": "faux appel ignoré",
   "tama.cause.age": "Vieillesse", "tama.cause.retired": "Retraite", "tama.cause.starvation": "Mort de faim", "tama.cause.sickness": "Maladie", "tama.cause.neglect": "Négligence", "tama.cause.bred": "A eu un petit", "tama.cause.released": "Relâché dans la nature",
 
-  "tama.game.title": "Choisis un jeu", "tama.game.lr": "Gauche ou droite ?", "tama.game.lr_desc": "Le classique de 1996 : devine où ton animal va regarder. Gagne 3 manches sur 5.",
+  "tama.game.lr": "Gauche ou droite ?", "tama.game.lr_desc": "Le classique de 1996 : devine où ton animal va regarder. Gagne 3 manches sur 5.",
   "tama.game.catch": "Pluie de baies", "tama.game.catch_desc": "Attrape la nourriture, évite les crottes. 20 secondes.",
   "tama.game.timing": "Tempo Tek", "tama.game.timing_desc": "Arrête l'aiguille dans la zone lumineuse – elle accélère sans cesse.",
   "tama.game.round": "Manche {n}/{total}", "tama.game.guess": "Où va regarder {name} ?", "tama.game.left": "Gauche", "tama.game.right": "Droite",
@@ -388,7 +382,7 @@ const fr = {
   "tama.hall.title": "Galerie des ancêtres", "tama.hall.sub": "Tous les animaux que tu as élevés.", "tama.hall.empty": "Encore vide – tes animaux trouveront ici leur place d'honneur.", "tama.hall.gen": "Gén. {n}",
 
   "tama.tribe.title": "Enclos de la tribu", "tama.tribe.sub": "Les animaux des membres de ta tribu – calculés en direct.", "tama.tribe.empty": "Personne dans ta tribu n'a encore de Tamagotchi. Sois le premier !",
-  "tama.tribe.no_tribe": "L'enclos n'est disponible qu'avec un compte de tribu.", "tama.tribe.you": "Toi", "tama.tribe.raised": "{n} espèces élevées",
+  "tama.tribe.no_tribe": "L'enclos n'est disponible qu'avec un compte de tribu.", "tama.tribe.you": "Toi",
 
   "tama.mood.happy": "Heureux", "tama.mood.ok": "Content", "tama.mood.hungry": "Affamé", "tama.mood.sad": "Triste", "tama.mood.sick": "Malade", "tama.mood.sleep": "Dort", "tama.mood.tired": "Fatigué",
   "tama.mood.cheeky": "Caprice", "tama.mood.dazed": "Étourdi", "tama.mood.frozen": "En cryopod", "tama.mood.egg": "Œuf", "tama.mood.gone": "Décédé",
@@ -459,11 +453,9 @@ const es = {
   "tama.rarity.common": "Común", "tama.rarity.rare": "Raro", "tama.rarity.epic": "Épico", "tama.rarity.legendary": "Legendario",
   "tama.biome.jungle": "Jungla", "tama.biome.forest": "Bosque", "tama.biome.snow": "Nieve", "tama.biome.desert": "Desierto", "tama.biome.swamp": "Pantano", "tama.biome.cave": "Cueva de Aberration", "tama.biome.ocean": "Océano", "tama.biome.sky": "Cielo", "tama.biome.volcano": "Volcán", "tama.biome.tek": "Instalación Tek", "tama.biome.space": "Espacio", "tama.biome.ruins": "Ciudad en ruinas", "tama.biome.arena": "Arena de jefe",
 
-  "tama.act.feed": "Alimentar", "tama.act.lights": "Luz", "tama.act.play": "Jugar", "tama.act.medicine": "Medicina", "tama.act.clean": "Limpiar", "tama.act.status": "Estado", "tama.act.discipline": "Educar", "tama.act.attention": "Llamada",
+  "tama.act.medicine": "Medicina", "tama.act.clean": "Limpiar", "tama.act.discipline": "Educar",
   "tama.act.cuddle": "Mimos", "tama.act.walk": "Paseo", "tama.act.cryo": "Criopod", "tama.act.thaw": "Descongelar", "tama.act.warm": "Calentar",
-  "tama.act.meal": "Comida", "tama.act.snack": "Pienso", "tama.meal_hint": "Sacia – {food}", "tama.snack_hint": "Premio: sube el ánimo pero engorda",
-  "tama.btn.a": "Botón A: siguiente icono", "tama.btn.b": "Botón B: confirmar", "tama.btn.c": "Botón C: volver",
-  "tama.keys_hint": "A elige · B confirma · C vuelve",
+  "tama.act.meal": "Comida", "tama.meal_hint": "Sacia – {food}",
 
   "tama.res.meal": "¡Ñam! Estaba rico.", "tama.res.snack": "¡Pienso delicioso!", "tama.res.full": "¡Lleno! {name} no quiere más.",
   "tama.res.asleep": "{name} está durmiendo.", "tama.res.egg": "Primero tiene que eclosionar el huevo.", "tama.res.frozen": "{name} descansa en el criopod.", "tama.res.gone": "Esta mascota ya no vive.", "tama.res.no_pet": "Aún no tienes mascota.",
@@ -508,7 +500,7 @@ const es = {
   "tama.mistake.hunger": "hambre ignorada", "tama.mistake.happy": "aburrimiento ignorado", "tama.mistake.lights": "luz encendida", "tama.mistake.discipline": "falsa llamada ignorada",
   "tama.cause.age": "Vejez", "tama.cause.retired": "Jubilación", "tama.cause.starvation": "Murió de hambre", "tama.cause.sickness": "Enfermedad", "tama.cause.neglect": "Descuido", "tama.cause.bred": "Tuvo una cría", "tama.cause.released": "Liberado en la naturaleza",
 
-  "tama.game.title": "Elige un juego", "tama.game.lr": "¿Izquierda o derecha?", "tama.game.lr_desc": "El clásico de 1996: adivina hacia dónde mirará tu mascota. Gana 3 de 5.",
+  "tama.game.lr": "¿Izquierda o derecha?", "tama.game.lr_desc": "El clásico de 1996: adivina hacia dónde mirará tu mascota. Gana 3 de 5.",
   "tama.game.catch": "Lluvia de bayas", "tama.game.catch_desc": "Atrapa la comida y esquiva la caca. 20 segundos.",
   "tama.game.timing": "Ritmo Tek", "tama.game.timing_desc": "Detén la aguja en la zona brillante: cada vez va más rápido.",
   "tama.game.round": "Ronda {n}/{total}", "tama.game.guess": "¿Hacia dónde mirará {name}?", "tama.game.left": "Izquierda", "tama.game.right": "Derecha",
@@ -528,7 +520,7 @@ const es = {
   "tama.hall.title": "Galería de ancestros", "tama.hall.sub": "Todas las mascotas que has criado.", "tama.hall.empty": "Aún vacía: aquí tendrán su lugar de honor tus mascotas.", "tama.hall.gen": "Gen. {n}",
 
   "tama.tribe.title": "Corral de la tribu", "tama.tribe.sub": "Las mascotas de los miembros de tu tribu, calculadas en directo.", "tama.tribe.empty": "Nadie de tu tribu tiene aún un Tamagotchi. ¡Sé el primero!",
-  "tama.tribe.no_tribe": "El corral solo está disponible con una cuenta de tribu.", "tama.tribe.you": "Tú", "tama.tribe.raised": "{n} especies criadas",
+  "tama.tribe.no_tribe": "El corral solo está disponible con una cuenta de tribu.", "tama.tribe.you": "Tú",
 
   "tama.mood.happy": "Feliz", "tama.mood.ok": "Contento", "tama.mood.hungry": "Hambriento", "tama.mood.sad": "Triste", "tama.mood.sick": "Enfermo", "tama.mood.sleep": "Durmiendo", "tama.mood.tired": "Cansado",
   "tama.mood.cheeky": "Berrinche", "tama.mood.dazed": "Aturdido", "tama.mood.frozen": "En criopod", "tama.mood.egg": "Huevo", "tama.mood.gone": "Fallecido",

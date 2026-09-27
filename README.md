@@ -84,6 +84,7 @@ versuchen, OaO-Bestellungen zu sehen: muss überall 404 geben).
 | CSRF-Schutz, Rate-Limiting, Brute-Force-Sperre, Security-Header | ✅ |
 | Weboberfläche im Look des Moodboards, responsive, 4 Sprachen | ✅ |
 | Dino-Tamagotchi mit allen 217 ARK-Kreaturen, Echtzeit-Pflege, Minispielen, Dossier und Tribe-Gehege | ✅ |
+| Tamagotchi-Tagesspiel: Versorgungskiste mit Serie, Tagesaufgaben, Pfleger-Rang, Händler, Erfolge, Expeditionen, Tricks, Tribe-Rangliste | ✅ |
 | PWA (Manifest + Service Worker, installierbar) | ✅ |
 | Datenbank-Backend wechselt automatisch: SQLite lokal, Postgres gehostet | ✅ |
 
@@ -156,31 +157,57 @@ Startseite und einem Ruf-Zähler am Menüpunkt.
   15 Minuten, pflegeabhängige Entwicklung (Alpha, Treu, Verwildert und eine
   geheime Tek-Form), Tod bzw. Ruhestand und Nachwuchs über Generationen.
 - **ARK-Extras:** Prägung über Pflegeanfragen mit Countdown, Reifestufen,
-  Kryopod als Pause (z. B. im Urlaub), Farbmutationen bei der Zucht.
+  Kryopod als Pause (z. B. im Urlaub), Farbmutationen bei der Zucht,
+  Kibble in sechs Stufen, Pfiff-Tricks ab einer Bindungsstufe, Expeditionen
+  mit Beute (das Tier ist eine Weile unterwegs).
+- **Bedienung:** drei Softkeys statt A/B/C – links „Scan“ (was braucht das Tier,
+  jede Zeile führt direkt zur Lösung), in der Mitte die gerade sinnvollste
+  Aktion (Wärmen, Licht aus, Zudecken, Medizin, Wunsch erfüllen, Kiste …),
+  rechts „Menü“. In Menüs werden sie zu Zurück · OK · Weiter, in Spielen zu
+  Links · Aktion · Rechts. Acht Stationen ums Display: Futter (Beutel),
+  Nachtruhe (Schlafenszeit, Schlafqualität, Zudecken, Nickerchen), Spielen,
+  Tierarzt (Diagnose, Medizin, Heiltrank), Pflege (Aufräumen, Baden),
+  Training (Ermahnen, Tricks), Ausflug (Gassi, Expeditionen), Gehege (Einrichtung).
+- **Jeden Tag ein Grund vorbeizuschauen:** Versorgungskiste mit 7-Tage-Serie in
+  den ARK-Farben (weiß bis Tek, Serienschutz rettet einen verpassten Tag), drei
+  Tagesaufgaben (eine tauschbar) mit Bonus, Angebot des Tages beim Händler,
+  Events nach Kalender (Love Evolved, Fear Evolved …) und das Evolution-Wochenende
+  mit doppelter Erfahrung. Element-Splitter kaufen Vorräte, Einrichtung mit
+  Dauerwirkung und Gehäuse; Erfahrung hebt den Pfleger-Rang und schaltet
+  Einrichtung, Gehäuse und Expeditionsziele frei; 26 Erfolge mit Belohnungen.
 - **Zwei Modi:** *Entspannt* (langsamer Hunger, Licht automatisch, kein Tod –
   der Tribe rettet per Kryopod) und *Klassisch (1996)* mit den harten Regeln.
 - **Echtzeit ohne Server-Takt:** `public/js/tamagotchi/engine.js` rechnet die
   verstrichene Zeit deterministisch in Minutenschritten nach. Ein Rutsch ergibt
   denselben Stand wie viele kleine Schritte; Geräteuhren gleicht die Serverzeit aus.
 - **Grafik ohne Bilddateien:** Jede Art wird aus einem von 21 Körperbauplänen
-  als SVG gezeichnet (Stufen, Varianten, Mimik, Animation per CSS). Dazu 13
-  Lebensräume mit Tageszeit, drei Minispiele, Retro-LCD-Modus, sechs Gehäuse.
+  als SVG gezeichnet (Stufen, Varianten, Mimik, Animation per CSS) und per
+  SVG-Lichtfilter plastisch beleuchtet (diffuses Licht, Glanz, Randlicht). Eier
+  liegen je nach Geburtsart im Nest, in der Brutkapsel, auf dem Tek-Sockel oder
+  dem Altar. Dazu Versorgungskisten, Futter, Einrichtung, Event-Dekoration,
+  13 Lebensräume mit Tageszeit, vier Minispiele, Retro-LCD-Modus, acht Gehäuse.
 
 ```
 public/js/tamagotchi/
-├── engine.js      Spielregeln (ohne DOM, läuft auch in den Node-Tests)
+├── engine.js      Spielregeln des Tiers (ohne DOM, läuft auch in den Node-Tests)
+├── progress.js    Kiste, Serie, Aufgaben, Rang, Händler, Erfolge, Events (ohne DOM)
+├── catalog.js     Spielinhalte als Daten – auch der Server prüft damit
 ├── species.js     alle 217 Arten: Körperbau, Farben, Futter, Lebensraum
-├── art*.js        SVG-Kreaturen · scene.js Lebensräume, Requisiten, Symbole
+├── art*.js        SVG-Kreaturen · scene.js Lebensräume, Symbole · props.js Eier, Kisten, Deko
 ├── store.js       Zustand, Zeitlauf, Speichern mit Revisionsprüfung
-├── device.js      Gerät, Animationen, Kacheln · games.js Minispiele
-├── panels.js      Brutstation, Dossier, Ahnen, Gehege, Einstellungen, Anleitung
+├── device.js      Gerät, Softkeys, Stationen, Animationen · games.js Minispiele
+├── hub.js         „Heute“, Rang & Bindung, Kacheln zum Tier · daily.js Kiste, Beute
+├── shop.js        Händler und Erfolge · panels.js Brutstation, Dossier, Ahnen, Tribe
 └── widget.js      Kachel für die Startseite (wird nachgeladen)
 ```
 
 Gespeichert wird ein Spielstand pro Konto (Tabelle `pets`, JSON bis 64 KB). Der
 Server prüft Aufbau und Wertebereiche, Schreibkonflikte zwischen zwei Geräten
 löst eine Revisionsnummer (409 liefert den neueren Stand mit). Im Tribe-Gehege
-sehen Mitglieder nur die Tiere ihres eigenen Tribes, ohne Pflegeprotokoll.
+sehen Mitglieder nur die Tiere ihres eigenen Tribes, ohne Pflegeprotokoll; die
+Tribe-Rangliste zeigt nur Rang, aktuelle Serie, Rekord und aufgezogene Arten –
+Beutel, Aufgaben und Splitter bleiben privat. Der Tageswechsel folgt der Ortszeit
+des Geräts; eine zurückgestellte Uhr bringt keine zweite Kiste.
 
 ### Frontend-Tests: echter Browser, nicht nur Behauptung
 
@@ -387,7 +414,8 @@ Developer zusätzlich: `POST/PATCH /categories`, `POST/PATCH /items`, `POST /ite
 ### Dino-Tamagotchi
 `GET /pet` (eigener Spielstand + Serverzeit) · `PUT /pet` mit `{ doc, baseRevision }`
 (409 bei veralteter Revision, liefert den aktuellen Stand) · `GET /pet/tribe`
-(Tiere des eigenen Tribes, ohne Protokoll und Sammelkatalog)
+(Tiere des eigenen Tribes, ohne Protokoll und Sammelkatalog, dazu Rang-Erfahrung,
+Serie und Rekord für die Rangliste)
 
 ### Admin (eigener Tribe)
 `GET /admin/members` · `PATCH /admin/members/:id/approve|reject|disable|roles` ·

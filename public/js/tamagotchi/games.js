@@ -1,6 +1,7 @@
 /**
- * Minispiele auf dem Tamagotchi-Bildschirm. Gesteuert wird wie früher über die
- * Tasten A/B/C (oder Tippen/Ziehen bzw. Tastatur). Jedes Spiel meldet am Ende
+ * Minispiele auf dem Tamagotchi-Bildschirm. Gesteuert wird über die drei
+ * Softkeys (Links · Aktion · Rechts), per Tippen/Ziehen oder Tastatur. Intern
+ * heißen die Tasten weiterhin a/b/c. Jedes Spiel meldet am Ende
  * { won, game, score } – die Wirkung auf das Tier regelt die Engine.
  */
 import { el } from '../ui.js';
@@ -13,8 +14,21 @@ import { sfx, buzz } from './sound.js';
 function image(node) {
   const img = new Image();
   img.decoding = 'async';
-  img.src = toDataUrl(node);
+  img.src = typeof node === 'string' ? node : toDataUrl(node);
   return img;
+}
+
+/**
+ * Das Tier nach rechts und nach links blickend als Bild. Gespiegelt wird im SVG
+ * selbst: Eine negative CSS- oder Canvas-Skalierung verdunkelt in Chromium das
+ * 3D-Licht. Beide Bilder bekommen denselben, gespiegelten Ausschnitt.
+ */
+function spritePair(sp, o) {
+  const right = fitViewBox(creatureArt(sp, o));
+  const [x, y, w, hgt] = String(right.attrs.viewBox).split(' ').map(Number);
+  const left = creatureArt(sp, { ...o, facing: -1 });
+  left.attrs.viewBox = [200 - x - w, y, w, hgt].join(' ');
+  return [toDataUrl(right), toDataUrl(left)];
 }
 
 function fitCanvas(canvas) {
@@ -36,7 +50,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 function leftRight(host, { pet, sp, onEnd }) {
   const total = 5;
   let round = 0, hits = 0, busy = false, done = false;
-  const sprite = el('img.game-lr-pet', { src: toDataUrl(fitViewBox(creatureArt(sp, { stage: pet.stage, variant: pet.variant, colors: pet.colors }))), alt: '' });
+  const [lookRight, lookLeft] = spritePair(sp, { stage: pet.stage, variant: pet.variant, colors: pet.colors });
+  const sprite = el('img.game-lr-pet', { src: lookRight, alt: '' });
   const title = el('div.game-caption', { text: t('tama.game.guess', { name: pet.name }) });
   const score = el('div.game-score', { text: '' });
   const verdict = el('div.game-verdict', { 'aria-live': 'polite' });
@@ -56,7 +71,7 @@ function leftRight(host, { pet, sp, onEnd }) {
     sprite.classList.add('is-turning');
     await wait(280);
     sprite.classList.remove('is-turning');
-    sprite.style.transform = look < 0 ? 'scaleX(-1)' : '';
+    sprite.src = look < 0 ? lookLeft : lookRight;
     const ok = look === dir;
     if (ok) hits += 1;
     verdict.textContent = ok ? '✓' : '✗';
@@ -66,7 +81,7 @@ function leftRight(host, { pet, sp, onEnd }) {
     update();
     await wait(650);
     verdict.textContent = '';
-    sprite.style.transform = '';
+    sprite.src = lookRight;
     busy = false;
     if (round >= total || hits >= 3 || round - hits > 2) {
       done = true;
@@ -94,7 +109,9 @@ function catchGame(host, { pet, sp, food, onEnd }) {
   const hud = el('div.game-hud', {});
   host.replaceChildren(canvas, hud, el('div.game-hint', { text: t('tama.game.controls_catch') }));
   const ctx = fitCanvas(canvas);
-  const petImg = image(fitViewBox(creatureArt(sp, { stage: pet.stage === 'egg' ? 'baby' : pet.stage, variant: pet.variant, colors: pet.colors })));
+  const [petRight, petLeft] = spritePair(sp, { stage: pet.stage === 'egg' ? 'baby' : pet.stage, variant: pet.variant, colors: pet.colors });
+  const petImg = image(petRight);
+  const petImgLeft = image(petLeft);
   const goodImg = image(foodArt(food));
   const bonusImg = image(foodArt('kibble'));
   const badImg = image(poopArt());
@@ -139,8 +156,7 @@ function catchGame(host, { pet, sp, food, onEnd }) {
     ctx.save();
     ctx.globalAlpha = hurt ? 0.55 : 1;
     ctx.translate(x, 206);
-    ctx.scale(facing, 1);
-    ctx.drawImage(petImg, -38, -64, 76, 76);
+    ctx.drawImage(facing < 0 ? petImgLeft : petImg, -38, -64, 76, 76);
     ctx.restore();
     const left = Math.max(0, Math.ceil((DURATION - elapsed) / 1000));
     hud.textContent = `${t('tama.game.score', { n: score })} · ${left}s`;
@@ -240,6 +256,75 @@ function timingGame(host, { onEnd }) {
   return {
     button(b, down = true) { if (down && (b === 'b' || b === 'a' || b === 'c')) stop(); },
     destroy() { over = true; cancelAnimationFrame(raf); },
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Pfiff-Training (für Tricks)                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Wie beim Pfeifen-Kommando in ARK: Das Tier zeigt eine Folge aus drei Pfiffen
+ * (tief · mittel · hoch = linke, mittlere, rechte Taste), du pfeifst sie nach.
+ * Längere Tricks haben längere Folgen.
+ */
+export function whistleGame(host, { pet, sp, steps = 4, onEnd }) {
+  const KEYS = ['a', 'b', 'c'];
+  const seq = Array.from({ length: steps }, () => KEYS[Math.floor(Math.random() * 3)]);
+  const pads = KEYS.map((k, i) => el('button.game-pad.is-' + k, { type: 'button', 'aria-label': t('tama.game.pad_' + k), onclick: () => input(k) }, el('span', { text: ['♪', '♫', '♬'][i] })));
+  const sprite = el('img.game-whistle-pet', { src: toDataUrl(fitViewBox(creatureArt(sp, { stage: pet.stage === 'egg' ? 'baby' : pet.stage, variant: pet.variant, colors: pet.colors }))), alt: '' });
+  const caption = el('div.game-caption', { text: t('tama.game.whistle_watch', { name: pet.name }) });
+  const score = el('div.game-score');
+  const verdict = el('div.game-verdict', { 'aria-live': 'polite' });
+  host.replaceChildren(el('div.game-whistle', {}, caption, score, el('div.game-whistle-stage', {}, sprite), el('div.game-pads', {}, pads), verdict, el('div.game-hint', { text: t('tama.game.controls_whistle') })));
+  let pos = 0, listening = false, done = false;
+  const light = async (k, ms) => {
+    const pad = pads[KEYS.indexOf(k)];
+    pad.classList.add('is-on');
+    sfx('note_' + k);
+    await wait(ms);
+    pad.classList.remove('is-on');
+  };
+  const progress = () => { score.textContent = t('tama.game.whistle_step', { n: pos, total: steps }); };
+
+  async function show() {
+    await wait(600);
+    for (const k of seq) {
+      if (done) return;
+      await light(k, 420);
+      await wait(170);
+    }
+    if (done) return;
+    listening = true;
+    caption.textContent = t('tama.game.whistle_turn');
+    progress();
+  }
+
+  async function finish(won) {
+    done = true;
+    listening = false;
+    verdict.textContent = won ? t('tama.game.whistle_ok', { name: pet.name }) : t('tama.game.whistle_miss');
+    verdict.className = 'game-verdict is-final' + (won ? ' is-hit' : ' is-miss');
+    sfx(won ? 'trick' : 'lose');
+    if (won) sprite.classList.add('is-trick');
+    await wait(1300);
+    onEnd({ won, game: 'whistle', score: pos });
+  }
+
+  function input(k) {
+    if (!listening || done) return;
+    buzz(8);
+    light(k, 180);
+    if (k !== seq[pos]) return finish(false);
+    pos += 1;
+    progress();
+    if (pos >= steps) finish(true);
+  }
+
+  show();
+  return {
+    button(b, down = true) { if (down && KEYS.includes(b)) input(b); },
+    destroy() { done = true; },
   };
 }
 

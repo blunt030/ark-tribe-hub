@@ -25,6 +25,14 @@ const ARCH = {
 
 let seq = 0;
 
+// Irisfarben: fest pro Art (aus dem Namen gehasht), damit jede Art ihren Blick behält.
+const IRIS = ['#c98a2e', '#9a7a34', '#58a060', '#3f86c8', '#b8602e', '#8a64c4', '#2fa3a0', '#c9a23a'];
+function eyeTint(sp) {
+  let h = 0;
+  for (const ch of sp.key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return IRIS[h % IRIS.length];
+}
+
 export function palette(sp, { colors, variant, stage } = {}) {
   let [body, belly, accent, extra] = sp.colors;
   extra = extra || accent;
@@ -58,13 +66,14 @@ export function palette(sp, { colors, variant, stage } = {}) {
 /**
  * Erzeugt die Kreatur als SVG-Baum.
  * @param {object} sp Art aus species.js
- * @param {object} o  { stage, variant, teen, colors, className }
+ * @param {object} o  { stage, variant, teen, colors, className, flat, facing }
  */
 export function creatureArt(sp, o = {}) {
   const stage = o.stage && o.stage !== 'egg' ? o.stage : 'adult';
   const form = FORMS[stage];
   const pal = palette(sp, { colors: o.colors, variant: o.variant, stage });
   const K = makeKit('k' + (seq++).toString(36));
+  K.eyeTint = eyeTint(sp);
   const ctx = { K, sp, pal, form, f: new Set(sp.features), stage, variant: o.variant, teen: o.teen };
   const draw = ARCH[sp.arch] || theropod;
   const { parts, anchors } = draw(ctx);
@@ -73,7 +82,12 @@ export function creatureArt(sp, o = {}) {
   const under = [];
   if (o.variant === 'alpha') under.push(h('g', { class: 'c-aura' }, K.glow('#ff3b3b', anchors.body[0], anchors.body[1] - 10, 95, 0.55)));
   if (o.variant === 'tek') under.push(h('g', { class: 'c-aura' }, K.glow('#35d7ff', anchors.body[0], anchors.body[1] - 10, 90, 0.4)));
-  under.push(h('ellipse', { class: 'c-shadow', cx: r1(anchors.body[0]), cy: 184, rx: floating ? 34 : 58, ry: floating ? 4 : 7, fill: '#000', opacity: floating ? 0.14 : 0.24 }));
+  const flat = o.flat === true;
+  const shadowFilter = flat ? null : K.softShadow();
+  under.push(h('ellipse', {
+    class: 'c-shadow', cx: r1(anchors.body[0]), cy: 184, rx: floating ? 34 : 58, ry: floating ? 4 : 7, fill: '#000',
+    opacity: floating ? 0.18 : 0.34, filter: shadowFilter ? `url(#${shadowFilter})` : null,
+  }));
 
   const over = [];
   if (o.variant === 'feral') {
@@ -91,6 +105,12 @@ export function creatureArt(sp, o = {}) {
     over.push(h('path', { class: 'c-tek', d: `M ${r1(x - 18)} ${r1(y - 4)} h 10 l 5 -6 h 12 M ${r1(x - 10)} ${r1(y + 8)} h 14 l 4 4 h 8`, stroke: '#5ff2ff', 'stroke-width': 2.2, fill: 'none', 'stroke-linecap': 'round', opacity: 0.9 }));
   }
 
+  // Blick nach links (facing: -1) als feste Spiegelung – für Bilder und Canvas, wo kein CSS greift
+  const turn = o.facing === -1 ? 'matrix(-1 0 0 1 200 0)' : null;
+
+  // 3D-Licht (abschaltbar, z. B. für Silhouetten oder sehr kleine Vorschauen)
+  const lit = flat ? null : K.shade3d({ rim: o.variant === 'tek' ? '#8ff3ff' : o.variant === 'alpha' ? '#ffd0c8' : '#e4f6ff' });
+
   const classes = ['creature', 'arch-' + sp.arch, 'st-' + stage];
   if (o.variant) classes.push('var-' + o.variant);
   if (o.teen === 'cheeky') classes.push('teen-cheeky');
@@ -101,7 +121,12 @@ export function creatureArt(sp, o = {}) {
     'data-mouth': anchors.mouth.map(r1).join(','), 'data-head': anchors.head.map(r1).join(','),
   },
   h('defs', {}, K.defs),
-  under,
-  h('g', { class: 'c-body', style: 'transform-origin:100px 182px' }, parts),
-  over);
+  // Gespiegelt (Blickrichtung) wird innerhalb der beleuchteten Gruppe: Eine
+  // negative Skalierung außen herum bricht in Chromium den Lichtfilter, und so
+  // kommt das Licht auch beim Umdrehen weiter von links oben.
+  h('g', { class: 'c-turn', transform: turn }, under),
+  h('g', { class: 'c-figure', filter: lit ? `url(#${lit})` : null },
+    h('g', { class: 'c-turn', transform: turn },
+      h('g', { class: 'c-body', style: 'transform-origin:100px 182px' }, parts),
+      over)));
 }

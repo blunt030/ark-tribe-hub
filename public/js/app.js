@@ -311,7 +311,7 @@ const ROUTES = [
   { re: /^\/tribes$/, view: renderTribes },
   { re: /^\/users$/, view: renderUsers },
   { re: /^\/catalog$/, view: renderCatalog },
-  { re: /^\/tamagotchi(?:\/(dossier|hall|tribe))?$/, view: renderTamagotchi },
+  { re: /^\/tamagotchi(?:\/(shop|awards|dossier|hall|tribe))?$/, view: renderTamagotchi },
 ];
 
 // Das Tamagotchi bringt eigene Grafik- und Spielmodule mit. Sie werden erst beim

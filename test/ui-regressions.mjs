@@ -213,13 +213,16 @@ test('Dino-Tamagotchi ist in Menü, Router, Startseite und App-Hülle eingebunde
     read('public/js/views/tamagotchi.js'),
   ]);
   assert.match(app, /path: '\/tamagotchi', icon: 'egg-crack', label: t\('nav\.tamagotchi'\), badge: \(\) => petCalls\(\)/);
-  assert.match(app, /re: \/\^\\\/tamagotchi\(\?:\\\/\(dossier\|hall\|tribe\)\)\?\$\//);
+  assert.match(app, /re: \/\^\\\/tamagotchi\(\?:\\\/\(shop\|awards\|dossier\|hall\|tribe\)\)\?\$\//);
   assert.match(app, /import\('\.\/views\/tamagotchi\.js'\)/);
   assert.match(app, /resetPet\(\)/);
   assert.match(index, /\/css\/tamagotchi\.css/);
   assert.match(sw, /'\/css\/tamagotchi\.css'/);
   assert.match(sw, /'\/js\/tamagotchi\/store\.js'/);
   assert.match(sw, /'\/js\/tamagotchi\/engine\.js'/);
+  // store.js lädt die Fortschrittslogik mit – sie gehört in die App-Hülle
+  assert.match(sw, /'\/js\/tamagotchi\/progress\.js'/);
+  assert.match(sw, /'\/js\/tamagotchi\/catalog\.js'/);
   assert.match(dashboard, /import\('\.\.\/tamagotchi\/widget\.js'\)/);
   assert.match(view, /x\.key !== 'tribe' \|\| user\.tribeId/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);

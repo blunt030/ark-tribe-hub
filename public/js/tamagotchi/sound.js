@@ -81,6 +81,15 @@ const SFX = {
   end: seq([659, 587, 523, 440, 392], 'triangle', 0.18, 0.2),
   poop: [{ f: 300, to: 180, d: 0.12, type: 'square', v: 0.6 }],
   cuddle: seq([880, 1175], 'sine', 0.12, 0.1),
+  // Pfiff-Töne fürs Training (tief, mittel, hoch – wie die drei Tasten)
+  note_a: [{ f: 587, d: 0.26, type: 'sine', v: 0.9 }, { f: 1174, d: 0.2, type: 'sine', v: 0.18 }],
+  note_b: [{ f: 784, d: 0.26, type: 'sine', v: 0.9 }, { f: 1568, d: 0.2, type: 'sine', v: 0.18 }],
+  note_c: [{ f: 988, d: 0.26, type: 'sine', v: 0.9 }, { f: 1976, d: 0.2, type: 'sine', v: 0.18 }],
+  trick: seq([784, 988, 1175, 988, 1318], 'triangle', 0.08, 0.07),
+  land: [{ f: 150, to: 55, d: 0.3, type: 'sine', v: 1 }],
+  open: seq([523, 659, 784, 1046, 1318, 1568], 'triangle', 0.12, 0.07),
+  coin: seq([1568, 2093], 'square', 0.06, 0.06),
+  levelup: seq([523, 659, 784, 1046, 784, 1046, 1318], 'triangle', 0.1, 0.08),
 };
 
 export function sfx(name) {
@@ -91,10 +100,12 @@ export function sfx(name) {
     for (let i = 0; i < 3; i++) noise(c, { t: i * 0.16, d: 0.07, freq: 900 + i * 200 });
     return;
   }
-  if (name === 'clean') {
-    noise(c, { d: 0.5, v: 0.35, freq: 2400 });
+  if (name === 'clean' || name === 'groom') {
+    noise(c, { d: 0.5, v: 0.35, freq: name === 'groom' ? 3200 : 2400 });
+    if (name === 'groom') tone(c, { f: 1760, t: 0.45, d: 0.12, type: 'triangle', v: 0.6 });
     return;
   }
+  if (name === 'land') noise(c, { d: 0.25, v: 0.5, freq: 300 });
   for (const n of SFX[name] || SFX.tick) tone(c, n);
 }
 

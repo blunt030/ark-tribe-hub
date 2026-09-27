@@ -5,7 +5,7 @@
  * externe Bilder auskommt.
  */
 import { h } from './vdom.js';
-import { light, dark, mix, r1 } from './art-kit.js';
+import { mix, r1 } from './art-kit.js';
 
 /* -------------------------------------------------------------------------- */
 /* Tageszeit                                                                     */
@@ -262,49 +262,8 @@ export function foodArt(kind) {
   return h('svg', { viewBox: '0 0 40 40', class: `prop-food food-${kind}`, 'aria-hidden': 'true' }, draw(h('ellipse', { cx: 14, cy: 14, rx: 4, ry: 2, fill: '#ffffff', opacity: 0.35 })));
 }
 
-/** Ei, Embryo-Kapsel, Tek-Kern oder Beschwörungsrelikt – je nach Geburtsart. */
-export function eggArt(sp, { cracks = 0 } = {}) {
-  const [body, belly, accent] = sp.colors;
-  const id = 'egg' + uid++;
-  const line = dark(mix(body, '#24123a', 0.3), 0.55);
-  const glow = sp.rarity === 'legendary' ? '#ffcf5a' : sp.rarity === 'epic' ? '#c77dff' : sp.rarity === 'rare' ? '#5ad1ff' : null;
-  const crackPaths = ['M 44 60 l 8 8 l -6 8 l 8 6', 'M 58 44 l -6 8 l 8 6 l -4 8', 'M 36 74 l 8 -4 l 4 8 l 8 -6'].slice(0, cracks);
-  const halo = glow ? h('circle', { class: 'egg-halo', cx: 50, cy: 60, r: 46, fill: glow, opacity: 0.18 }) : null;
-  if (sp.birth === 'embryo') {
-    return h('svg', { viewBox: '0 0 100 110', class: 'prop-egg birth-embryo', 'aria-hidden': 'true' },
-      h('defs', {}, h('radialGradient', { id, cx: 0.4, cy: 0.35, r: 0.7 }, h('stop', { offset: 0, 'stop-color': '#f4fbff' }), h('stop', { offset: 0.6, 'stop-color': light(accent, 0.55) }), h('stop', { offset: 1, 'stop-color': light(accent, 0.1) }))),
-      halo,
-      h('rect', { x: 22, y: 12, width: 56, height: 82, rx: 28, fill: `url(#${id})`, stroke: '#3a4a5a', 'stroke-width': 3 }),
-      h('path', { d: 'M 50 40 q -14 4 -10 20 q 4 12 14 8 q 8 -4 4 -14 q -3 -8 -10 -6', fill: light(body, 0.2), stroke: line, 'stroke-width': 2, opacity: 0.85, class: 'egg-embryo' }),
-      h('rect', { x: 18, y: 88, width: 64, height: 14, rx: 6, fill: '#46525e', stroke: '#1e2a36', 'stroke-width': 2 }),
-      h('rect', { x: 30, y: 93, width: 40, height: 4, rx: 2, fill: '#5ff2ff' }),
-      h('ellipse', { cx: 38, cy: 30, rx: 7, ry: 12, fill: '#ffffff', opacity: 0.45 }));
-  }
-  if (sp.birth === 'tek') {
-    return h('svg', { viewBox: '0 0 100 110', class: 'prop-egg birth-tek', 'aria-hidden': 'true' },
-      h('circle', { cx: 50, cy: 58, r: 44, fill: '#35d7ff', opacity: 0.14 }),
-      h('path', { d: 'M 50 14 L 84 34 L 84 76 L 50 96 L 16 76 L 16 34 Z', fill: '#26313d', stroke: '#9fe9ff', 'stroke-width': 3 }),
-      h('path', { d: 'M 50 14 L 50 55 L 84 76 M 50 55 L 16 76', stroke: '#35d7ff', 'stroke-width': 2, fill: 'none', opacity: 0.8 }),
-      h('circle', { class: 'egg-core', cx: 50, cy: 55, r: 9, fill: '#5ff2ff' }));
-  }
-  if (sp.birth === 'relic') {
-    return h('svg', { viewBox: '0 0 100 110', class: 'prop-egg birth-relic', 'aria-hidden': 'true' },
-      h('circle', { class: 'egg-halo', cx: 50, cy: 56, r: 46, fill: accent, opacity: 0.2 }),
-      h('path', { d: 'M 50 8 L 72 40 L 62 96 L 38 96 L 28 40 Z', fill: dark(body, 0.35), stroke: line, 'stroke-width': 3 }),
-      h('path', { d: 'M 50 8 L 50 96 M 28 40 L 72 40', stroke: light(accent, 0.2), 'stroke-width': 1.6, opacity: 0.7 }),
-      h('path', { class: 'egg-core', d: 'M 44 54 l 6 -10 l 6 10 l -6 10 z', fill: accent }),
-      h('ellipse', { cx: 50, cy: 100, rx: 30, ry: 6, fill: '#000', opacity: 0.25 }));
-  }
-  const spots = [[36, 46, 6], [60, 38, 4.5], [62, 66, 7], [40, 78, 5], [52, 56, 3.5]];
-  return h('svg', { viewBox: '0 0 100 110', class: 'prop-egg birth-egg', 'aria-hidden': 'true' },
-    h('defs', {}, h('radialGradient', { id, cx: 0.38, cy: 0.3, r: 0.75 }, h('stop', { offset: 0, 'stop-color': light(belly, 0.45) }), h('stop', { offset: 0.65, 'stop-color': belly }), h('stop', { offset: 1, 'stop-color': dark(belly, 0.28) }))),
-    halo,
-    h('ellipse', { cx: 50, cy: 100, rx: 28, ry: 5, fill: '#000', opacity: 0.22 }),
-    h('path', { d: 'M 50 10 C 76 10 88 50 88 66 C 88 88 72 100 50 100 C 28 100 12 88 12 66 C 12 50 24 10 50 10 Z', fill: `url(#${id})`, stroke: line, 'stroke-width': 3 }),
-    ...spots.map(([x, y, r]) => h('ellipse', { cx: x, cy: y, rx: r, ry: r * 0.8, fill: accent, opacity: 0.85 })),
-    ...crackPaths.map((d) => h('path', { d, stroke: line, 'stroke-width': 2.4, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })),
-    h('ellipse', { cx: 36, cy: 30, rx: 8, ry: 13, fill: '#ffffff', opacity: 0.4, transform: 'rotate(-20 36 30)' }));
-}
+/** Eier, Kisten und Einrichtung stehen in props.js (3D-Look). */
+export { eggArt } from './props.js';
 
 export function cryoArt() {
   return h('svg', { viewBox: '0 0 120 160', class: 'prop-cryo', 'aria-hidden': 'true' },
@@ -359,6 +318,28 @@ const I = {
   moon: ['M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z'],
   leaf: ['M5 19c0-8 5-14 15-15-1 10-7 15-15 15z', 'M5 19l7-7'],
   swap: ['M4 8h13l-3-3', 'M20 16H7l3 3'],
+  sun: ['M12 8a4 4 0 1 0 0.01 0z', 'M12 2v2', 'M12 20v2', 'M4.9 4.9l1.4 1.4', 'M17.7 17.7l1.4 1.4', 'M2 12h2', 'M20 12h2', 'M4.9 19.1l1.4-1.4', 'M17.7 6.3l1.4-1.4'],
+  bath: ['M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.7 3 4 3.7 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5', 'M10 5 8 7', 'M2 12h20', 'M7 19v2', 'M17 19v2'],
+  whistle: ['M9 17a5 5 0 1 0 0.01 0z', 'M9 12V8h12v4h-7', 'M9 17h.01', 'M16 5l1-2', 'M20 6l1.5-1.5'],
+  compass: ['M12 3a9 9 0 1 0 0.01 0z', 'M16.2 7.8l-2.1 6.3-6.3 2.1 2.1-6.3z'],
+  home: ['M3 10.5 12 3l9 7.5', 'M5 9.5V20h14V9.5', 'M10 20v-6h4v6'],
+  radar: ['M21 12a9 9 0 1 1-9-9', 'M17 12a5 5 0 1 1-5-5', 'M12 12l7.5-7.5', 'M12 12h.01'],
+  menu: ['M4 4h6v6H4z', 'M14 4h6v6h-6z', 'M4 14h6v6H4z', 'M14 14h6v6h-6z'],
+  crate: ['M12 3l8 4.5v9L12 21l-8-4.5v-9z', 'M12 12l8-4.5', 'M12 12v9', 'M12 12L4 7.5', 'M8 5.3l8 4.5'],
+  gift: ['M4 11h16v9H4z', 'M3 7h18v4H3z', 'M12 7v13', 'M12 7c-2-4-6-3-5 0', 'M12 7c2-4 6-3 5 0'],
+  bolt: ['M13 2 4 14h7l-1 8 9-12h-7z'],
+  lock: ['M6 11h12v10H6z', 'M8 11V7a4 4 0 0 1 8 0v4'],
+  check: ['M5 12.5l4.5 4.5L19 7.5'],
+  flame: ['M12 22c4 0 7-3 7-7 0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-2 2-5 5-5 8 0 4 3 7 7 7z'],
+  trophy: ['M8 21h8', 'M12 17v4', 'M7 4h10v5a5 5 0 0 1-10 0z', 'M7 6H4a3 3 0 0 0 3 4', 'M17 6h3a3 3 0 0 1-3 4'],
+  bag: ['M5 8h14l-1 13H6z', 'M9 8V6a3 3 0 0 1 6 0v2'],
+  clock: ['M12 3a9 9 0 1 0 0.01 0z', 'M12 7v5l3 2'],
+  sparkle: ['M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z', 'M19 17l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z'],
+  back: ['M15 5l-7 7 7 7'],
+  next: ['M9 5l7 7-7 7'],
+  map: ['M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z', 'M9 3v15', 'M15 6v15'],
+  bed: ['M3 18V8', 'M3 14h18v4', 'M21 18v-4a3 3 0 0 0-3-3h-7v3', 'M7 11a1.5 1.5 0 1 0 0.01 0z'],
+  list: ['M9 6h11', 'M9 12h11', 'M9 18h11', 'M4 6l1 1 2-2', 'M4 12l1 1 2-2', 'M4 18l1 1 2-2'],
 };
 
 export function icon(name, cls = '') {

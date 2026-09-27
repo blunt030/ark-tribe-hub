@@ -1,21 +1,21 @@
 /**
  * Nebenansichten des Dino-Tamagotchis: Brutstation, Dossier, Ahnengalerie,
- * Tribe-Gehege, Einstellungen und Anleitung.
+ * Tribe-Gehege mit Rangliste, Einstellungen und Anleitung.
  */
 import { el } from '../ui.js';
 import { t } from '../i18n.js';
 import { api } from '../api.js';
 import * as E from './engine.js';
+import * as P from './progress.js';
+import { SHELLS } from './catalog.js';
 import { SPECIES } from './species.js';
 import { creatureArt, FORMS } from './art.js';
 import { eggArt, foodArt, icon, DIET_FOOD } from './scene.js';
 import { toSvgString } from './vdom.js';
 import { petState, petNow, petAct } from './store.js';
 import { soundOn, setSoundOn, sfx } from './sound.js';
-import { BY_KEY, creatureThumb, dur, faceFor, svg } from './device.js';
+import { BY_KEY, creatureThumb, dur, faceFor, svg, rankName } from './common.js';
 import { mitgeliefertesBild } from '../icons.js';
-
-const SHELLS = ['tek', 'bronze', 'obsidian', 'amber', 'aberrant', 'ice'];
 const NAMES = ['Krümel', 'Nugget', 'Pixel', 'Knuddel', 'Zappel', 'Mampf', 'Tiki', 'Momo', 'Brummi', 'Flocke', 'Schnuffel', 'Zottel', 'Bolt', 'Kiwi', 'Mochi', 'Rumpel', 'Sprout', 'Noodle', 'Blitz', 'Pebble'];
 
 /* -------------------------------------------------------------------------- */
@@ -185,7 +185,7 @@ export function openNest({ onStarted } = {}) {
   const panel = nestPanel({
     current,
     onStart: ({ species, name, mode }) => {
-      petAct((doc, now) => E.startEgg(doc, { species, name, mode, now }));
+      petAct((doc, now) => P.startEgg(doc, { species, name, mode, now }));
       sfx('hatch');
       s?.close();
       onStarted?.();
@@ -249,7 +249,7 @@ function dexDetail(sp, { go }) {
       const panel = nestPanel({
         current: petState.doc.pet,
         species: sp,
-        onStart: ({ species, name, mode }) => { petAct((d, now) => E.startEgg(d, { species, name, mode, now })); sfx('hatch'); nest?.close(); go('/tamagotchi'); },
+        onStart: ({ species, name, mode }) => { petAct((d, now) => P.startEgg(d, { species, name, mode, now })); sfx('hatch'); nest?.close(); go('/tamagotchi'); },
       });
       nest = sheet(t('tama.nest.title'), panel, { wide: true });
     } }, svg(icon('egg')), el('span', { text: t('tama.dex.hatch_this') }))));
@@ -287,11 +287,27 @@ export async function tribePanel({ user }) {
   const offset = Number(res.serverTime) - Date.now() || 0;
   const now = Date.now() + offset;
   if (!res.pets.length) return el('div.tama-empty', {}, svg(icon('egg')), el('p', { text: t('tama.tribe.empty') }));
+
+  // Rangliste: Pfleger-Rang, dann Serie
+  const board = [...res.pets].sort((a, b) => (b.xp - a.xp) || (b.streak - a.streak));
+  const leaderboard = el('section.tama-card.is-board', {},
+    el('h3.tama-card-title', {}, svg(icon('trophy')), el('span', { text: t('tama.tribe.board') })),
+    el('ol.tama-board', {}, board.map((entry, i) => {
+      const r = P.rankOf(entry.xp);
+      return el('li.tama-board-row' + (entry.userId === user.id ? '.is-me' : '') + (i < 3 ? '.is-top' : ''), {},
+        el('span.tama-board-pos', { text: String(i + 1) }),
+        el('span.tama-board-name', {}, el('strong', { text: entry.userId === user.id ? t('tama.tribe.you') : entry.username }),
+          el('small', { text: `${t('tama.rank_short', { n: r.level })} · ${rankName(r.level)}` })),
+        el('span.tama-board-stat', { title: t('tama.streak.title') }, svg(icon('flame')), el('b', { text: String(entry.streak) }), el('small', { text: t('tama.streak.best_short', { n: entry.best }) })),
+        el('span.tama-board-stat', { title: t('tama.dex.raised') }, svg(icon('star')), el('b', { text: String(entry.raised) })));
+    })));
+
+  const pets = res.pets.filter((entry) => BY_KEY.has(entry.pet?.species));
   return el('div.tama-tribe', {},
-    el('p.tama-lead', { text: t('tama.tribe.sub') }),
-    el('div.tama-cards', {}, res.pets.map((entry) => {
-      const sp = BY_KEY.get(entry.pet?.species);
-      if (!sp) return null;
+    leaderboard,
+    pets.length ? el('p.tama-lead', { text: t('tama.tribe.sub') }) : null,
+    el('div.tama-cards', {}, pets.map((entry) => {
+      const sp = BY_KEY.get(entry.pet.species);
       const p = { ...structuredClone(entry.pet), log: [] };
       try { E.advance(p, now); } catch { /* fremder Stand – dann eben der gespeicherte */ }
       const mood = E.mood(p, now);
@@ -302,7 +318,7 @@ export async function tribePanel({ user }) {
         el('div.tama-mini-copy', {},
           el('strong', { text: p.name }),
           el('span', { text: `${sp.name} · ${t('tama.stage.' + p.stage)}${p.variant ? ' · ' + t('tama.variant.' + p.variant) : ''}` }),
-          el('small', { text: `${entry.userId === user.id ? t('tama.tribe.you') : entry.username} · ${dur(E.ageMs(p, now))} · ${t('tama.tribe.raised', { n: entry.raised })}` })));
+          el('small', { text: `${entry.userId === user.id ? t('tama.tribe.you') : entry.username} · ${dur(E.ageMs(p, now))} · ${t('tama.bond_level', { n: E.bondLevel(p) })}` })));
     })));
 }
 
@@ -316,10 +332,24 @@ export function openSettings({ onChange, toast }) {
   const now = petNow();
   const setting = (fn) => { petAct((d) => { fn(d.settings); return { ok: true, code: 'mode' }; }); onChange?.(); };
 
-  const shells = el('div.tama-swatches', { role: 'radiogroup', 'aria-label': t('tama.set.shell') }, SHELLS.map((shell) => el('button.tama-swatch.shell-' + shell, {
-    type: 'button', role: 'radio', 'aria-checked': doc.settings.shell === shell ? 'true' : 'false', title: t('tama.shell.' + shell),
-    onclick: (e) => { setting((st) => { st.shell = shell; }); shells.querySelectorAll('.tama-swatch').forEach((n) => n.setAttribute('aria-checked', 'false')); e.currentTarget.setAttribute('aria-checked', 'true'); },
-  }, el('span', { text: t('tama.shell.' + shell) }))));
+  // Gehäuse: freigeschaltete sind wählbar, die übrigen zeigen, wie man sie bekommt.
+  const shells = el('div.tama-swatches', { role: 'radiogroup', 'aria-label': t('tama.set.shell') }, Object.keys(SHELLS).map((shell) => {
+    const owned = P.owns(doc, 'shell_' + shell);
+    const lock = owned ? null : P.lockReason(doc, 'shell_' + shell, now);
+    const def = SHELLS[shell];
+    const how = owned ? '' : lock === 'rank' ? t('tama.lock.rank', { n: def.rank }) : lock === 'event' ? t('tama.lock.event', { event: t('tama.event.' + def.event) }) : t('tama.lock.shop', { n: def.price });
+    return el('button.tama-swatch.shell-' + shell + (owned ? '' : '.is-locked'), {
+      type: 'button', role: 'radio', 'aria-checked': doc.settings.shell === shell ? 'true' : 'false', 'aria-disabled': owned ? null : 'true', title: owned ? t('tama.shell.' + shell) : `${t('tama.shell.' + shell)} – ${how}`,
+      onclick: (e) => {
+        if (!owned) { toast?.(how); return; }
+        const r = petAct((d) => P.setShell(d, shell));
+        if (!r.ok) return;
+        onChange?.();
+        shells.querySelectorAll('.tama-swatch').forEach((n) => n.setAttribute('aria-checked', 'false'));
+        e.currentTarget.setAttribute('aria-checked', 'true');
+      },
+    }, owned ? null : svg(icon('lock')), el('span', { text: t('tama.shell.' + shell) }));
+  }));
   const toggle = (label, desc, checked, onToggle) => el('label.tama-toggle', {},
     el('input', { type: 'checkbox', checked: checked ? true : null, onchange: (e) => onToggle(e.target.checked) }),
     el('span.tama-toggle-ui', { 'aria-hidden': 'true' }),
@@ -357,7 +387,7 @@ export function openSettings({ onChange, toast }) {
         type: 'button', disabled: canBreed ? null : true, title: canBreed ? '' : t('tama.res.cannot_breed'),
         onclick: async () => {
           if (!(await confirmSheet(t('tama.set.breed_confirm', { name: p.name })))) return;
-          const r = petAct((d, n) => E.breed(d, n));
+          const r = petAct((d, n) => P.breed(d, n));
           if (r.ok) { sfx('hatch'); toast?.(t('tama.res.bred', { gen: petState.doc.pet.gen }) + (r.mutated ? ' ' + t('tama.res.mutated') : '')); }
           else toast?.(t('tama.res.' + r.code), 'err');
           s.close();
@@ -384,11 +414,12 @@ export function openSettings({ onChange, toast }) {
 /* -------------------------------------------------------------------------- */
 
 export function openHelp() {
-  const sections = ['basics', 'icons', 'mistakes', 'ark', 'history', 'keys'];
-  const iconGrid = el('div.tama-help-icons', {}, ['feed', 'lights', 'play', 'medicine', 'clean', 'status', 'discipline', 'attention', 'cuddle', 'walk', 'cryo'].map((n) => el('span', {}, svg(icon(n)), el('small', { text: t('tama.act.' + n) }))));
+  const sections = ['basics', 'keys', 'stations', 'daily', 'mistakes', 'ark', 'history'];
+  const stations = [['feed', 'feed'], ['moon', 'sleep'], ['play', 'play'], ['medicine', 'vet'], ['bath', 'care'], ['whistle', 'train'], ['compass', 'trip'], ['home', 'home']];
+  const iconGrid = el('div.tama-help-icons', {}, stations.map(([ic, key]) => el('span', {}, svg(icon(ic)), el('small', { text: t('tama.st.' + key) }))));
+  const keyGrid = el('div.tama-help-icons.is-keys', {}, [['radar', 'scan'], ['sparkle', 'context'], ['menu', 'menu']].map(([ic, key]) => el('span', {}, svg(icon(ic)), el('small', { text: t('tama.help.key_' + key) }))));
   return sheet(t('tama.help.title'), el('div.tama-help', {}, sections.map((k) => el('section', {},
     el('h3', { text: t(`tama.help.${k}_t`) }),
     el('p', { text: t('tama.help.' + k) }),
-    k === 'icons' ? iconGrid : null))), { wide: true });
+    k === 'stations' ? iconGrid : k === 'keys' ? keyGrid : null))), { wide: true });
 }
-
