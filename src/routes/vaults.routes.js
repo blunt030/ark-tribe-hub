@@ -3,7 +3,6 @@ import { readJsonBody, sendJson, badRequest, forbidden, notFound } from '../lib/
 import { requireString, parseIdParam } from '../lib/validate.js';
 import { requireActive, requireCsrf, requireRole } from '../middleware/auth.js';
 import { audit } from '../services/auditService.js';
-import { decryptAccessPin } from '../services/accessPinService.js';
 
 function tribe(req) {
   if (!req.user.tribe_id) throw forbidden('Kein eigener Tribe vorhanden');
@@ -30,7 +29,7 @@ async function checkAssignee(tx, tribeId, raw) {
 export function buildVaultRouter(db) {
   const router = new Router();
 
-  // Admins sehen alle Vaults mit Zuweisung und dem vom Mitglied gesetzten PIN;
+  // Admins sehen alle Vaults mit Zuweisung und ob ein PIN gesetzt ist;
   // Mitglieder sehen nur ihre eigenen Vaults.
   router.get('/api/vaults', requireActive, async (req, res) => {
     const tribeId = tribe(req);
@@ -41,9 +40,10 @@ export function buildVaultRouter(db) {
        WHERE v.tribe_id = ?${admin ? '' : ' AND v.assigned_user_id = ?'} ORDER BY v.name`,
       admin ? [tribeId] : [tribeId, req.user.id]
     );
+    // Admins sehen nur, OB ein PIN gesetzt ist - den PIN kennt nur das Mitglied.
     const vaults = rows.map(({ personal_pin_encrypted, ...v }) => ({
       ...v,
-      ...(admin ? { pinSet: Boolean(personal_pin_encrypted), pin: decryptAccessPin(personal_pin_encrypted) } : {}),
+      ...(admin ? { pinSet: Boolean(personal_pin_encrypted) } : {}),
     }));
     sendJson(res, 200, { vaults });
   });

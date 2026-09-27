@@ -26,6 +26,13 @@ const MIGRATIONS = [
   // ALTER TABLE keinen berechneten Zeit-Default. Neue/aktive Teilnehmer setzen
   // den Wert in voiceService sofort; alte Geistereinträge werden entfernt.
   { table: 'voice_participants', column: 'last_seen_at', sql: 'ALTER TABLE voice_participants ADD COLUMN last_seen_at TEXT' },
+  // Zweiter Faktor (Authenticator-App); der Schluessel liegt verschluesselt vor.
+  { table: 'users', column: 'totp_secret_encrypted', sql: 'ALTER TABLE users ADD COLUMN totp_secret_encrypted TEXT' },
+  { table: 'users', column: 'totp_enabled', sql: 'ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0' },
+  { table: 'users', column: 'totp_last_counter', sql: 'ALTER TABLE users ADD COLUMN totp_last_counter INTEGER' },
+  // Discord-Webhooks je Tribe (verschluesselt), getrennt fuer Breeder und Crafter.
+  { table: 'tribes', column: 'discord_breeder_webhook', sql: 'ALTER TABLE tribes ADD COLUMN discord_breeder_webhook TEXT' },
+  { table: 'tribes', column: 'discord_crafter_webhook', sql: 'ALTER TABLE tribes ADD COLUMN discord_crafter_webhook TEXT' },
 ];
 
 function isAlreadyExistsError(err) {

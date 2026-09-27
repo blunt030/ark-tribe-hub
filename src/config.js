@@ -104,6 +104,8 @@ export const config = {
     .map((s) => s.trim())
     .filter(Boolean),
   sessionTtlDays: parseInt(process.env.SESSION_TTL_DAYS || '30', 10),
+  // Nach so vielen Minuten ohne Anfrage wird eine Sitzung serverseitig beendet.
+  sessionIdleMinutes: Math.max(5, parseInt(process.env.SESSION_IDLE_MINUTES || '30', 10) || 30),
   sessionSecret: resolveSessionSecret(),
   rtcIceServers: (() => {
     if (!process.env.RTC_ICE_SERVERS_JSON) return [{ urls: ['stun:stun.cloudflare.com:3478'] }];

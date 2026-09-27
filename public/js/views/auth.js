@@ -76,6 +76,7 @@ export function renderAuth(root, { onSignedIn }) {
             identifier: identifier.value.trim(),
             password: password.value,
           });
+          if (res.mfaRequired) { form.replaceWith(mfaForm(res.mfaToken)); return; }
           setCsrf(res.csrfToken);
           onSignedIn(res.user);
         } catch (err) {
@@ -98,11 +99,42 @@ export function renderAuth(root, { onSignedIn }) {
     return form;
   }
 
+  // Zweiter Schritt fuer Konten mit Zwei-Faktor-Anmeldung.
+  function mfaForm(mfaToken) {
+    const code = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', pattern: '[0-9]{6}', maxlength: '6', required: true, id: 'f-otp', placeholder: '123456', style: 'text-align:center;letter-spacing:.4em;font-size:1.4rem' });
+    const status = el('div.notice.err', { hidden: true, role: 'alert' });
+    const submit = el('button.btn.primary.block', { type: 'submit', text: t('auth.login') });
+    const form = el('form', {
+      onsubmit: async (e) => {
+        e.preventDefault();
+        submit.disabled = true;
+        try {
+          const res = await api.loginMfa({ mfaToken, code: code.value.trim() });
+          setCsrf(res.csrfToken);
+          onSignedIn(res.user);
+        } catch (err) {
+          status.hidden = false;
+          status.textContent = err instanceof ApiError ? err.message : t('common.error');
+          submit.disabled = false;
+          code.select();
+        }
+      },
+    },
+      el('p', { style: 'margin:0 0 12px;color:var(--muted)', text: t('mfa.login_hint') }),
+      status,
+      el('div.field', {}, el('label', { for: 'f-otp', text: t('mfa.code') }), code),
+      submit,
+      el('button.btn.ghost.block', { type: 'button', style: 'margin-top:8px', text: t('common.back'), onclick: () => draw() })
+    );
+    setTimeout(() => code.focus(), 30);
+    return form;
+  }
+
   function registerForm() {
     const tribe = el('input', { type: 'text', required: true, id: 'r-tribe', placeholder: 'oao', autocomplete: 'organization' });
     const username = el('input', { type: 'text', required: true, id: 'r-user', autocomplete: 'username' });
     const email = el('input', { type: 'email', required: true, id: 'r-mail', autocomplete: 'email' });
-    const password = el('input', { type: 'password', required: true, minlength: '8', id: 'r-pw', autocomplete: 'new-password' });
+    const password = el('input', { type: 'password', required: true, minlength: '10', id: 'r-pw', autocomplete: 'new-password' });
     const submit = el('button.btn.primary.block', { type: 'submit', text: t('auth.register') });
 
     return el('form', {

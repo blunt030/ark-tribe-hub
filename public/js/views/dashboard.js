@@ -74,6 +74,14 @@ export async function renderDashboard(mount, ctx) {
     el('div.dash-motto', { 'aria-hidden': 'true' }, el('span', { text: 'SURVIVE' }), el('span', { text: 'BUILD' }), el('span', { text: 'TAME' }), el('span', { text: 'TOGETHER' }))
   ));
 
+  // Admins/Developer ohne Zwei-Faktor-Anmeldung bekommen einen Hinweis.
+  if (isAdmin || user.roles.includes('developer')) {
+    const twoFa = await api.twoFactor().catch(() => ({ enabled: true }));
+    if (!twoFa.enabled) mount.append(el('div.dash-security-hint', { role: 'status' }, uiIcon('shield-check'),
+      el('span', { text: t('mfa.dash_hint') }),
+      el('button.btn.sm.primary', { type: 'button', onclick: () => go('/profile') }, el('span', { text: t('mfa.dash_action') }))));
+  }
+
   /* ------------------------------------------------------------- Kacheln */
   mount.append(el('section.dash-metrics', { 'aria-label': t('dash.overview') },
     metric('duo-clipboard-text', openAll.length, t('dash.orders_open'), t('dash.orders_sub'), () => go('/orders'), 'orders'),

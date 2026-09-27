@@ -24,6 +24,7 @@ const VERWALTUNG = [
   'server',
   'map',
   'personal_vault_number',
+  'totp_enabled',
   'created_at',
   'updated_at',
 ];
@@ -34,6 +35,8 @@ export const GEHEIME_FELDER = [
   'email_verify_token',
   'email_verify_expires_at',
   'personal_pin_encrypted',
+  'totp_secret_encrypted',
+  'totp_last_counter',
 ];
 
 function auswaehlen(user, felder) {

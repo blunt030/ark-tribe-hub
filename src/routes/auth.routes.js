@@ -2,7 +2,7 @@ import { clientIp } from '../lib/rateLimiter.js';
 import { Router } from '../lib/router.js';
 import { readJsonBody, sendJson, serializeCookie, clearCookie, badRequest } from '../lib/http.js';
 import { requireString, requirePassword, requireEmail } from '../lib/validate.js';
-import { register, login, logout, csrfTokenFor, verifyEmail } from '../services/authService.js';
+import { register, login, logout, csrfTokenFor, verifyEmail, completeMfaLogin } from '../services/authService.js';
 import { requireAuth, requireCsrf, SESSION_COOKIE } from '../middleware/auth.js';
 import { config } from '../config.js';
 
@@ -61,12 +61,25 @@ export function buildAuthRouter(db, { authRateLimit }) {
     const ip = clientIp(req);
     const userAgent = req.headers['user-agent'] || null;
     const result = await login(db, { tribeSlug, identifier, password: body.password, ip, userAgent });
+    if (result.mfaRequired) {
+      sendJson(res, 200, { mfaRequired: true, mfaToken: result.mfaToken });
+      return;
+    }
 
     setSessionCookie(res, result.sessionId, result.sessionToken, result.expiresAt);
     sendJson(res, 200, {
       user: publicUser(result.user),
       csrfToken: result.csrfToken,
     });
+  });
+
+  router.post('/api/auth/login/2fa', authRateLimit, async (req, res) => {
+    const body = await readJsonBody(req);
+    const result = await completeMfaLogin(db, {
+      mfaToken: body.mfaToken, code: body.code, ip: clientIp(req), userAgent: req.headers['user-agent'] || null,
+    });
+    setSessionCookie(res, result.sessionId, result.sessionToken, result.expiresAt);
+    sendJson(res, 200, { user: publicUser(result.user), csrfToken: result.csrfToken });
   });
 
   router.post('/api/auth/logout', requireAuth, requireCsrf, async (req, res) => {

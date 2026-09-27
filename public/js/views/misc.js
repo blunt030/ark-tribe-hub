@@ -84,7 +84,7 @@ export async function renderProfile(mount, ctx) {
 
   // Kennzahlen einzeln abgesichert: Developer-Konten haben keinen Tribe,
   // Aufgaben und Bestand antworten dort mit Fehlern.
-  const [{ user: me }, tribe, { preferences }, ordersRes, tasksRes, dinosRes, notifRes, vaultRes, pinRes] = await Promise.all([
+  const [{ user: me }, tribe, { preferences }, ordersRes, tasksRes, dinosRes, notifRes, vaultRes, pinRes, twoFaRes] = await Promise.all([
     api.profile(),
     api.myTribe().catch(() => null),
     api.notifPrefs(),
@@ -93,7 +93,8 @@ export async function renderProfile(mount, ctx) {
     api.dinos().catch(() => ({ dinos: [] })),
     api.notifications().catch(() => ({ notifications: [] })),
     user.tribeId ? api.vaults().catch(() => ({ vaults: [] })) : Promise.resolve({ vaults: [] }),
-    api.accessPin().catch(() => ({ pin: null })),
+    api.accessPin().catch(() => ({ pinSet: false })),
+    api.twoFactor().catch(() => ({ enabled: false, recommended: false })),
   ]);
   const isAdminUser = user.roles.includes('admin') || user.roles.includes('developer');
   const myVaults = vaultRes.vaults.filter((v) => Number(v.assigned_user_id) === Number(me.id));
@@ -144,7 +145,7 @@ export async function renderProfile(mount, ctx) {
   const pwSaveBtn = el('button.btn.primary', { type: 'button', text: t('pw.save') });
   pwSaveBtn.addEventListener('click', async () => {
     if (pwNewInput.value !== pwRepeatInput.value) { toast(t('pw.mismatch'), 'err'); return; }
-    if (pwNewInput.value.length < 8) { toast(t('pw.too_short'), 'err'); return; }
+    if (pwNewInput.value.length < 10) { toast(t('pw.too_short'), 'err'); return; }
     pwSaveBtn.disabled = true;
     try {
       await api.changePassword({ currentPassword: pwCurrentInput.value, newPassword: pwNewInput.value });
@@ -192,36 +193,62 @@ export async function renderProfile(mount, ctx) {
   setzeSicherheitszustand(Boolean(me.emailVerified));
 
   /* ------------------------------------------------------ Vault und PIN */
-  // Den 4-stelligen PIN legt nur das Mitglied selbst fest. Er ist maskiert und
-  // kann bei Bedarf angezeigt werden; Admins sehen ihn nur in der Vault-Liste.
-  let currentPin = pinRes.pin || '';
+  // Den 4-stelligen PIN legt nur das Mitglied selbst fest. Anzeigen, Aendern
+  // und Erzeugen verlangen jeweils das aktuelle Passwort - eine offene Sitzung
+  // an einem fremden PC reicht dafuer nicht aus. Admins sehen den PIN nicht.
+  let pinSet = Boolean(pinRes.pinSet);
   let pinVisible = false;
-  const pinInput = el('input.pin-input', { type: 'password', id: 'vault-pin', inputmode: 'numeric', pattern: '[0-9]{4}', maxlength: '4', autocomplete: 'off', placeholder: '••••', value: currentPin, 'aria-label': t('vault.pin') });
+  const pinInput = el('input.pin-input', { type: 'password', id: 'vault-pin', inputmode: 'numeric', pattern: '[0-9]{4}', maxlength: '4', autocomplete: 'off', placeholder: pinSet ? '••••' : '----', 'aria-label': t('vault.pin') });
   pinInput.addEventListener('input', () => { pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4); });
+  const pinPassword = el('input', { type: 'password', id: 'vault-pin-pw', autocomplete: 'current-password', placeholder: t('vault.pw_placeholder'), 'aria-label': t('pw.current') });
+  const needPassword = () => {
+    if (pinPassword.value) return pinPassword.value;
+    toast(t('vault.pw_required'), 'err');
+    pinPassword.focus();
+    return null;
+  };
+  const pinState = el('span.hint');
+  const drawPinState = () => { pinState.textContent = pinSet ? t('vault.pin_set') : t('vault.pin_none'); };
+  drawPinState();
   const eyeBtn = el('button.icon-btn', { type: 'button', title: t('vault.pin_show'), 'aria-label': t('vault.pin_show'), 'aria-pressed': 'false' }, uiIcon('eye'));
-  eyeBtn.addEventListener('click', () => {
-    pinVisible = !pinVisible;
-    pinInput.type = pinVisible ? 'text' : 'password';
-    eyeBtn.setAttribute('aria-pressed', String(pinVisible));
-    eyeBtn.title = pinVisible ? t('vault.pin_hide') : t('vault.pin_show');
-    eyeBtn.replaceChildren(uiIcon(pinVisible ? 'eye-slash' : 'eye'));
+  eyeBtn.addEventListener('click', async () => {
+    if (pinVisible) {
+      pinVisible = false; pinInput.type = 'password'; pinInput.value = '';
+      eyeBtn.setAttribute('aria-pressed', 'false'); eyeBtn.replaceChildren(uiIcon('eye'));
+      return;
+    }
+    if (!pinSet) { toast(t('vault.pin_none'), 'err'); return; }
+    const pw = needPassword(); if (!pw) return;
+    eyeBtn.disabled = true;
+    try {
+      const { pin } = await api.revealAccessPin(pw);
+      pinInput.value = pin || ''; pinInput.type = 'text'; pinVisible = true;
+      eyeBtn.setAttribute('aria-pressed', 'true'); eyeBtn.replaceChildren(uiIcon('eye-slash'));
+      pinPassword.value = '';
+      // Nach 30 Sekunden automatisch wieder verbergen.
+      setTimeout(() => { if (pinVisible) eyeBtn.click(); }, 30000);
+    } catch (err) { toast(err.message, 'err'); }
+    finally { eyeBtn.disabled = false; }
   });
   const pinStatus = el('span.hint', { role: 'status' });
   const pinSave = el('button.btn.primary.lux', { type: 'button' }, uiIcon('floppy-disk'), el('span', { text: t('vault.pin_save') }));
   pinSave.addEventListener('click', async () => {
     if (!/^\d{4}$/.test(pinInput.value)) { toast(t('vault.pin_invalid'), 'err'); return; }
+    const pw = needPassword(); if (!pw) return;
     pinSave.disabled = true;
-    try { await api.setAccessPin(pinInput.value); currentPin = pinInput.value; toast(t('vault.pin_saved')); pinStatus.textContent = ''; }
+    try { await api.setAccessPin(pinInput.value, pw); pinSet = true; drawPinState(); pinPassword.value = ''; toast(t('vault.pin_saved')); pinStatus.textContent = ''; }
     catch (err) { toast(err.message, 'err'); }
     finally { pinSave.disabled = false; }
   });
   const pinGen = el('button.btn', { type: 'button' }, uiIcon('shuffle'), el('span', { text: t('vault.pin_generate') }));
   pinGen.addEventListener('click', async () => {
+    const pw = needPassword(); if (!pw) return;
     pinGen.disabled = true;
     try {
-      const result = await api.generateAccessPin();
-      currentPin = result.pin; pinInput.value = result.pin;
-      if (!pinVisible) eyeBtn.click();
+      const result = await api.generateAccessPin(pw);
+      pinSet = true; drawPinState(); pinPassword.value = '';
+      pinInput.value = result.pin; pinInput.type = 'text'; pinVisible = true;
+      eyeBtn.setAttribute('aria-pressed', 'true'); eyeBtn.replaceChildren(uiIcon('eye-slash'));
       pinStatus.textContent = t('vault.pin_generated', { pin: result.pin });
       toast(t('vault.pin_saved'));
     } catch (err) { toast(err.message, 'err'); }
@@ -233,12 +260,64 @@ export async function renderProfile(mount, ctx) {
           el('span', {}, el('b', { text: v.name }), v.note ? el('small', { text: v.note }) : null)))
       : [el('p.chosen-empty', {}, uiIcon('vault'), el('span', { text: t('vault.none') }))])),
     el('label.setting-label', { for: 'vault-pin', text: t('vault.pin') }),
-    el('div.pin-row', {}, pinInput, eyeBtn, pinSave),
-    el('div.pin-row-2', {}, pinGen, el('span.hint', { text: currentPin ? '' : t('vault.pin_none') })),
+    el('div.pin-row', {}, pinInput, eyeBtn, pinState),
+    el('label.setting-label', { for: 'vault-pin-pw', text: t('pw.current') }),
+    el('div.pin-row', {}, pinPassword),
+    el('div.pin-row-2', {}, pinSave, pinGen),
     pinStatus,
     el('p.profile-form-note', { text: t('vault.pin_hint') }),
     isAdminUser ? el('button.ark-panel-link', { type: 'button', onclick: () => { try { sessionStorage.setItem('ath_members_mode', 'access'); } catch { /* optional */ } go('/members'); } },
       el('span', { text: t('vault.title') + ' · ' + t('members.access') }), uiIcon('arrow-right')) : null);
+
+  /* ------------------------------------------ Zwei-Faktor-Anmeldung */
+  const twoFaBox = el('div.twofa');
+  function drawTwoFa(enabled) {
+    const pwField = el('input', { type: 'password', autocomplete: 'current-password', placeholder: t('pw.current'), 'aria-label': t('pw.current') });
+    if (enabled) {
+      const codeField = el('input', { type: 'text', inputmode: 'numeric', maxlength: '6', autocomplete: 'one-time-code', placeholder: t('mfa.code'), 'aria-label': t('mfa.code') });
+      twoFaBox.replaceChildren(
+        el('div.sec-status', {}, uiIcon('shield-check'), el('span', { text: t('mfa.active') }), pill('✓', 'done')),
+        el('details.disclosure', {}, el('summary', {}, uiIcon('x-circle'), el('span', { text: t('mfa.disable') }), uiIcon('caret-right', 'caret')),
+          el('div.disclosure-body', {}, el('div.field', {}, pwField), el('div.field', {}, codeField),
+            el('button.btn.danger', { type: 'button', onclick: async (e) => {
+              e.currentTarget.disabled = true;
+              try { await api.twoFactorDisable(pwField.value, codeField.value.trim()); toast(t('mfa.disabled')); drawTwoFa(false); }
+              catch (err) { toast(err.message, 'err'); e.currentTarget.disabled = false; }
+            } }, el('span', { text: t('mfa.disable') })))));
+      return;
+    }
+    const startBtn = el('button.btn.primary.lux', { type: 'button' }, uiIcon('shield-check'), el('span', { text: t('mfa.setup') }));
+    startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
+      try {
+        const setup = await api.twoFactorSetup(pwField.value);
+        const codeField = el('input', { type: 'text', inputmode: 'numeric', maxlength: '6', autocomplete: 'one-time-code', placeholder: '123456', 'aria-label': t('mfa.code'), style: 'max-width:180px;text-align:center;letter-spacing:.3em' });
+        const qr = el('img.twofa-qr', { src: 'data:image/svg+xml;base64,' + btoa(setup.qrSvg), alt: t('mfa.qr_alt') });
+        twoFaBox.replaceChildren(
+          el('ol.twofa-steps', {},
+            el('li', { text: t('mfa.step1') }),
+            el('li', { text: t('mfa.step2') }),
+            el('li', { text: t('mfa.step3') })),
+          el('div.twofa-setup', {}, qr,
+            el('div', {},
+              el('p.hint', { text: t('mfa.manual') }),
+              el('code.twofa-secret', { text: setup.secret.replace(/(.{4})/g, '$1 ').trim() }),
+              el('a.btn.sm', { href: setup.otpauthUrl, style: 'margin-top:8px' }, el('span', { text: t('mfa.open_app') })))),
+          el('div.pin-row', {}, codeField,
+            el('button.btn.primary', { type: 'button', onclick: async (e) => {
+              e.currentTarget.disabled = true;
+              try { await api.twoFactorEnable(codeField.value.trim()); toast(t('mfa.enabled')); drawTwoFa(true); }
+              catch (err) { toast(err.message, 'err'); e.currentTarget.disabled = false; }
+            } }, el('span', { text: t('mfa.confirm') }))));
+        codeField.focus();
+      } catch (err) { toast(err.message, 'err'); startBtn.disabled = false; }
+    });
+    twoFaBox.replaceChildren(...[
+      twoFaRes.recommended ? el('div.notice.note', { text: t('mfa.recommended') }) : null,
+      el('p.profile-form-note', { text: t('mfa.intro') }),
+      el('div.pin-row', {}, pwField, startBtn)].filter(Boolean));
+  }
+  drawTwoFa(Boolean(twoFaRes.enabled));
 
   /* ------------------------------------------------ Benachrichtigungen */
   const prefChanged = new Map();
@@ -306,6 +385,8 @@ export async function renderProfile(mount, ctx) {
         profileSection(t('profile.security_settings'), 'shield-check', el('div', {},
           disclosure(t('pw.title'), 'key', pwPanel),
           disclosure(t('profile.email_change'), 'envelope', emailPanel),
+          el('div.pref-head', {}, uiIcon('shield-check'), el('h3', { text: t('mfa.title') })),
+          twoFaBox,
           el('div.sec-status', {}, uiIcon('envelope'), secLabel, secState),
           el('div.pref-head', {}, uiIcon('bell'), el('h3', { text: t('profile.notify_types') }),
             el('div.chips', {},
@@ -542,19 +623,13 @@ export async function renderMembers(mount, ctx) {
         try { await api.updateVault(v.id, { assignedUserId: select.value || null }); toast(t('vault.saved')); await reload(); }
         catch (err) { toast(err.message, 'err'); select.disabled = false; }
       });
-      let shown = false;
-      const pinText = el('span.pin-mask', { text: v.pin ? '••••' : t('vault.pin_missing') });
-      const eye = v.pin ? el('button.icon-btn', { type: 'button', title: t('vault.pin_show'), 'aria-label': t('vault.pin_show') }, uiIcon('eye')) : null;
-      eye?.addEventListener('click', () => {
-        shown = !shown;
-        pinText.textContent = shown ? v.pin : '••••';
-        eye.replaceChildren(uiIcon(shown ? 'eye-slash' : 'eye'));
-      });
+      // Den PIN sieht nur das Mitglied selbst; hier nur, ob einer gesetzt ist.
+      const pinState = v.assigned_user_id ? pill(v.pinSet ? t('vault.pin_set') : t('vault.pin_missing'), v.pinSet ? 'done' : 'high') : null;
       return el('div.vault-row' + (v.assigned_user_id ? '' : '.is-free'), {},
         el('span.vault-icon', {}, uiIcon('duo-vault')),
         el('div.vault-copy', {}, el('strong', { text: v.name }), v.note ? el('small', { text: v.note }) : null),
         el('div.vault-assign', {}, v.assigned_username ? avatar(v.assigned_username, { size: 'sm' }) : el('span.ark-avatar.av-sm.av-tone-0', { text: '–', 'aria-hidden': 'true' }), select),
-        el('div.vault-pin', {}, uiIcon('key'), pinText, eye),
+        el('div.vault-pin', {}, uiIcon('key'), pinState),
         kebabMenu([{ label: t('common.delete'), icon: 'trash', danger: true, onclick: async () => {
           if (!await confirmDialog({ title: t('vault.delete_confirm', { name: v.name }), danger: true })) return;
           try { await api.deleteVault(v.id); toast(t('vault.deleted')); await reload(); }
@@ -746,6 +821,15 @@ export async function renderUsers(mount, ctx) {
             el('span.badge.' + (u.status === 'active' ? 'b-completed' : 'b-pending'), { text: t('ustatus.' + u.status) })
           ),
           el('div.chips', {}, ...roleButtons,
+            Number(u.totp_enabled) ? el('button.btn.sm', {
+              text: t('mfa.reset'),
+              onclick: async () => {
+                const ok = await confirmDialog({ title: t('mfa.reset_confirm', { name: u.username }), danger: true });
+                if (!ok) return;
+                try { await api.resetTwoFactor(u.id); toast(t('mfa.disabled')); users = (await api.allUsers()).users; draw(); }
+                catch (err) { toast(err.message, 'err'); }
+              },
+            }) : null,
             el('button.btn.sm.danger', {
               text: t('dev.delete_user'),
               onclick: async () => {

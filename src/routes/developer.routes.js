@@ -106,6 +106,19 @@ export function buildDeveloperRouter(db) {
   // stillem Datenverlust). Zuweisungen und Audit-Einträge werden dagegen nur
   // "entkoppelt" (auf NULL gesetzt), da sie reine Nebenreferenzen sind, kein
   // eigentlicher Inhalt des Nutzers.
+  // Handy verloren: Developer kann die Zwei-Faktor-Anmeldung eines Kontos zuruecksetzen.
+  router.delete('/api/developer/users/:id/2fa', requireRole('developer'), requireCsrf, async (req, res) => {
+    const id = parseIdParam(req.params.id);
+    const user = await db.get('SELECT id, tribe_id FROM users WHERE id = ?', [id]);
+    if (!user) throw notFound('Benutzer nicht gefunden');
+    await db.transaction(async (tx) => {
+      await tx.run('UPDATE users SET totp_enabled = 0, totp_secret_encrypted = NULL, totp_last_counter = NULL WHERE id = ?', [id]);
+      await tx.run('DELETE FROM sessions WHERE user_id = ?', [id]);
+      await audit(tx, { tribeId: user.tribe_id, actorId: req.user.id, action: 'totp_reset', targetType: 'user', targetId: id });
+    });
+    sendJson(res, 200, { ok: true });
+  });
+
   router.delete('/api/developer/users/:id', requireRole('developer'), requireCsrf, async (req, res) => {
     const id = parseIdParam(req.params.id);
     if (id === req.user.id) throw badRequest('Du kannst dich nicht selbst löschen');

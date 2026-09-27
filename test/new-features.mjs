@@ -77,17 +77,25 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
 
   await t.test('PIN setzt das Mitglied selbst (4 Ziffern, verschlüsselt); Vaults verwaltet der Admin', async () => {
     const memberId = (await app.db.get("SELECT id FROM users WHERE username='Blunt OaO'")).id;
-    const generated = await member.post('/api/users/me/access-pin/generate');
+    assert.equal((await member.post('/api/users/me/access-pin/generate', {})).status, 401, 'ohne Passwort kein PIN');
+    const generated = await member.post('/api/users/me/access-pin/generate', { currentPassword: 'ChangeMe123!' });
     assert.equal(generated.status, 200);
     assert.match(generated.json.pin, /^\d{4}$/);
     const stored = await app.db.get('SELECT personal_pin_encrypted FROM users WHERE id = ?', [memberId]);
     assert.match(stored.personal_pin_encrypted, /^v1:/);
     assert.doesNotMatch(stored.personal_pin_encrypted, /^\d+$/);
 
-    assert.equal((await member.put('/api/users/me/access-pin', { pin: '12345' })).status, 400);
-    assert.equal((await member.put('/api/users/me/access-pin', { pin: '12a4' })).status, 400);
-    assert.equal((await member.put('/api/users/me/access-pin', { pin: '4711' })).status, 200);
-    assert.equal((await member.get('/api/users/me/access-pin')).json.pin, '4711');
+    const pw = { currentPassword: 'ChangeMe123!' };
+    assert.equal((await member.put('/api/users/me/access-pin', { pin: '12345', ...pw })).status, 400);
+    assert.equal((await member.put('/api/users/me/access-pin', { pin: '12a4', ...pw })).status, 400);
+    assert.equal((await member.put('/api/users/me/access-pin', { pin: '4711', currentPassword: 'falsch-falsch' })).status, 401);
+    assert.equal((await member.put('/api/users/me/access-pin', { pin: '4711', ...pw })).status, 200);
+    // Anzeigen nur mit Passwort; ohne Passwort erfaehrt man nur, ob ein PIN existiert.
+    const plain = (await member.get('/api/users/me/access-pin')).json;
+    assert.equal(plain.pin, undefined);
+    assert.equal(plain.pinSet, true);
+    assert.equal((await member.post('/api/users/me/access-pin/reveal', {})).status, 401);
+    assert.equal((await member.post('/api/users/me/access-pin/reveal', pw)).json.pin, '4711');
 
     // Admins koennen den PIN nicht mehr setzen, nur Vaults verwalten.
     assert.equal((await admin.patch(`/api/admin/members/${memberId}/access`, { personalPin: '1234' })).status, 400);
@@ -98,7 +106,11 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
     const adminVaults = (await admin.get('/api/vaults')).json.vaults;
     const v = adminVaults.find((x) => x.name === 'V-42');
     assert.equal(v.assigned_username, 'Blunt OaO');
-    assert.equal(v.pin, '4711');
+    // Admins sehen keinen PIN mehr, nur ob einer gesetzt ist.
+    assert.equal(v.pin, undefined);
+    assert.equal(v.pinSet, true);
+    const listed = (await admin.get('/api/admin/members')).json.members.find((m) => m.id === memberId);
+    assert.equal(listed.personalPin, undefined);
     const own = (await member.get('/api/vaults')).json.vaults;
     assert.deepEqual(own.map((x) => x.name), ['V-42']);
     assert.equal(own[0].pin, undefined);
@@ -189,5 +201,57 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
     const remainingIds = cleaned.json.channels.find((entry) => entry.id === channelId).participants.map((entry) => entry.user_id);
     assert.ok(!remainingIds.includes(adminId));
     assert.ok(remainingIds.includes(memberId));
+  });
+
+  await t.test('Zwei-Faktor-Anmeldung per Authenticator-App', async () => {
+    const { totpCode } = await import('../src/lib/totp.js');
+    const code = (secret, offset = 0) => totpCode(secret, Math.floor(Date.now() / 30000) + offset);
+    const pw = { currentPassword: 'ChangeMe123!' };
+    assert.equal((await admin.post('/api/users/me/2fa/setup', {})).status, 401, 'Einrichtung nur mit Passwort');
+    const setup = await admin.post('/api/users/me/2fa/setup', pw);
+    assert.equal(setup.status, 200);
+    assert.match(setup.json.qrSvg, /^<svg/);
+    assert.equal((await admin.post('/api/users/me/2fa/enable', { code: '000000' })).status, 400);
+    assert.equal((await admin.post('/api/users/me/2fa/enable', { code: code(setup.json.secret) })).status, 200);
+    const stored = await app.db.get("SELECT totp_secret_encrypted FROM users WHERE username='OaO Admin'");
+    assert.doesNotMatch(stored.totp_secret_encrypted, new RegExp(setup.json.secret), 'Schlüssel liegt verschlüsselt vor');
+
+    // Passwort allein reicht nicht mehr.
+    const fresh = client(base);
+    const first = await fresh.post('/api/auth/login', { identifier: 'OaO Admin', password: 'ChangeMe123!', tribeSlug: 'oao' });
+    assert.equal(first.status, 200);
+    assert.equal(first.json.mfaRequired, true);
+    assert.equal(first.json.csrfToken, undefined);
+    assert.equal((await fresh.get('/api/orders')).status, 401, 'ohne Code keine Sitzung');
+    assert.equal((await fresh.post('/api/auth/login/2fa', { mfaToken: first.json.mfaToken, code: '123456' })).status, 401);
+    assert.equal((await fresh.post('/api/auth/login/2fa', { mfaToken: first.json.mfaToken + 'x', code: code(setup.json.secret, 1) })).status, 401);
+    const second = await fresh.post('/api/auth/login/2fa', { mfaToken: first.json.mfaToken, code: code(setup.json.secret, 1) });
+    assert.equal(second.status, 200);
+    assert.ok(second.json.csrfToken);
+    // Derselbe Code gilt kein zweites Mal.
+    const again = await client(base).post('/api/auth/login', { identifier: 'OaO Admin', password: 'ChangeMe123!', tribeSlug: 'oao' });
+    assert.equal((await client(base).post('/api/auth/login/2fa', { mfaToken: again.json.mfaToken, code: code(setup.json.secret, 1) })).status, 401);
+
+    // Developer kann 2FA zuruecksetzen (Handy verloren); Tribe-Admins nicht.
+    const adminId = (await app.db.get("SELECT id FROM users WHERE username='OaO Admin'")).id;
+    assert.equal((await admin.delete(`/api/developer/users/${adminId}/2fa`)).status, 403);
+    assert.equal((await developer.delete(`/api/developer/users/${adminId}/2fa`)).status, 200);
+    const plain = await client(base).post('/api/auth/login', { identifier: 'OaO Admin', password: 'ChangeMe123!', tribeSlug: 'oao' });
+    assert.ok(plain.json.csrfToken, 'nach Zuruecksetzen wieder normale Anmeldung');
+  });
+
+  await t.test('Sitzungen enden serverseitig nach 30 Minuten Inaktivität', async () => {
+    const idle = client(base);
+    assert.equal((await idle.login('Blunt OaO', 'oao')).status, 200);
+    assert.equal((await idle.get('/api/auth/me')).status, 200);
+    const old = new Date(Date.now() - 31 * 60 * 1000).toISOString();
+    const memberId = (await app.db.get("SELECT id FROM users WHERE username='Blunt OaO'")).id;
+    await app.db.run('UPDATE sessions SET last_seen_at = ? WHERE user_id = ?', [old, memberId]);
+    assert.equal((await idle.get('/api/auth/me')).status, 401);
+  });
+
+  await t.test('Passwörter brauchen mindestens 10 Zeichen', async () => {
+    const r = await client(base).post('/api/auth/register', { tribeSlug: 'oao', username: 'Kurz', email: 'kurz@example.test', password: 'Kurz12345' });
+    assert.equal(r.status, 400);
   });
 });

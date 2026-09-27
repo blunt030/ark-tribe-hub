@@ -44,8 +44,8 @@ export function requireEmail(value, fieldName = 'email') {
 }
 
 export function requirePassword(value) {
-  if (typeof value !== 'string' || value.length < 8) {
-    throw badRequest('Passwort muss mindestens 8 Zeichen lang sein', 'VALIDATION_ERROR');
+  if (typeof value !== 'string' || value.length < 10) {
+    throw badRequest('Passwort muss mindestens 10 Zeichen lang sein', 'VALIDATION_ERROR');
   }
   if (value.length > 200) {
     throw badRequest('Passwort ist zu lang', 'VALIDATION_ERROR');

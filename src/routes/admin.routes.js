@@ -6,7 +6,6 @@ import { getUserRoles } from '../services/authService.js';
 import { serializeUserAdmin, serializeUserPublic } from '../lib/userSerializer.js';
 import { notify } from '../services/notificationService.js';
 import { audit, listAuditLogs } from '../services/auditService.js';
-import { decryptAccessPin } from '../services/accessPinService.js';
 
 /**
  * Ein normaler Admin ist immer an seinen eigenen Tribe gebunden (req.user.tribe_id).
@@ -43,7 +42,7 @@ export function buildAdminRouter(db) {
     for (const u of rows) {
       const roles = await getUserRoles(db, u.id);
       members.push(canManage
-        ? serializeUserAdmin(u, { roles, personalPin: decryptAccessPin(u.personal_pin_encrypted) })
+        ? serializeUserAdmin(u, { roles, pinSet: Boolean(u.personal_pin_encrypted) })
         : serializeUserPublic(u, { roles }));
     }
     sendJson(res, 200, { members });

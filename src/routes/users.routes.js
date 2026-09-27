@@ -13,6 +13,9 @@ import { audit } from '../services/auditService.js';
 import { config } from '../config.js';
 import { generateAccessPin, encryptAccessPin, decryptAccessPin, validateAccessPin } from '../services/accessPinService.js';
 import { sendAccessPin } from '../services/mailService.js';
+import QRCode from 'qrcode';
+import { generateTotpSecret, verifyTotp, otpauthUrl } from '../lib/totp.js';
+import { sealSecret, openSecret } from '../lib/secretBox.js';
 
 /** Server/Map dürfen laut Spezifikation nur der Nutzer selbst sowie Admins/Breeder-Crafter
  *  des gleichen Tribes sehen – normale Mitglieder nicht. */
@@ -178,14 +181,28 @@ export function buildUsersRouter(db) {
     });
   }
 
+  // Jede PIN-Aktion verlangt das aktuelle Passwort: Wer nur eine offene
+  // Sitzung hat (z. B. an einem geteilten PC), kann den PIN weder sehen noch
+  // aendern. Fehlversuche teilen sich das Limit mit E-Mail-/Passwortwechsel.
+  async function confirmPassword(req, body) {
+    limitCredentialChecks(req.user.id);
+    const me = await db.get('SELECT password_hash FROM users WHERE id = ?', [req.user.id]);
+    if (typeof body.currentPassword !== 'string' || !await verifyPassword(body.currentPassword, me.password_hash)) {
+      throw unauthorized('Das aktuelle Passwort stimmt nicht');
+    }
+  }
+
   router.put('/api/users/me/access-pin', requireActive, requireCsrf, async (req, res) => {
     const body = await readJsonBody(req);
     const pin = validateAccessPin(body.pin);
+    await confirmPassword(req, body);
     await savePin(req, pin, 'personal_pin_set');
     sendJson(res, 200, { ok: true });
   });
 
   router.post('/api/users/me/access-pin/generate', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    await confirmPassword(req, body);
     const pin = generateAccessPin();
     await savePin(req, pin, 'personal_pin_generated');
     const me = await db.get('SELECT username, email, personal_vault_number FROM users WHERE id = ?', [req.user.id]);
@@ -193,9 +210,64 @@ export function buildUsersRouter(db) {
     sendJson(res, 200, { ok: true, pin, delivered: Boolean(delivery?.sent) });
   });
 
+  // Nur ob ein PIN gesetzt ist - der PIN selbst nur nach Passwortabfrage.
   router.get('/api/users/me/access-pin', requireActive, async (req, res) => {
     const row = await db.get('SELECT personal_pin_encrypted FROM users WHERE id = ?', [req.user.id]);
+    sendJson(res, 200, { pinSet: Boolean(row?.personal_pin_encrypted) });
+  });
+
+  router.post('/api/users/me/access-pin/reveal', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    await confirmPassword(req, body);
+    const row = await db.get('SELECT personal_pin_encrypted FROM users WHERE id = ?', [req.user.id]);
+    await audit(db, { tribeId: req.user.tribe_id, actorId: req.user.id, action: 'personal_pin_revealed', targetType: 'user', targetId: req.user.id });
     sendJson(res, 200, { pin: decryptAccessPin(row?.personal_pin_encrypted) });
+  });
+
+  /* ------------------------------------------ Zweiter Faktor (TOTP) */
+  const needs2fa = (user) => user.roles.includes('admin') || user.roles.includes('developer');
+
+  router.get('/api/users/me/2fa', requireActive, async (req, res) => {
+    const row = await db.get('SELECT totp_enabled FROM users WHERE id = ?', [req.user.id]);
+    sendJson(res, 200, { enabled: Boolean(Number(row?.totp_enabled)), recommended: needs2fa(req.user) });
+  });
+
+  // Schritt 1: neuen Schluessel erzeugen (noch nicht aktiv) und als QR-Code liefern.
+  router.post('/api/users/me/2fa/setup', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    await confirmPassword(req, body);
+    const row = await db.get('SELECT totp_enabled FROM users WHERE id = ?', [req.user.id]);
+    if (Number(row?.totp_enabled)) throw badRequest('Die Zwei-Faktor-Anmeldung ist bereits aktiv');
+    const secret = generateTotpSecret();
+    await db.run('UPDATE users SET totp_secret_encrypted = ?, totp_last_counter = NULL WHERE id = ?', [sealSecret(secret), req.user.id]);
+    const url = otpauthUrl({ secret, account: req.user.username });
+    const qrSvg = await QRCode.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#0b1116', light: '#f3ede1' } });
+    sendJson(res, 200, { secret, otpauthUrl: url, qrSvg });
+  });
+
+  // Schritt 2: mit einem Code aus der App bestaetigen - erst dann ist 2FA aktiv.
+  router.post('/api/users/me/2fa/enable', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    limitCredentialChecks(req.user.id);
+    const row = await db.get('SELECT totp_secret_encrypted, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+    const secret = openSecret(row?.totp_secret_encrypted);
+    if (!secret) throw badRequest('Bitte zuerst die Einrichtung starten');
+    const counter = verifyTotp(secret, body.code);
+    if (counter == null) throw badRequest('Der Code ist falsch. Bitte die Uhrzeit des Handys prüfen und erneut versuchen.');
+    await db.run('UPDATE users SET totp_enabled = 1, totp_last_counter = ? WHERE id = ?', [counter, req.user.id]);
+    await audit(db, { tribeId: req.user.tribe_id, actorId: req.user.id, action: 'totp_enabled', targetType: 'user', targetId: req.user.id });
+    sendJson(res, 200, { enabled: true });
+  });
+
+  router.post('/api/users/me/2fa/disable', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    await confirmPassword(req, body);
+    const row = await db.get('SELECT totp_secret_encrypted, totp_last_counter FROM users WHERE id = ?', [req.user.id]);
+    const secret = openSecret(row?.totp_secret_encrypted);
+    if (secret && verifyTotp(secret, body.code, { lastCounter: row.totp_last_counter }) == null) throw badRequest('Der Code ist falsch');
+    await db.run('UPDATE users SET totp_enabled = 0, totp_secret_encrypted = NULL, totp_last_counter = NULL WHERE id = ?', [req.user.id]);
+    await audit(db, { tribeId: req.user.tribe_id, actorId: req.user.id, action: 'totp_disabled', targetType: 'user', targetId: req.user.id });
+    sendJson(res, 200, { enabled: false });
   });
 
   router.get('/api/users/:id', requireActive, async (req, res) => {

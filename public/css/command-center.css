@@ -1421,3 +1421,16 @@ body:has(.ark-theme) { background: var(--ink-0, #05090c); }
   .hero-servers { padding: 5px 8px 6px; }
   .hero-server-item small { display: none; }
 }
+
+/* ---------- Zwei-Faktor-Anmeldung ------------------------------------------ */
+.twofa { display: grid; gap: 10px; }
+.twofa-steps { margin: 0; padding-left: 20px; color: #ddd6c9; display: grid; gap: 3px; }
+.twofa-setup { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 14px; align-items: center; }
+.twofa-qr { width: 170px; height: 170px; border-radius: 8px; border: 2px solid #c89a5a; background: #f3ede1; padding: 6px; }
+.twofa-secret { display: block; padding: 8px 10px; border-radius: 6px; border: 1px solid #34414b; background: #081016; color: var(--gold-hi); font: 600 .95rem ui-monospace, Consolas, monospace; word-break: break-all; }
+.twofa .pin-row input[type="password"] { flex: 1; min-width: 0; }
+.dash-security-hint { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(245, 158, 11, .55); background: rgba(80, 50, 5, .35); color: #fcd34d; }
+.dash-security-hint .btn { margin-left: auto; }
+@media (max-width: 899px) {
+  .twofa-setup { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+}

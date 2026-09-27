@@ -6,6 +6,9 @@ import { config } from '../config.js';
 import { notify } from './notificationService.js';
 import { audit } from './auditService.js';
 import { notifyAdminOfRegistration, sendVerificationEmail } from './mailService.js';
+import { verifyTotp } from '../lib/totp.js';
+import { openSecret } from '../lib/secretBox.js';
+import { timingSafeEqual } from 'node:crypto';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_WINDOW_MS = 15 * 60 * 1000; // 15 Minuten
@@ -197,6 +200,55 @@ export async function login(db, { tribeSlug, identifier, password, ip, userAgent
     await db.run('UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ?', [upgraded, user.id, user.password_hash]);
   }
 
+  // Zweiter Faktor: Ohne gueltigen Authenticator-Code gibt es noch keine
+  // Sitzung, nur ein kurzlebiges, signiertes Zwischen-Token (5 Minuten).
+  if (Number(user.totp_enabled)) {
+    return { mfaRequired: true, mfaToken: signMfaToken(user) };
+  }
+  return createSession(db, user, { ip, userAgent });
+}
+
+const MFA_TTL_MS = 5 * 60 * 1000;
+function mfaSignature(user, exp) {
+  // Das Passwort-Hash-Fragment macht das Token nach einem Passwortwechsel ungueltig.
+  return hmac(config.sessionSecret, `mfa:${user.id}:${exp}:${String(user.password_hash).slice(-16)}`);
+}
+function signMfaToken(user) {
+  const exp = Date.now() + MFA_TTL_MS;
+  return `${user.id}.${exp}.${mfaSignature(user, exp)}`;
+}
+
+/** Zweiter Schritt der Anmeldung: Zwischen-Token + 6-stelliger Code. */
+export async function completeMfaLogin(db, { mfaToken, code, ip, userAgent }) {
+  const [idPart, expPart, sig] = String(mfaToken || '').split('.');
+  const userId = Number(idPart), exp = Number(expPart);
+  if (!Number.isSafeInteger(userId) || !Number.isFinite(exp) || !sig || exp < Date.now()) {
+    throw unauthorized('Die Anmeldung ist abgelaufen. Bitte erneut mit Passwort anmelden.');
+  }
+  const user = await db.get(
+    `SELECT u.*, t.name AS tribe_name, t.is_active AS tribe_active FROM users u LEFT JOIN tribes t ON t.id = u.tribe_id WHERE u.id = ?`, [userId]
+  );
+  const expected = user ? Buffer.from(mfaSignature(user, exp)) : Buffer.alloc(0);
+  if (!user || expected.length !== Buffer.from(sig).length || !timingSafeEqual(expected, Buffer.from(sig))) {
+    throw unauthorized('Die Anmeldung ist abgelaufen. Bitte erneut mit Passwort anmelden.');
+  }
+  const attemptKey = `mfa:${user.id}`;
+  if (await isLockedOut(db, attemptKey, ip)) {
+    throw unauthorized('Zu viele falsche Codes. Bitte in 15 Minuten erneut versuchen.');
+  }
+  const secret = openSecret(user.totp_secret_encrypted);
+  const counter = secret ? verifyTotp(secret, code, { lastCounter: user.totp_last_counter }) : null;
+  await db.run('INSERT INTO login_attempts (identifier, ip, success) VALUES (?,?,?)', [attemptKey, ip, counter != null ? 1 : 0]);
+  if (counter == null) throw unauthorized('Der Code ist falsch oder abgelaufen');
+  // Jeder Code gilt nur einmal (Schutz vor Wiederverwendung).
+  await db.run('UPDATE users SET totp_last_counter = ? WHERE id = ?', [counter, user.id]);
+  if (user.status === 'disabled' || user.status === 'rejected' || (user.tribe_id && !user.tribe_active)) {
+    throw unauthorized('Dieses Konto ist gesperrt. Bitte wende dich an deinen Tribe-Admin.');
+  }
+  return createSession(db, user, { ip, userAgent });
+}
+
+async function createSession(db, user, { ip, userAgent }) {
   const sessionToken = randomToken(32);
   const sessionId = randomToken(16);
   const csrfToken = csrfTokenFor(sessionId);
@@ -259,6 +311,14 @@ export async function resolveSession(db, sessionId, rawToken) {
   if (!session) return null;
   if (session.token_hash !== sha256(rawToken)) return null;
   if (new Date(session.expires_at).getTime() < Date.now()) {
+    await db.run('DELETE FROM sessions WHERE id = ?', [sessionId]);
+    return null;
+  }
+  // Serverseitige Inaktivitaets-Abmeldung: Eine Sitzung, die laenger als
+  // SESSION_IDLE_MINUTES (Standard 30) nicht benutzt wurde, ist ungueltig -
+  // auch wenn der Browser geschlossen wurde oder jemand das Cookie kopiert hat.
+  const lastSeen = Date.parse(session.last_seen_at || session.created_at);
+  if (Number.isFinite(lastSeen) && Date.now() - lastSeen > config.sessionIdleMinutes * 60 * 1000) {
     await db.run('DELETE FROM sessions WHERE id = ?', [sessionId]);
     return null;
   }
