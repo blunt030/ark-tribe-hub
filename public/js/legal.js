@@ -1,29 +1,19 @@
-const LEGAL_DETAILS = {
-  providerName: '[Vollständiger Name des Betreibers]',
-  address: ['[Straße und Hausnummer]', '[PLZ und Ort]', 'Deutschland'],
-  email: 'support.arkhub@gmail.com',
-};
+import { LEGAL_DETAILS, providerLine, vatNote, legalMissing } from './legal-details.js';
 
-const missing = Object.values(LEGAL_DETAILS)
-  .flat()
-  .some((value) => String(value).includes('['));
+const fill = (selector, fn) => document.querySelectorAll(selector).forEach(fn);
 
-document.querySelectorAll('[data-legal-name]').forEach((node) => {
-  node.textContent = LEGAL_DETAILS.providerName;
-});
-document.querySelectorAll('[data-legal-address]').forEach((node) => {
+fill('[data-legal-name]', (node) => { node.textContent = providerLine(); });
+fill('[data-legal-address]', (node) => {
   node.replaceChildren(...LEGAL_DETAILS.address.flatMap((line, index) => [
     document.createTextNode(line),
     ...(index < LEGAL_DETAILS.address.length - 1 ? [document.createElement('br')] : []),
   ]));
 });
-document.querySelectorAll('[data-legal-email]').forEach((node) => {
+fill('[data-legal-address-inline]', (node) => { node.textContent = LEGAL_DETAILS.address.join(', '); });
+fill('[data-legal-email]', (node) => {
   node.textContent = LEGAL_DETAILS.email;
   if (node instanceof HTMLAnchorElement) node.href = `mailto:${LEGAL_DETAILS.email}`;
 });
+fill('[data-legal-vat]', (node) => { node.textContent = vatNote(); });
 
-if (missing) {
-  document.querySelectorAll('[data-legal-warning]').forEach((node) => {
-    node.hidden = false;
-  });
-}
+if (legalMissing()) fill('[data-legal-warning]', (node) => { node.hidden = false; });

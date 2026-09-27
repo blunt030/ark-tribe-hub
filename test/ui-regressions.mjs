@@ -242,3 +242,31 @@ test('Tamagotchi-Verwaltung: nur Developer, eigener Menüpunkt und Route', async
   // Vorschau eines Uploads als data:-Adresse (blob: ist per CSP gesperrt)
   assert.doesNotMatch(admin, /createObjectURL/);
 });
+
+test('AGB, Widerrufsbelehrung und Kaufbestätigung für kostenpflichtige Freischaltungen', async () => {
+  const [agb, widerruf, imprint, privacy, terms, details, legalJs, buy, shop, texts] = await Promise.all([
+    read('public/agb.html'), read('public/widerruf.html'), read('public/impressum.html'), read('public/datenschutz.html'),
+    read('public/nutzungsbedingungen.html'), read('public/js/legal-details.js'), read('public/js/legal.js'),
+    read('public/js/tamagotchi/buy.js'), read('src/services/petShopService.js'), read('public/js/tamagotchi/texts-shop.js'),
+  ]);
+  assert.match(agb, /Kein Umtausch und keine Rückgabe/);
+  assert.match(agb, /§§ 327 ff\. BGB/, 'gesetzliche Mängelrechte bleiben');
+  assert.match(agb, /data-legal-vat/);
+  assert.match(widerruf, /Muster-Widerrufsformular/);
+  assert.match(widerruf, /§ 356 Abs\. 5 BGB/);
+  for (const page of [agb, widerruf, imprint, privacy, terms]) {
+    assert.match(page, /\/js\/legal\.js/);
+    assert.match(page, /data-legal-warning/);
+  }
+  for (const page of [imprint, privacy, terms]) {
+    assert.match(page, /href="\/agb\.html"/);
+    assert.match(page, /href="\/widerruf\.html"/);
+  }
+  assert.match(privacy, /PayPal \(Europe\)/);
+  assert.match(privacy, /Kaufbestätigung/);
+  assert.match(legalJs, /from '\.\/legal-details\.js'/);
+  assert.match(details, /smallBusiness: (true|false)/);
+  assert.match(buy, /tama\.buy\.vat_small/);
+  for (const key of ['tama.buy.vat_small', 'tama.buy.vat_incl']) assert.equal(texts.split(`'${key}'`).length - 1, 4, key);
+  assert.match(shop, /sendPurchaseConfirmation\(db, session\)/);
+});

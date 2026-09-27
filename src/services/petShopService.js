@@ -4,6 +4,8 @@ import { speciesInDoc, freeKeys } from '../../public/js/tamagotchi/access.js';
 import { loadSettings, artSpecies, saleOpen, priceFor, speciesName, grantUnlock, invalidatePetConfig } from './petConfigService.js';
 import { createCheckoutSession, retrieveCheckoutSession, StripeError } from './stripeService.js';
 import { audit } from './auditService.js';
+import { sendMail } from './mailService.js';
+import { LEGAL_DETAILS, providerLine, vatNote } from '../../public/js/legal-details.js';
 
 /**
  * Verkauf von Tamagotchi-Tieren über Stripe Checkout.
@@ -72,7 +74,7 @@ export async function fulfillSession(db, session, { source = 'webhook' } = {}) {
   const userId = Number(session.client_reference_id || session.metadata?.user_id);
   const species = String(session.metadata?.species || '');
   if (!Number.isInteger(userId) || !species) return { handled: false };
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const now = nowIso();
     // Nur Käufe einlösen, die diese Installation selbst angelegt hat – ein
     // Stripe-Konto kann mehrere Umgebungen bedienen (z. B. Test und Live).
@@ -96,6 +98,51 @@ export async function fulfillSession(db, session, { source = 'webhook' } = {}) {
     invalidatePetConfig();
     return { handled: true, species: purchase.species, status: 'paid' };
   });
+  // Vertragsbestätigung (§ 312f BGB) – nur beim ersten Einlösen, nie doppelt.
+  if (result.status === 'paid' && !result.already) await sendPurchaseConfirmation(db, session);
+  return result;
+}
+
+const euro = (cents) => `${(Number(cents) / 100).toFixed(2).replace('.', ',')} €`;
+const berlinTime = (iso) => new Date(iso).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'medium', timeStyle: 'short' });
+
+/**
+ * Kaufbestätigung per E-Mail mit der Zustimmung zur sofortigen Freischaltung.
+ * Ohne diese Bestätigung erlischt das Widerrufsrecht nicht (§ 356 Abs. 5 BGB).
+ * Ein Versandfehler bricht die Freischaltung nie ab.
+ */
+export async function sendPurchaseConfirmation(db, session) {
+  try {
+    const purchase = await db.get('SELECT * FROM pet_purchases WHERE session_id = ?', [session.id]);
+    if (!purchase) return { sent: false, reason: 'unknown_purchase' };
+    const user = purchase.user_id ? await db.get('SELECT username, email FROM users WHERE id = ?', [purchase.user_id]) : null;
+    const to = user?.email || session.customer_details?.email;
+    if (!to) return { sent: false, reason: 'no_email' };
+    const base = config.publicUrl.replace(/\/+$/, '');
+    const name = speciesName(purchase.species);
+    const text = [
+      `Hallo ${user?.username || ''},`.replace(' ,', ','),
+      '',
+      'vielen Dank für deinen Kauf bei ARK Tribe Hub. Hiermit bestätigen wir deinen Vertrag:',
+      '',
+      `Artikel: Dauerhafte Freischaltung „${name}“ im Dino-Tamagotchi (digitaler Inhalt)`,
+      `Preis: ${euro(purchase.amount_cents)} (einmalig). ${vatNote()}`,
+      `Bestellnummer: ${purchase.session_id}`,
+      `Bezahlt am: ${berlinTime(purchase.paid_at || purchase.updated_at)}`,
+      '',
+      `Du hast am ${berlinTime(purchase.consent_at)} ausdrücklich zugestimmt, dass die Freischaltung sofort nach der Bezahlung beginnt, und bestätigt, dass du weißt, dass du dadurch dein Widerrufsrecht verlierst. Die Freischaltung ist erfolgt; dein Widerrufsrecht ist damit erloschen.`,
+      '',
+      `AGB: ${base}/agb.html`,
+      `Widerrufsbelehrung: ${base}/widerruf.html`,
+      '',
+      `Anbieter: ${providerLine()}, ${LEGAL_DETAILS.address.join(', ')}`,
+      `Kontakt: ${LEGAL_DETAILS.email}`,
+    ].join('\n');
+    return await sendMail({ to, subject: `Kaufbestätigung: ${name} freigeschaltet`, text });
+  } catch (err) {
+    console.error('[STRIPE] Kaufbestätigung fehlgeschlagen:', err.message);
+    return { sent: false, reason: 'error' };
+  }
 }
 
 /** Rückkehr von Stripe: Sitzung abfragen und – falls bezahlt – einlösen. */
