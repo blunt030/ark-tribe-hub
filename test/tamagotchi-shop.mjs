@@ -352,6 +352,10 @@ test('Tamagotchi-Verwaltung, Gratis-Arten, Geschenke und Kauf über Stripe', asy
     const payload = JSON.stringify({ id: 'evt_1', type: 'checkout.session.completed', livemode: false, data: { object: s } });
     const bad = await anon('POST', '/api/stripe/webhook', undefined, { raw: payload, headers: { 'Stripe-Signature': signWebhook(payload, 'whsec_wrong') } });
     assert.equal(bad.status, 400);
+    // Kaufbestätigung (§ 312f BGB) mitschneiden – ohne SMTP wird sie nur protokolliert
+    const mails = [];
+    const origLog = console.log;
+    console.log = (...args) => { const line = args.join(' '); if (line.includes('Kaufbestätigung')) mails.push(line); else origLog(...args); };
     const hook = await anon('POST', '/api/stripe/webhook', undefined, { raw: payload, headers: { 'Stripe-Signature': signWebhook(payload, 'whsec_test') } });
     assert.equal(hook.status, 200);
     assert.equal(hook.handled, true);
@@ -362,6 +366,8 @@ test('Tamagotchi-Verwaltung, Gratis-Arten, Geschenke und Kauf über Stripe', asy
     assert.equal(done.status, 200);
     assert.equal(done.result, 'paid');
     assert.equal(done.config.owned.find((o) => o.species === 'giganotosaurus').source, 'purchase');
+    console.log = origLog;
+    assert.equal(mails.length, 1, 'genau eine Kaufbestätigung, auch bei Webhook-Wiederholung und Rückkehr');
     const list = await dev('GET', '/api/developer/pet/purchases');
     assert.equal(list.purchases[0].status, 'paid');
     assert.equal(list.purchases[0].amount_cents, 249);
