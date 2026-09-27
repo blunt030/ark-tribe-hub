@@ -72,6 +72,7 @@ test('Tamagotchi-Verwaltung, Gratis-Arten, Geschenke und Kauf über Stripe', asy
   // Stripe-Nachbildung: merkt sich die Checkout-Sitzungen
   const sessions = new Map();
   let lastForm = null;
+  let lastVersion = null;
   const stripe = http.createServer((req, res) => {
     let body = '';
     req.on('data', (c) => { body += c; });
@@ -80,6 +81,7 @@ test('Tamagotchi-Verwaltung, Gratis-Arten, Geschenke und Kauf über Stripe', asy
       if (req.headers.authorization !== 'Bearer sk_test_123') { res.writeHead(401); res.end('{"error":{"message":"bad key"}}'); return; }
       if (req.method === 'POST' && req.url === '/v1/checkout/sessions') {
         lastForm = new URLSearchParams(body);
+        lastVersion = req.headers['stripe-version'];
         const id = 'cs_test_' + String(sessions.size + 1).padStart(12, '0');
         const s = {
           id, url: 'https://checkout.stripe.test/' + id, livemode: false, status: 'open', payment_status: 'unpaid',
@@ -322,6 +324,19 @@ test('Tamagotchi-Verwaltung, Gratis-Arten, Geschenke und Kauf über Stripe', asy
     assert.equal(lastForm.get('metadata[species]'), 'giganotosaurus');
     assert.equal(lastForm.get('client_reference_id'), String(me.id));
     assert.match(lastForm.get('success_url'), /\?pet_checkout=\{CHECKOUT_SESSION_ID\}#\/tamagotchi$/);
+    // Checkout-Studio-Vorgaben
+    assert.equal(lastVersion, '2026-08-26.dahlia');
+    assert.equal(lastForm.get('ui_mode'), 'hosted_page');
+    assert.equal(lastForm.get('mode'), 'payment');
+    assert.equal(lastForm.get('billing_address_collection'), 'auto');
+    assert.equal(lastForm.get('phone_number_collection[enabled]'), 'false');
+    assert.equal(lastForm.get('automatic_tax[enabled]'), 'false');
+    assert.equal(lastForm.get('allow_promotion_codes'), 'false');
+    assert.equal(lastForm.get('submit_type'), 'auto');
+    assert.equal(lastForm.get('integration_identifier'), 'hosted_mobile_app_0001');
+    assert.equal(lastForm.get('origin_context'), 'mobile_app');
+    assert.equal(lastForm.get('payment_method_collection'), null, 'nur bei Abos');
+    assert.equal(lastForm.get('payment_method_types[0]'), null);
     sessionId = [...sessions.keys()].at(-1);
 
     // Noch nicht bezahlt: Rückkehr meldet "pending"
