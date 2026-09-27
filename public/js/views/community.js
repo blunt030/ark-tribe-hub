@@ -1,6 +1,9 @@
-import { el, spinner, toast, confirmDialog } from '../ui.js';
+import { el, spinner, toast, confirmDialog, pageHead, avatar, kebabMenu, emptyBlock, roleOf } from '../ui.js';
 import { api } from '../api.js';
-import { t, getLang } from '../i18n.js';
+import { t, fmtStamp } from '../i18n.js';
+import { uiIcon } from '../ui-icons.js';
+
+const RELATION_ICON = { alliance: 'handshake', friend: 'users', enemy: 'skull' };
 
 export async function renderAlliances(mount, { user }) {
   mount.append(spinner());
@@ -8,21 +11,34 @@ export async function renderAlliances(mount, { user }) {
   const canEdit = user.roles.some(r => ['admin', 'developer'].includes(r));
   const list = el('div.community-list');
   const editor = el('div');
+  const RELATIONS = ['alliance', 'friend', 'enemy'];
   const draw = () => {
-    list.replaceChildren(...alliances.map(a => el('article.card.relationship.' + a.relationship, {},
-      el('span.relationship-label', { text: t('alliance.' + a.relationship) }),
-      el('h2', { text: a.name }),
-      el('p', { text: a.server + ' · ' + a.map }),
-      canEdit ? el('div.actions', {},
-        el('button.btn', { text: t('common.edit'), onclick: () => form(a) }),
-        el('button.btn.danger', { text: t('common.delete'), onclick: async () => {
+    const card = (a) => el('article.alliance-card.' + a.relationship, {},
+      el('span.alliance-icon', {}, uiIcon(RELATION_ICON[a.relationship] || 'users')),
+      el('div.alliance-copy', {},
+        el('h3', { text: a.name }),
+        el('p', {}, uiIcon('hard-drives'), el('span', { text: a.server })),
+        el('p', {}, uiIcon('map'), el('span', { text: a.map }))),
+      canEdit ? kebabMenu([
+        { label: t('common.edit'), icon: 'pencil-simple', onclick: () => form(a) },
+        { label: t('common.delete'), icon: 'trash', danger: true, onclick: async () => {
           if (!await confirmDialog({ title: t('alliance.delete'), body: a.name, danger: true })) return;
           try { await api.deleteAlliance(a.id); alliances.splice(alliances.indexOf(a), 1); draw(); }
           catch (e) { toast(e.message, 'err'); }
-        } })
-      ) : null
-    )));
-    if (!alliances.length) list.append(el('p.hint', { text: t('alliance.empty') }));
+        } },
+      ]) : null);
+    list.replaceChildren(
+      el('div.alliance-columns', {}, ...RELATIONS.map((rel) => {
+        const rows = alliances.filter((a) => a.relationship === rel);
+        return el('section.alliance-column.' + rel, {},
+          el('header.alliance-hero', { style: `--rel-art:url('/assets/banners/rel-${rel}.webp')` },
+            el('span.alliance-hero-icon', {}, uiIcon(RELATION_ICON[rel])),
+            el('div.alliance-hero-copy', {}, el('h2', { text: t('alliance.' + rel) }), el('small', { text: t('alliance.relations') })),
+            el('strong.alliance-hero-count', { text: String(rows.length) })),
+          el('div.alliance-list', {}, ...(rows.length ? rows.map(card)
+            : [el('p.alliance-empty', {}, uiIcon(RELATION_ICON[rel]), el('span', { text: t('alliance.list_empty') }))])),
+          canEdit ? el('button.alliance-add', { type: 'button', onclick: () => form({ relationship: rel }) }, uiIcon('plus'), el('span', { text: t('alliance.new') })) : null);
+      })));
   };
   function form(a = {}) {
     const name = el('input', { id: 'alliance-name', required: true, maxlength: 100, value: a.name || '' });
@@ -30,9 +46,9 @@ export async function renderAlliances(mount, { user }) {
     const map = el('input', { id: 'alliance-map', required: true, maxlength: 100, value: a.map || '' });
     const relation = el('select', { id: 'alliance-relation' }, ...['alliance', 'friend', 'enemy'].map(v => el('option', { value: v, text: t('alliance.' + v) })));
     relation.value = a.relationship || 'alliance';
-    const save = el('button.btn.primary', { type: 'submit', text: t('community.save') });
-    const field = (key, input) => el('div.field', {}, el('label', { for: input.id, text: t(key) }), input);
-    editor.replaceChildren(el('form.card.community-form', { onsubmit: async e => {
+    const save = el('button.btn.primary.lux', { type: 'submit' }, uiIcon('floppy-disk'), el('span', { text: t('community.save') }));
+    const field = (key, input, cls = '') => el('div.field' + cls, {}, el('label', { for: input.id, text: t(key) }), input);
+    editor.replaceChildren(el('form.ark-panel.community-form', { onsubmit: async e => {
       e.preventDefault(); save.disabled = true;
       const body = { name: name.value, server: server.value, map: map.value, relationship: relation.value };
       try {
@@ -42,42 +58,67 @@ export async function renderAlliances(mount, { user }) {
         editor.replaceChildren(); draw();
       } catch (err) { toast(err.message, 'err'); }
       finally { save.disabled = false; }
-    } }, el('h2', { text: t(a.id ? 'common.edit' : 'alliance.new') }),
-    field('alliance.name', name), field('alliance.relation', relation), field('alliance.server', server), field('alliance.map', map),
-    el('div.actions', {}, save, el('button.btn', { type: 'button', text: t('common.cancel'), onclick: () => editor.replaceChildren() }))));
+    } },
+    el('header.ark-panel-head', {}, uiIcon('handshake', 'ark-panel-icon'), el('h2', { text: t(a.id ? 'common.edit' : 'alliance.new') })),
+    el('div.form-grid', {}, field('alliance.name', name), field('alliance.relation', relation), field('alliance.server', server), field('alliance.map', map)),
+    el('div.form-actions', {}, el('button.btn.ghost', { type: 'button', text: t('common.cancel'), onclick: () => editor.replaceChildren() }), save)));
     name.focus();
     editor.scrollIntoView({ block: 'nearest' });
   }
-  mount.replaceChildren(el('div.page-head', {}, el('div', {}, el('h1', { text: t('nav.alliances') }), el('p', { text: t('alliance.scope') })),
-    canEdit ? el('button.btn.primary', { text: t('alliance.new'), onclick: () => form() }) : null), editor, list);
+  mount.replaceChildren(
+    pageHead({ title: t('nav.alliances'), sub: t('page.alliances.sub'), icon: 'handshake',
+      actions: [canEdit ? el('button.btn.primary.lux', { type: 'button', onclick: () => form() }, uiIcon('plus'), el('span', { text: t('alliance.new') })) : null] }),
+    editor, list);
   draw();
 }
 
-export function chatMessage(m, currentUserId = null) {
+/** Leiste "4 online · 20 offline" mit den Avataren der aktiven Mitglieder. */
+export function presenceBar(members, presence) {
+  const on = new Set((presence?.online || []).map(Number));
+  const active = members.filter((m) => !m.status || m.status === 'active');
+  const onlineMembers = active.filter((m) => on.has(Number(m.id)));
+  const offline = Math.max(0, (presence?.total ?? active.length) - onlineMembers.length);
+  return el('div.presence-bar', { role: 'status' },
+    el('span.presence-count.on', {}, el('i.presence-dot.on'), el('b', { text: t('chat.online_n', { n: onlineMembers.length }) })),
+    el('span.presence-count', {}, el('i.presence-dot'), el('span', { text: t('chat.offline_n', { n: offline }) })),
+    el('div.presence-avatars', {}, ...onlineMembers.slice(0, 12).map((m) => {
+      const a = avatar(m.username, { size: 'sm', online: true });
+      a.title = m.username;
+      return a;
+    })));
+}
+
+export function chatMessage(m, currentUserId = null, members = []) {
   const mine = currentUserId != null && Number(m.author_id) === Number(currentUserId);
-  const colorIndex = Math.abs(Number(m.author_id) || 0) % 6;
-  return el(`article.chat-message.author-color-${colorIndex}${mine ? '.mine' : ''}`, { dataset: { messageId: m.id } },
-    el('span.command-avatar', { text: (m.author_name || '?').slice(0, 2).toUpperCase(), 'aria-hidden': 'true' }),
+  // Farbe nach Rolle: Admin rot, Breeder gruen, Crafter blau, Mitglied gold.
+  const role = roleOf(members.find((x) => Number(x.id) === Number(m.author_id)));
+  return el(`article.chat-message.role-${role}${mine ? '.mine' : ''}`, { dataset: { messageId: m.id } },
+    avatar(m.author_name, { size: 'md' }),
     el('div.chat-meta', {}, el('strong', { text: m.author_name }),
+      el('span.role-tag', { text: t('role.' + role) }),
       mine ? el('span.chat-me', { text: t('chat.me') }) : null,
-      el('time', { datetime: m.created_at, text: new Date(m.created_at).toLocaleString(getLang()) })),
+      el('time', { datetime: m.created_at, text: fmtStamp(m.created_at) })),
     el('p', { text: m.body })); // User content is always textContent, never HTML.
 }
 
 export async function renderChat(mount, { user }) {
   mount.append(spinner());
-  const initial = await api.chatMessages();
+  const [initial, membersRes, presenceRes] = await Promise.all([
+    api.chatMessages(),
+    api.members().catch(() => ({ members: [] })),
+    api.presence().catch(() => null),
+  ]);
+  const presenceSlot = el('div.presence-slot', {}, presenceBar(membersRes.members, presenceRes));
   const messages = new Map(initial.messages.map(m => [m.id, m]));
   let latest = initial.messages.at(-1)?.id || 0;
   let olderAvailable = initial.hasMore;
   let sending = false;
-  const log = el('div.chat-log', { role: 'log', 'aria-label': t('nav.chat'), 'aria-live': 'polite', 'aria-relevant': 'additions' });
+  const log = el('div.chat-log', { role: 'log', 'aria-label': t('nav.chat'), 'aria-live': 'polite', 'aria-relevant': 'additions', tabindex: '0' });
   const status = el('p.hint', { role: 'status' });
-  const empty = el('p.hint', { text: t('chat.empty') });
-  const chatWindow = el('section.chat-window', { 'aria-label': t('nav.chat') }, empty, log, status);
-  const input = el('textarea', { id: 'chat-body', rows: 3, maxlength: 2000, required: true, placeholder: t('chat.placeholder') });
-  const send = el('button.btn.primary', { type: 'submit', text: t('chat.send') });
-  const older = el('button.btn.chat-older', { text: t('chat.older'), onclick: async () => {
+  const empty = el('div', {}, emptyBlock('chat-circle-dots', t('chat.empty')));
+  const input = el('input', { id: 'chat-body', type: 'text', maxlength: 2000, required: true, placeholder: t('chat.placeholder'), 'aria-label': t('chat.message'), autocomplete: 'off', enterkeyhint: 'send' });
+  const send = el('button.send-btn', { type: 'submit', 'aria-label': t('chat.send'), title: t('chat.send') }, uiIcon('paper-plane-tilt'));
+  const older = el('button.btn.sm.ghost.chat-older', { type: 'button', onclick: async () => {
     older.disabled = true;
     const previousHeight = log.scrollHeight;
     const previousTop = log.scrollTop;
@@ -89,34 +130,39 @@ export async function renderChat(mount, { user }) {
       older.hidden = !olderAvailable;
     } catch (e) { status.textContent = e.message; }
     finally { older.disabled = false; }
-  } });
+  } }, uiIcon('caret-up'), el('span', { text: t('chat.older') }));
+  const chatWindow = el('section.chat-window', { 'aria-label': t('nav.chat') },
+    el('header.ark-panel-head', {}, uiIcon('chat-circle-dots', 'ark-panel-icon'), el('h2', { text: t('nav.chat') + ' · General' }), older),
+    empty, log, status);
   function merge(rows) {
     const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
     for (const m of rows) {
       if (messages.has(m.id) && log.querySelector(`[data-message-id="${m.id}"]`)) continue;
       messages.set(m.id, m);
-      const node = chatMessage(m, user.id);
+      const node = chatMessage(m, user.id, membersRes.members);
       const next = [...log.children].find(n => Number(n.dataset.messageId) > m.id);
       log.insertBefore(node, next || null);
     }
     empty.hidden = messages.size > 0;
     if (nearBottom) log.scrollTop = log.scrollHeight;
   }
-  const composer = el('form.card.chat-composer', { onsubmit: async e => {
+  const composer = el('form.ark-panel.chat-composer', { onsubmit: async e => {
     e.preventDefault();
     if (sending || !input.value.trim()) return;
     sending = true; send.disabled = true; input.readOnly = true;
     try {
       const { message } = await api.sendChatMessage(input.value);
       merge([message]); input.value = ''; status.textContent = '';
-      // Do not advance the polling cursor here: concurrent messages from other
-      // authors between the previous poll and this post must still be fetched.
+      // Den Abfrage-Cursor hier bewusst nicht verschieben: Nachrichten anderer
+      // zwischen letzter Abfrage und diesem Senden muessen noch geholt werden.
       log.scrollTop = log.scrollHeight;
     } catch (err) { status.textContent = err.message; }
-    finally { sending = false; send.disabled = false; input.readOnly = false; }
-  } }, el('label', { for: 'chat-body', text: t('chat.message') }), input,
-  el('div.actions', {}, el('span.hint', { text: t('chat.limits') }), send));
-  mount.replaceChildren(el('div.page-head', {}, el('div', {}, el('h1', { text: t('nav.chat') + ' · General' }), el('p', { text: t('chat.scope') }))), older, chatWindow, composer);
+    finally { sending = false; send.disabled = false; input.readOnly = false; input.focus(); }
+  } }, uiIcon('chat-circle-dots', 'composer-icon'), input, send);
+  mount.replaceChildren(
+    pageHead({ title: t('nav.chat'), sub: t('page.chat.sub'), icon: 'chat-circle-dots' }),
+    el('div.chat-page', {}, chatWindow, composer, presenceSlot,
+      el('p.chat-foot', {}, el('span', { text: t('chat.scope') }), el('span', { text: t('chat.limits') }))));
   older.hidden = !olderAvailable;
   merge(initial.messages);
   log.scrollTop = log.scrollHeight;
@@ -137,4 +183,10 @@ export async function renderChat(mount, { user }) {
     if (mount.isConnected) setTimeout(poll, 5000);
   }
   if (mount.isConnected) setTimeout(poll, 5000);
+  const presenceTimer = setInterval(async () => {
+    if (!mount.isConnected) { clearInterval(presenceTimer); return; }
+    if (document.visibilityState !== 'visible') return;
+    const fresh = await api.presence().catch(() => null);
+    if (fresh) presenceSlot.replaceChildren(presenceBar(membersRes.members, fresh));
+  }, 30000);
 }

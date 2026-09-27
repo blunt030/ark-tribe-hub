@@ -28,6 +28,7 @@ function client(base) {
     get: (route) => request('GET', route),
     post: (route, body = {}) => request('POST', route, body),
     patch: (route, body = {}) => request('PATCH', route, body),
+    put: (route, body = {}) => request('PUT', route, body),
     delete: (route) => request('DELETE', route),
     login: (identifier, tribeSlug) => request('POST', '/api/auth/login', { identifier, tribeSlug, password: 'ChangeMe123!' }),
   };
@@ -74,20 +75,69 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
     assert.equal(profile.json.user.personalVaultNumber, undefined);
   });
 
-  await t.test('PIN liegt verschlüsselt vor und PIN/Vault bleiben adminverwaltet', async () => {
+  await t.test('PIN setzt das Mitglied selbst (4 Ziffern, verschlüsselt); Vaults verwaltet der Admin', async () => {
     const memberId = (await app.db.get("SELECT id FROM users WHERE username='Blunt OaO'")).id;
     const generated = await member.post('/api/users/me/access-pin/generate');
     assert.equal(generated.status, 200);
+    assert.match(generated.json.pin, /^\d{4}$/);
     const stored = await app.db.get('SELECT personal_pin_encrypted FROM users WHERE id = ?', [memberId]);
     assert.match(stored.personal_pin_encrypted, /^v1:/);
-    assert.doesNotMatch(stored.personal_pin_encrypted, /^\d{6}$/);
+    assert.doesNotMatch(stored.personal_pin_encrypted, /^\d+$/);
 
-    assert.equal((await member.patch(`/api/admin/members/${memberId}/access`, { personalPin: '654321', vaultNumber: 'V-42' })).status, 403);
-    assert.equal((await admin.patch(`/api/admin/members/${memberId}/access`, { personalPin: '654321', vaultNumber: 'V-42' })).status, 200);
-    const adminList = await admin.get('/api/admin/members');
-    const changed = adminList.json.members.find((entry) => entry.id === memberId);
-    assert.equal(changed.personalPin, '654321');
-    assert.equal(changed.personal_vault_number, 'V-42');
+    assert.equal((await member.put('/api/users/me/access-pin', { pin: '12345' })).status, 400);
+    assert.equal((await member.put('/api/users/me/access-pin', { pin: '12a4' })).status, 400);
+    assert.equal((await member.put('/api/users/me/access-pin', { pin: '4711' })).status, 200);
+    assert.equal((await member.get('/api/users/me/access-pin')).json.pin, '4711');
+
+    // Admins koennen den PIN nicht mehr setzen, nur Vaults verwalten.
+    assert.equal((await admin.patch(`/api/admin/members/${memberId}/access`, { personalPin: '1234' })).status, 400);
+    assert.equal((await member.post('/api/vaults', { name: 'V-42' })).status, 403);
+    const created = await admin.post('/api/vaults', { name: 'V-42', assignedUserId: memberId });
+    assert.equal(created.status, 201);
+    assert.equal((await admin.post('/api/vaults', { name: 'V-42' })).status, 400);
+    const adminVaults = (await admin.get('/api/vaults')).json.vaults;
+    const v = adminVaults.find((x) => x.name === 'V-42');
+    assert.equal(v.assigned_username, 'Blunt OaO');
+    assert.equal(v.pin, '4711');
+    const own = (await member.get('/api/vaults')).json.vaults;
+    assert.deepEqual(own.map((x) => x.name), ['V-42']);
+    assert.equal(own[0].pin, undefined);
+    const outsiderVaults = await outsider.get('/api/vaults');
+    assert.ok(!outsiderVaults.json.vaults.some((x) => x.name === 'V-42'));
+    assert.equal((await outsider.patch(`/api/vaults/${v.id}`, { assignedUserId: null })).status, 403);
+    const profile = await member.get('/api/users/me');
+    assert.equal(profile.json.user.personalVaultNumber, 'V-42');
+    assert.equal((await admin.patch(`/api/vaults/${v.id}`, { assignedUserId: null })).status, 200);
+    assert.equal((await member.get('/api/users/me')).json.user.personalVaultNumber, null);
+  });
+
+  await t.test('Breeder und Crafter sind getrennte Rollen mit den bisherigen Rechten', async () => {
+    const memberId = (await app.db.get("SELECT id FROM users WHERE username='Blunt OaO'")).id;
+    assert.equal((await admin.patch(`/api/admin/members/${memberId}/roles`, { crafter: true })).status, 200);
+    const roles = (await admin.get('/api/admin/members')).json.members.find((m) => m.id === memberId).roles;
+    assert.ok(roles.includes('crafter'));
+    assert.ok(!roles.includes('breeder'));
+    assert.ok(roles.includes('breeder_crafter'), 'Berechtigung bleibt erhalten');
+    // Neue Ei-Bestellung: Breeder wird benachrichtigt, Crafter nicht.
+    const breederId = (await app.db.get("SELECT id FROM users WHERE username='OaO Breeder'")).id;
+    const count = async (uid) => Number((await app.db.get("SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND type = 'order_created'", [uid])).c);
+    const [crafterBefore, breederBefore] = [await count(memberId), await count(breederId)];
+    const egg = (await admin.get('/api/items?productType=egg')).json.items[0];
+    assert.equal((await admin.post('/api/orders', { items: [{ itemId: egg.id, quantity: 1 }] })).status, 201);
+    assert.equal(await count(memberId), crafterBefore, 'Crafter bekommt keine Ei-Bestellung');
+    assert.equal(await count(breederId), breederBefore + 1, 'Breeder bekommt die Ei-Bestellung');
+    const breederRoles = (await admin.get('/api/admin/members')).json.members.find((m) => m.id === breederId).roles;
+    assert.ok(breederRoles.includes('breeder') && !breederRoles.includes('crafter'));
+    assert.equal((await admin.patch(`/api/admin/members/${memberId}/roles`, { crafter: false })).status, 200);
+    const after = (await admin.get('/api/admin/members')).json.members.find((m) => m.id === memberId).roles;
+    assert.ok(!after.includes('breeder_crafter'));
+  });
+
+  await t.test('Online-Status zählt nur den eigenen Tribe', async () => {
+    const presence = await member.get('/api/presence');
+    assert.equal(presence.status, 200);
+    assert.ok(presence.json.onlineCount >= 1);
+    assert.equal(presence.json.onlineCount + presence.json.offlineCount, presence.json.total);
   });
 
   await t.test('Nur Admins erstellen Aufgaben; Mitglieder übernehmen und schließen mit Tribe-Partnern ab', async () => {

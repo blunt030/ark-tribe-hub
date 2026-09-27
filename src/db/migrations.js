@@ -46,4 +46,47 @@ export async function runMigrations(db) {
     }
   }
   await migrateEmailTokens(db);
+  await migrateVaults(db);
+  await splitBreederCrafter(db);
+}
+
+/**
+ * Die kombinierte Rolle breeder_crafter wird in die getrennten Rollen breeder
+ * und crafter aufgeteilt (beide vergeben, damit niemand Rechte verliert).
+ * Admins nehmen danach die jeweils nicht passende Rolle weg. Idempotent.
+ */
+async function splitBreederCrafter(db) {
+  const ids = {};
+  for (const key of ['breeder_crafter', 'breeder', 'crafter']) {
+    await db.run('INSERT INTO roles (key) VALUES (?) ON CONFLICT(key) DO NOTHING', [key]);
+    ids[key] = (await db.get('SELECT id FROM roles WHERE key = ?', [key])).id;
+  }
+  const holders = await db.all('SELECT user_id FROM user_roles WHERE role_id = ?', [ids.breeder_crafter]);
+  for (const { user_id: userId } of holders) {
+    await db.transaction(async (tx) => {
+      for (const key of ['breeder', 'crafter']) {
+        await tx.run('INSERT INTO user_roles (user_id, role_id) VALUES (?,?) ON CONFLICT(user_id, role_id) DO NOTHING', [userId, ids[key]]);
+      }
+      await tx.run('DELETE FROM user_roles WHERE user_id = ? AND role_id = ?', [userId, ids.breeder_crafter]);
+    });
+  }
+  if (holders.length) console.log(`[MIGRATION] ${holders.length} Konto/Konten: Breeder/Crafter in getrennte Rollen aufgeteilt`);
+}
+
+/**
+ * Bisher stand die Vault-Nummer als Freitext am Benutzer. Einmalig (idempotent)
+ * in die Vault-Liste uebernehmen, damit Admins sie dort verwalten koennen.
+ */
+async function migrateVaults(db) {
+  const rows = await db.all(
+    `SELECT u.id, u.tribe_id, u.personal_vault_number FROM users u
+     WHERE u.tribe_id IS NOT NULL AND u.personal_vault_number IS NOT NULL AND u.personal_vault_number <> ''`
+  );
+  for (const u of rows) {
+    const name = String(u.personal_vault_number).trim().slice(0, 50);
+    const existing = await db.get('SELECT id FROM tribe_vaults WHERE tribe_id = ? AND name = ?', [u.tribe_id, name]);
+    if (existing) continue;
+    await db.run('INSERT INTO tribe_vaults (tribe_id, name, assigned_user_id) VALUES (?,?,?)', [u.tribe_id, name, u.id]);
+    console.log(`[MIGRATION] Vault ${name} aus Benutzerprofil uebernommen`);
+  }
 }

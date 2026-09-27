@@ -15,6 +15,7 @@ import { renderAlliances, renderChat } from './views/community.js';
 import { renderVoice } from './views/voice.js';
 import { loadPet, onPetChange, petCalls, resetPet, savePet } from './tamagotchi/store.js';
 import { uiIcon } from './ui-icons.js';
+import { avatar, avatarSrc, visibleRoles } from './ui.js';
 
 const root = document.getElementById('root');
 let user = null;
@@ -93,32 +94,28 @@ function navItems() {
 function buildShell() {
   const { main, tools, tribe, platform } = navItems();
   const collapsed = localStorage.getItem('ath_sidebar_collapsed') === '1';
+  const roleText = visibleRoles(user.roles || []).map((r) => t('role.' + r)).join(' · ');
 
   const navLink = (item) => {
-    const a = el('a', { href: '#' + item.path, dataset: { path: item.path } },
+    const a = el('a', { href: '#' + item.path, dataset: { path: item.path }, title: item.label },
       uiIcon(item.icon, 'ico'),
-      el('span', { text: item.label })
+      el('span.nav-label', { text: item.label })
     );
     const n = item.badge ? item.badge() : 0;
     if (n > 0) a.append(el('span.count', { text: String(n) }));
     return a;
   };
 
+  // Seitenleiste nach Vorlage: Logo oben, Navigation, kompakter Fuss. Das
+  // Camp-Motiv liegt als reiner Hintergrund in der Leiste (CSS) und kann weder
+  // Menuepunkte ueberdecken noch Klicks abfangen. Das Logo gibt es genau einmal.
   const sidebar = el('aside.sidebar' + (collapsed ? '.collapsed' : ''), {},
     el('div.brand', {},
       el('button.brand-link', {
         title: t('nav.dashboard'),
         'aria-label': t('nav.dashboard'),
         onclick: () => go('/'),
-      }, el('img', { src: '/assets/command-brand-v3.webp', alt: 'ARK Tribe Hub', width: '42', height: '42' })),
-      // Tribe und eigener Rang direkt neben dem Logo (Punkt 19). Beides kommt aus
-      // der aktuellen Sitzung, nichts fest verdrahtet. Beim eingeklappten
-      // Seitenmenue wird der Block per CSS ausgeblendet.
-      el('div.brand-ident', {},
-        el('div.bi-tribe', { text: user.tribeName || t('nav.group.platform') }),
-        el('div.bi-name', { text: user.username }),
-        el('div.bi-role', { text: (user.roles || []).map((r) => t('role.' + r)).join(', ') })
-      ),
+      }, el('img', { src: '/assets/command-brand-v3.webp', alt: 'ARK Tribe Hub', width: '132', height: '132' })),
       el('button.sidebar-toggle', {
         title: t('nav.collapse'),
         'aria-label': t('nav.collapse'),
@@ -127,37 +124,41 @@ function buildShell() {
           sidebar.classList.toggle('collapsed', nowCollapsed);
           localStorage.setItem('ath_sidebar_collapsed', nowCollapsed ? '1' : '0');
         },
-      }, '«')
+      }, uiIcon('caret-left'))
     ),
-    el('nav.nav', {},
+    el('nav.nav', { 'aria-label': t('nav.dashboard') },
       ...main.map(navLink),
-      ...tools.map(navLink),
+      ...(tools.length ? [el('div.nav-group-label', { text: t('nav.group.tools') }), ...tools.map(navLink)] : []),
       ...(tribe.length ? [el('div.nav-group-label', { text: t('nav.group.tribe') }), ...tribe.map(navLink)] : []),
       ...(platform.length ? [el('div.nav-group-label', { text: t('nav.group.platform') }), ...platform.map(navLink)] : [])
     ),
     el('div.sidebar-foot', {},
-      user.tribeId ? el('div.sidebar-tribe-mark', {}, el('img', { src: '/assets/command-brand-v3.webp', alt: '', width: 74, height: 74 }),
-        el('strong', { text: user.tribeName || t('dash.tribe') })) : null,
-      el('div.who', {}, el('b', { text: user.username }),
-        el('span', { text: user.roles.map((r) => t('role.' + r)).join(', ') })
+      el('button.who-card', { type: 'button', onclick: () => go('/profile'), title: t('nav.profile') },
+        avatar(user.username, { src: avatarSrc(user) }),
+        el('span.who-copy', {},
+          el('b', { text: user.username }),
+          el('small', { text: [user.tribeName, roleText].filter(Boolean).join(' · ') }))
       ),
-      el('div.chips', {},
-        ...LANGS.map((l) =>
-          el('button.btn.sm.ghost' + (getLang() === l.code ? ' primary' : ''), {
-            text: l.code.toUpperCase(),
-            title: l.label,
-            'aria-label': l.label,
-            onclick: () => { setLang(l.code); location.reload(); },
-          })
-        )
+      el('div.sidebar-tools', {},
+        el('div.lang-switch', { role: 'group', 'aria-label': t('profile.language') },
+          ...LANGS.map((l) =>
+            el('button' + (getLang() === l.code ? '.on' : ''), {
+              type: 'button',
+              text: l.code.toUpperCase(),
+              title: l.label,
+              'aria-label': l.label,
+              'aria-pressed': getLang() === l.code ? 'true' : 'false',
+              onclick: () => { setLang(l.code); location.reload(); },
+            })
+          )
+        ),
+        el('button.logout-btn', { type: 'button', title: t('auth.logout'), 'aria-label': t('auth.logout'), onclick: signOut }, uiIcon('sign-out'))
       ),
-      el('button.btn.sm.ghost.logout-btn', { title: t('auth.logout'), onclick: signOut }, el('span', { text: t('auth.logout') })),
       el('nav.legal-links', { 'aria-label': t('footer.legal') },
         el('a', { href: '/impressum.html', text: t('footer.imprint') }),
         el('a', { href: '/datenschutz.html', text: t('footer.privacy') }),
         el('a', { href: '/nutzungsbedingungen.html', text: t('footer.terms') })
-      ),
-      el('p', { style: 'color:var(--faint);font-size:.7rem;margin:0', text: t('footer.by') })
+      )
     )
   );
 
@@ -166,14 +167,7 @@ function buildShell() {
       title: t('nav.dashboard'),
       'aria-label': t('nav.dashboard'),
       onclick: () => go('/'),
-    }, el('img', { src: '/assets/command-brand-v3.webp', alt: 'ARK Tribe Hub' })),
-    // Tribe + Rang auch mobil (Punkt 19). Die Seitenleiste ist hier ausgeblendet,
-    // deshalb muss der Block zusaetzlich in der Topbar stehen.
-    el('div.brand-ident', {},
-      el('div.bi-tribe', { text: user.tribeName || t('nav.group.platform') }),
-      el('div.bi-name', { text: user.username }),
-      el('div.bi-role', { text: (user.roles || []).map((r) => t('role.' + r)).join(', ') })
-    ),
+    }, el('img', { src: '/assets/command-brand-v3.webp', alt: '' }), el('span', { text: 'ARK TRIBE HUB' })),
     el('button.tb-btn', {
       'aria-label': t('nav.notifications'),
       onclick: () => go('/notifications'),
@@ -182,42 +176,32 @@ function buildShell() {
 
   const content = el('main.content', { id: 'view' });
 
-  // Mobile Bottom-Nav: immer dieselben fünf Einträge, damit die Bedienung sich
-  // nicht je nach Rolle verschiebt. Wichtig: Das Profil bleibt immer erreichbar -
-  // dort hängen Sprache und Abmelden. Admin- und Plattformbereiche werden auf der
-  // Profilseite verlinkt, statt einen der fünf Plätze zu verdrängen.
-  // Mobile Leiste bewusst auf VIER feste Punkte begrenzt plus einen "Mehr"-Knopf.
-  // Vorher standen dort fünf Punkte mit langen deutschen Labels nebeneinander -
-  // auf schmalen Geräten wurde der letzte ("Mitteilungen") am rechten Rand
-  // abgeschnitten. Mit den neuen Modulen wären es zehn geworden, was gar nicht
-  // mehr in eine Zeile passt; alles Weitere liegt deshalb hinter "Mehr".
-  // Mobil bewusst nur DREI feste Punkte: Startseite, Neue Bestellung, Profil.
-  // Alles Weitere - inklusive "Offene Bestellungen" - liegt hinter "Mehr", damit
-  // unten nichts gedrängt wirkt.
-  const MOBIL_FEST = ['/', '/orders/new', '/profile'];
-  const bottomMain = MOBIL_FEST.map((p) => main.find((m) => m.path === p)).filter(Boolean);
-  const bottomExtra = [
-    ...main.filter((m) => !MOBIL_FEST.includes(m.path)),
-    ...tools, ...tribe, ...platform,
-  ];
+  // Mobile Tab-Leiste nach der freigegebenen Vorlage: Start, Bestellungen,
+  // Aufgaben, Chat und "Mehr". Ohne Tribe (Developer) gibt es Aufgaben/Chat
+  // nicht - dort stehen Neue Bestellung und Profil. Alles Weitere, inklusive
+  // Profil, Sprache und Abmelden, liegt hinter "Mehr".
+  const short = { '/': 'nav.short.home', '/orders': 'nav.short.orders', '/tasks': 'nav.short.tasks', '/chat': 'nav.short.chat' };
+  const MOBIL_FEST = user.tribeId ? ['/', '/orders', '/tasks', '/chat'] : ['/', '/orders/new', '/orders', '/profile'];
+  const everything = [...main, ...tools, ...tribe, ...platform].filter((item, i, all) => all.findIndex((x) => x.path === item.path) === i);
+  const bottomMain = MOBIL_FEST.map((p) => everything.find((m) => m.path === p)).filter(Boolean);
+  const bottomExtra = everything.filter((m) => !MOBIL_FEST.includes(m.path));
 
   const bottomLink = (item) => {
     const a = el('a', { href: '#' + item.path, dataset: { path: item.path } },
       uiIcon(item.icon, 'ico'),
-      el('span', { text: item.label })
+      el('span', { text: short[item.path] ? t(short[item.path]) : item.label })
     );
     const n = item.badge ? item.badge() : 0;
     if (n > 0) a.append(el('span.count', { text: String(n) }));
     return a;
   };
 
-  const moreBtn = el('button.more-btn', { type: 'button' },
+  const moreBtn = el('button.more-btn', { type: 'button', 'aria-haspopup': 'dialog' },
     uiIcon('dots-three', 'ico'),
     el('span', { text: t('nav.more') })
   );
-  // Ungelesene Mitteilungen liegen jetzt hinter "Mehr" - der Zähler muss deshalb
-  // auch am "Mehr"-Knopf auftauchen, sonst würde man sie auf dem Handy übersehen.
-  // Dasselbe gilt für Rufe des Tamagotchis.
+  // Ungelesene Mitteilungen und Rufe des Tamagotchis liegen mobil hinter "Mehr" -
+  // der Zähler gehört deshalb auch an den "Mehr"-Knopf.
   const moreCount = unreadCount + petCalls();
   if (moreCount > 0) moreBtn.append(el('span.count', { text: String(moreCount) }));
 
@@ -237,23 +221,38 @@ function buildShell() {
     },
       el('div.sheet.command-menu-panel', { role: 'dialog', 'aria-modal': 'true', 'aria-label': t('nav.more') },
         el('div.command-menu-brand', {},
-          el('img', { src: '/assets/command-brand-v3.webp', alt: 'ARK Tribe Hub' }),
+          avatar(user.username, { src: avatarSrc(user) }),
+          el('span.who-copy', {}, el('b', { text: user.username }), el('small', { text: [user.tribeName, roleText].filter(Boolean).join(' · ') })),
           el('button.command-menu-close', { type: 'button', 'aria-label': t('common.close'), onclick: closeMenu }, uiIcon('x'))
         ),
-        ...[...bottomMain, ...bottomExtra].map((item) =>
-          el('a.sheet-item', { href: '#' + item.path, onclick: () => sheet.remove() },
-            uiIcon(item.icon, 'ico'),
-            el('span', { text: item.label }),
-            item.badge && item.badge() > 0 ? el('span.count', { text: String(item.badge()) }) : null
+        el('div.command-menu-grid', {},
+          ...bottomExtra.map((item) =>
+            el('a.sheet-item', { href: '#' + item.path, onclick: () => sheet.remove() },
+              uiIcon(item.icon, 'ico'),
+              el('span', { text: item.label }),
+              item.badge && item.badge() > 0 ? el('span.count', { text: String(item.badge()) }) : null
+            )
           )
-        )
+        ),
+        el('div.command-menu-foot', {},
+          el('div.lang-switch', { role: 'group', 'aria-label': t('profile.language') },
+            ...LANGS.map((l) => el('button' + (getLang() === l.code ? '.on' : ''), {
+              type: 'button', text: l.code.toUpperCase(), 'aria-label': l.label,
+              onclick: () => { setLang(l.code); location.reload(); },
+            }))),
+          el('button.btn.sm.ghost', { type: 'button', onclick: () => { sheet.remove(); signOut(); } }, uiIcon('sign-out'), el('span', { text: t('auth.logout') }))
+        ),
+        el('nav.legal-links', { 'aria-label': t('footer.legal') },
+          el('a', { href: '/impressum.html', text: t('footer.imprint') }),
+          el('a', { href: '/datenschutz.html', text: t('footer.privacy') }),
+          el('a', { href: '/nutzungsbedingungen.html', text: t('footer.terms') }))
       )
     );
     document.getElementById('modal-root').append(sheet);
-    sheet.querySelector('button')?.focus();
+    sheet.querySelector('a,button')?.focus();
   });
 
-  const bottomnav = el('nav.bottomnav', {},
+  const bottomnav = el('nav.bottomnav', { 'aria-label': t('nav.more') },
     ...bottomMain.map(bottomLink),
     bottomExtra.length ? moreBtn : null
   );
@@ -263,13 +262,23 @@ function buildShell() {
   return content;
 }
 
+// Genau EIN Navigationspunkt ist aktiv: der mit dem laengsten passenden Pfad.
+// Vorher waren bei #/orders/new "Neue Bestellung" UND "Offene Bestellungen"
+// gleichzeitig markiert, weil beide mit /orders beginnen.
 function markActive(path) {
-  const base = '/' + (path.split('/')[1] || '');
-  document.querySelectorAll('[data-path]').forEach((a) => {
-    const p = a.dataset.path;
-    const isActive = p === path || (p !== '/' && base === p) || (p === '/' && path === '/');
-    a.classList.toggle('active', isActive);
-  });
+  const links = [...document.querySelectorAll('[data-path]')];
+  const matches = (p) => p === path || (p !== '/' && path.startsWith(p + '/'));
+  const best = links.map((a) => a.dataset.path).filter(matches).sort((a, b) => b.length - a.length)[0];
+  // Detailseiten gehoeren zu ihrer Liste - nicht zu einem Schwesterpunkt wie /orders/new.
+  const owner = best === '/orders/new' && path !== '/orders/new' ? '/orders' : best;
+  links.filter((a) => !a.closest('.bottomnav')).forEach((a) => a.classList.toggle('active', a.dataset.path === owner));
+  // Untere Leiste: der laengste passende Eintrag der Leiste selbst (z. B.
+  // /orders/new -> "Bestellungen"); sonst ist die Seite ueber "Mehr" erreicht.
+  const bottom = links.filter((a) => a.closest('.bottomnav'));
+  const bottomBest = bottom.map((a) => a.dataset.path).filter((p) => p === path || (p !== '/' && path.startsWith(p + '/'))).sort((a, b) => b.length - a.length)[0];
+  bottom.forEach((a) => a.classList.toggle('active', a.dataset.path === bottomBest));
+  const more = document.querySelector('.bottomnav .more-btn');
+  if (more) more.classList.toggle('active', !bottomBest);
 }
 
 /* -------------------------------------------------------------------------- */

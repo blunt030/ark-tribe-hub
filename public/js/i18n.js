@@ -1050,6 +1050,279 @@ Object.assign(STRINGS.es, {
   "voice.ready": "Listo para voice.", "voice.tap_to_hear": "Toca el botón para permitir el audio.", "voice.connected": "Audio conectado.", "voice.connection_problem": "La conexión de audio se interrumpió.", "voice.unsupported": "Este navegador no admite la tecnología de voz necesaria.", "voice.mic_request": "Solicitando acceso al micrófono …", "voice.joined_audio": "Micrófono activo. Conectando con los demás …", "voice.mic_denied": "No se permitió el micrófono.", "voice.audio_sub": "Salas de voz reales en el navegador para tu tribu.", "voice.turn_hint": "Voice usa conexiones directas. Aún hacen falta credenciales TURN para funcionar de forma fiable en todas las redes móviles y corporativas.", "voice.enable_audio": "Activar sonido", "voice.audio_enabled": "El sonido está activado.", "voice.turn_ready": "TURN listo", "voice.direct_only": "Solo conexión directa", "voice.waiting": "Micrófono activo. Esperando a otros participantes …", "voice.signal_failed": "No se pudo negociar la conexión de voz."
 });
 
+/* --- Redesign 27.09.2026: vollständige Member-Seiten ------------------- */
+const REDESIGN = {
+  de: {
+    'nav.short.home': 'Start', 'nav.short.orders': 'Bestellungen', 'nav.short.tasks': 'Aufgaben', 'nav.short.chat': 'Chat',
+    'page.orders.sub': 'Ressourcen teilen. Gemeinsam stärker.',
+    'page.new_order.sub': 'Wähle eine Kategorie und füge Details hinzu.',
+    'page.order.sub': 'Bestellung vom {date}',
+    'page.tasks.sub': 'Plane, verteile und erledige Aufgaben für den Tribe.',
+    'page.servers.sub': 'Entdecke die Welt, setze Markierungen und plane gemeinsam.',
+    'page.chat.sub': 'Der gemeinsame Kanal deines Tribes.',
+    'page.voice.sub': 'Sprachräume für deinen Tribe – direkt im Browser.',
+    'page.members.sub': 'Alle aktiven Mitglieder, Rollen und Beitrittsanfragen.',
+    'page.profile.sub': 'Deine Identität, Einstellungen und Sicherheit.',
+    'page.notifications.sub': 'Alles, was in deinem Tribe passiert ist.',
+    'page.alliances.sub': 'Allianzen, Freunde und Feinde auf eurem Server.',
+    'page.dinos.sub': 'Zuchtlinien und Stats deines Tribes.',
+    'dash.my_tasks': 'Meine Aufgaben', 'dash.overdue_n': 'Davon {n} überfällig', 'dash.none_overdue': 'Nichts überfällig',
+    'dash.orders_sub': 'Eier · Sättel · Strukturen', 'dash.urgent_sub': 'Benötigt Aufmerksamkeit', 'dash.alerts_sub': 'Neue Updates',
+    'dash.open_tasks': 'Offene Aufgaben', 'dash.done_pct': '{n} erledigt ({p} %)', 'dash.members_active': 'Aktive Mitglieder',
+    'dash.voice_active': 'Im Voice', 'dash.voice_none': 'Niemand im Voice', 'dash.orders_open': 'Offene Bestellungen', 'dash.orders_free': '{n} noch ohne Bearbeiter',
+    'dash.requested_by': 'Gewünscht von', 'dash.issued_of': '{a} / {b} ausgegeben', 'dash.legend': 'Legende',
+    'dash.news': 'News', 'dash.last_activity': 'Letzte Aktivität', 'dash.all_messages': 'Alle Nachrichten', 'dash.show_all': 'Alle anzeigen',
+    'dash.details': 'Details anzeigen', 'dash.pending_requests': 'Beitrittsanfragen: {n}', 'dash.active_server': 'Aktiver Server / Map',
+    'dash.no_markers': 'Noch keine Markierungen gesetzt',
+    'orders.search_ph': 'Bestellungen durchsuchen …', 'orders.filter': 'Filter', 'orders.filter_prio': 'Priorität', 'orders.filter_type': 'Art',
+    'orders.filter_reset': 'Zurücksetzen', 'orders.quick_title': 'Neue Bestellung', 'orders.quick_sub': 'Wähle eine Kategorie und füge Details hinzu.',
+    'orders.none_filtered': 'Keine Bestellung passt zu Suche oder Filter.',
+    'order.cat.eggs': 'Eier', 'order.cat.embryos': 'Embryos', 'order.cat.saddles': 'Sättel', 'order.cat.structures': 'Strukturen', 'order.cat.other': 'Sonstiges',
+    'order.selected_title': 'Ausgewählte Positionen', 'order.qty_label': 'Gewünschte Menge', 'order.results_n': '{n} Einträge',
+    'order.more_results': '{shown} von {n} angezeigt – Suche nutzen, um einzugrenzen.', 'order.add': 'Hinzufügen', 'order.added': 'Ausgewählt', 'order.remove': 'Entfernen',
+    'order.summary_n': '{n} Positionen · {q} Stück', 'order.nothing_selected': 'Noch nichts ausgewählt. Wähle links einen Gegenstand aus.',
+    'order.filter_habitat': 'Lebensraum', 'order.filter_tier': 'Baustufe',
+    'order.progress': 'Fortschritt', 'order.responsible': 'Zuständig', 'order.requested_by': 'Gewünscht von', 'order.status_label': 'Status',
+    'order.item_actions': 'Status ändern', 'order.no_image': 'Noch kein Bild',
+    'task.more': 'Weitere Aktionen', 'task.unassigned': 'Nicht zugewiesen', 'task.overdue': 'Überfällig', 'task.no_due': 'Kein Termin',
+    'task.open_detail': 'Details öffnen', 'task.info': 'Aufgabe', 'task.form_sub': 'Titel, Zuständigkeit, Priorität und Termin festlegen.',
+    'srv.filter.base': 'Basis', 'srv.filter.resources': 'Ressourcen', 'srv.filter.danger': 'Gefahr', 'srv.filter.other': 'Sonstiges',
+    'srv.add_marker': 'Markierung hinzufügen', 'srv.tap_to_place': 'Auf die Karte klicken bzw. tippen, um eine Markierung zu setzen.',
+    'srv.select': 'Server wählen', 'srv.manage': 'Server verwalten', 'srv.marker_count': '{n} Markierungen',
+    'chat.today': 'heute', 'chat.yesterday': 'gestern', 'chat.attach_hint': 'Nur Text',
+    'voice.online_n': '{n} online', 'voice.sound_off': 'Ton aus', 'voice.sound_on': 'Ton an', 'voice.settings': 'Einstellungen',
+    'voice.channels': 'Sprachkanäle', 'voice.new_channel': 'Neuer Kanal', 'voice.you': 'Du', 'voice.muted': 'Stumm', 'voice.empty_slot': 'Frei',
+    'voice.network': 'Verbindung', 'voice.delete_channel': 'Kanal löschen',
+    'members.more': 'Aktionen', 'members.joined': 'Dabei seit {date}', 'members.grant_breeder': 'Breeder/Crafter-Rolle geben',
+    'members.revoke_breeder': 'Breeder/Crafter-Rolle entziehen', 'members.grant_admin': 'Admin-Rolle geben', 'members.revoke_admin': 'Admin-Rolle entziehen',
+    'members.you': 'Du', 'members.count': '{n} Mitglieder',
+    'profile.settings': 'Profil-Einstellungen', 'profile.change_image': 'Bild ändern', 'profile.security_settings': 'Sicherheit & Einstellungen',
+    'profile.readonly': 'Nur lesend', 'profile.more_areas': 'Weitere Bereiche', 'profile.notify_types': 'Benachrichtigungen',
+    'notif.open': 'Öffnen', 'notif.unread_n': '{n} ungelesen',
+    'common.more': 'Mehr', 'common.open': 'Öffnen', 'common.none': '—',
+  },
+  en: {
+    'nav.short.home': 'Home', 'nav.short.orders': 'Orders', 'nav.short.tasks': 'Tasks', 'nav.short.chat': 'Chat',
+    'page.orders.sub': 'Share resources. Stronger together.', 'page.new_order.sub': 'Pick a category and add the details.',
+    'page.order.sub': 'Order from {date}', 'page.tasks.sub': 'Plan, assign and finish tasks for the tribe.',
+    'page.servers.sub': 'Explore the world, set markers and plan together.', 'page.chat.sub': 'Your tribe’s shared channel.',
+    'page.voice.sub': 'Voice rooms for your tribe – right in the browser.', 'page.members.sub': 'All active members, roles and join requests.',
+    'page.profile.sub': 'Your identity, settings and security.', 'page.notifications.sub': 'Everything that happened in your tribe.',
+    'page.alliances.sub': 'Allies, friends and enemies on your server.', 'page.dinos.sub': 'Your tribe’s breeding lines and stats.',
+    'dash.my_tasks': 'My tasks', 'dash.overdue_n': '{n} overdue', 'dash.none_overdue': 'Nothing overdue',
+    'dash.orders_sub': 'Eggs · saddles · structures', 'dash.urgent_sub': 'Needs attention', 'dash.alerts_sub': 'New updates',
+    'dash.open_tasks': 'Open tasks', 'dash.done_pct': '{n} done ({p} %)', 'dash.members_active': 'Active members',
+    'dash.voice_active': 'In voice', 'dash.voice_none': 'Nobody in voice', 'dash.orders_open': 'Open orders', 'dash.orders_free': '{n} without a handler',
+    'dash.requested_by': 'Requested by', 'dash.issued_of': '{a} / {b} issued', 'dash.legend': 'Legend',
+    'dash.news': 'News', 'dash.last_activity': 'Recent activity', 'dash.all_messages': 'All messages', 'dash.show_all': 'Show all',
+    'dash.details': 'Show details', 'dash.pending_requests': 'Join requests: {n}', 'dash.active_server': 'Active server / map', 'dash.no_markers': 'No markers yet',
+    'orders.search_ph': 'Search orders …', 'orders.filter': 'Filter', 'orders.filter_prio': 'Priority', 'orders.filter_type': 'Type',
+    'orders.filter_reset': 'Reset', 'orders.quick_title': 'New order', 'orders.quick_sub': 'Pick a category and add the details.',
+    'orders.none_filtered': 'No order matches the search or filter.',
+    'order.cat.eggs': 'Eggs', 'order.cat.embryos': 'Embryos', 'order.cat.saddles': 'Saddles', 'order.cat.structures': 'Structures', 'order.cat.other': 'Other',
+    'order.selected_title': 'Selected items', 'order.qty_label': 'Quantity', 'order.results_n': '{n} entries',
+    'order.more_results': '{shown} of {n} shown – use search to narrow down.', 'order.add': 'Add', 'order.added': 'Selected', 'order.remove': 'Remove',
+    'order.summary_n': '{n} items · {q} pieces', 'order.nothing_selected': 'Nothing selected yet. Pick an item on the left.',
+    'order.filter_habitat': 'Habitat', 'order.filter_tier': 'Tier',
+    'order.progress': 'Progress', 'order.responsible': 'Handler', 'order.requested_by': 'Requested by', 'order.status_label': 'Status',
+    'order.item_actions': 'Change status', 'order.no_image': 'No image yet',
+    'task.more': 'More actions', 'task.unassigned': 'Unassigned', 'task.overdue': 'Overdue', 'task.no_due': 'No due date',
+    'task.open_detail': 'Open details', 'task.info': 'Task', 'task.form_sub': 'Set title, assignee, priority and due date.',
+    'srv.filter.base': 'Base', 'srv.filter.resources': 'Resources', 'srv.filter.danger': 'Danger', 'srv.filter.other': 'Other',
+    'srv.add_marker': 'Add marker', 'srv.tap_to_place': 'Click or tap the map to place a marker.', 'srv.select': 'Choose server',
+    'srv.manage': 'Manage server', 'srv.marker_count': '{n} markers',
+    'chat.today': 'today', 'chat.yesterday': 'yesterday', 'chat.attach_hint': 'Text only',
+    'voice.online_n': '{n} online', 'voice.sound_off': 'Sound off', 'voice.sound_on': 'Sound on', 'voice.settings': 'Settings',
+    'voice.channels': 'Voice channels', 'voice.new_channel': 'New channel', 'voice.you': 'You', 'voice.muted': 'Muted', 'voice.empty_slot': 'Free',
+    'voice.network': 'Connection', 'voice.delete_channel': 'Delete channel',
+    'members.more': 'Actions', 'members.joined': 'Member since {date}', 'members.grant_breeder': 'Grant breeder/crafter role',
+    'members.revoke_breeder': 'Remove breeder/crafter role', 'members.grant_admin': 'Grant admin role', 'members.revoke_admin': 'Remove admin role',
+    'members.you': 'You', 'members.count': '{n} members',
+    'profile.settings': 'Profile settings', 'profile.change_image': 'Change picture', 'profile.security_settings': 'Security & settings',
+    'profile.readonly': 'Read only', 'profile.more_areas': 'More areas', 'profile.notify_types': 'Notifications',
+    'notif.open': 'Open', 'notif.unread_n': '{n} unread', 'common.more': 'More', 'common.open': 'Open', 'common.none': '—',
+  },
+  fr: {
+    'nav.short.home': 'Accueil', 'nav.short.orders': 'Commandes', 'nav.short.tasks': 'Tâches', 'nav.short.chat': 'Chat',
+    'page.orders.sub': 'Partager les ressources. Plus forts ensemble.', 'page.new_order.sub': 'Choisissez une catégorie et ajoutez les détails.',
+    'page.order.sub': 'Commande du {date}', 'page.tasks.sub': 'Planifiez, répartissez et terminez les tâches de la tribu.',
+    'page.servers.sub': 'Explorez le monde, placez des marqueurs et planifiez ensemble.', 'page.chat.sub': 'Le canal commun de votre tribu.',
+    'page.voice.sub': 'Salons vocaux pour votre tribu – directement dans le navigateur.', 'page.members.sub': 'Tous les membres actifs, rôles et demandes.',
+    'page.profile.sub': 'Votre identité, vos réglages et votre sécurité.', 'page.notifications.sub': 'Tout ce qui s’est passé dans votre tribu.',
+    'page.alliances.sub': 'Alliés, amis et ennemis sur votre serveur.', 'page.dinos.sub': 'Lignées et stats de votre tribu.',
+    'dash.my_tasks': 'Mes tâches', 'dash.overdue_n': 'Dont {n} en retard', 'dash.none_overdue': 'Aucun retard',
+    'dash.orders_sub': 'Œufs · selles · structures', 'dash.urgent_sub': 'Demande de l’attention', 'dash.alerts_sub': 'Nouveautés',
+    'dash.open_tasks': 'Tâches ouvertes', 'dash.done_pct': '{n} terminées ({p} %)', 'dash.members_active': 'Membres actifs',
+    'dash.voice_active': 'En vocal', 'dash.voice_none': 'Personne en vocal', 'dash.orders_open': 'Commandes ouvertes', 'dash.orders_free': '{n} sans responsable',
+    'dash.requested_by': 'Demandé par', 'dash.issued_of': '{a} / {b} remis', 'dash.legend': 'Légende',
+    'dash.news': 'Actus', 'dash.last_activity': 'Activité récente', 'dash.all_messages': 'Tous les messages', 'dash.show_all': 'Tout afficher',
+    'dash.details': 'Voir les détails', 'dash.pending_requests': 'Demandes d’adhésion : {n}', 'dash.active_server': 'Serveur / carte actif', 'dash.no_markers': 'Aucun marqueur',
+    'orders.search_ph': 'Rechercher des commandes …', 'orders.filter': 'Filtre', 'orders.filter_prio': 'Priorité', 'orders.filter_type': 'Type',
+    'orders.filter_reset': 'Réinitialiser', 'orders.quick_title': 'Nouvelle commande', 'orders.quick_sub': 'Choisissez une catégorie et ajoutez les détails.',
+    'orders.none_filtered': 'Aucune commande ne correspond.',
+    'order.cat.eggs': 'Œufs', 'order.cat.embryos': 'Embryons', 'order.cat.saddles': 'Selles', 'order.cat.structures': 'Structures', 'order.cat.other': 'Divers',
+    'order.selected_title': 'Articles choisis', 'order.qty_label': 'Quantité', 'order.results_n': '{n} entrées',
+    'order.more_results': '{shown} sur {n} affichés – utilisez la recherche.', 'order.add': 'Ajouter', 'order.added': 'Choisi', 'order.remove': 'Retirer',
+    'order.summary_n': '{n} articles · {q} pièces', 'order.nothing_selected': 'Rien de choisi. Sélectionnez un article à gauche.',
+    'order.filter_habitat': 'Habitat', 'order.filter_tier': 'Niveau',
+    'order.progress': 'Progression', 'order.responsible': 'Responsable', 'order.requested_by': 'Demandé par', 'order.status_label': 'Statut',
+    'order.item_actions': 'Changer le statut', 'order.no_image': 'Pas encore d’image',
+    'task.more': 'Plus d’actions', 'task.unassigned': 'Non attribuée', 'task.overdue': 'En retard', 'task.no_due': 'Sans échéance',
+    'task.open_detail': 'Ouvrir', 'task.info': 'Tâche', 'task.form_sub': 'Titre, responsable, priorité et échéance.',
+    'srv.filter.base': 'Base', 'srv.filter.resources': 'Ressources', 'srv.filter.danger': 'Danger', 'srv.filter.other': 'Divers',
+    'srv.add_marker': 'Ajouter un marqueur', 'srv.tap_to_place': 'Cliquez ou touchez la carte pour placer un marqueur.', 'srv.select': 'Choisir le serveur',
+    'srv.manage': 'Gérer le serveur', 'srv.marker_count': '{n} marqueurs',
+    'chat.today': 'aujourd’hui', 'chat.yesterday': 'hier', 'chat.attach_hint': 'Texte seulement',
+    'voice.online_n': '{n} en ligne', 'voice.sound_off': 'Son coupé', 'voice.sound_on': 'Son activé', 'voice.settings': 'Réglages',
+    'voice.channels': 'Salons vocaux', 'voice.new_channel': 'Nouveau salon', 'voice.you': 'Vous', 'voice.muted': 'Muet', 'voice.empty_slot': 'Libre',
+    'voice.network': 'Connexion', 'voice.delete_channel': 'Supprimer le salon',
+    'members.more': 'Actions', 'members.joined': 'Membre depuis le {date}', 'members.grant_breeder': 'Donner le rôle breeder/crafter',
+    'members.revoke_breeder': 'Retirer le rôle breeder/crafter', 'members.grant_admin': 'Donner le rôle admin', 'members.revoke_admin': 'Retirer le rôle admin',
+    'members.you': 'Vous', 'members.count': '{n} membres',
+    'profile.settings': 'Réglages du profil', 'profile.change_image': 'Changer l’image', 'profile.security_settings': 'Sécurité et réglages',
+    'profile.readonly': 'Lecture seule', 'profile.more_areas': 'Autres espaces', 'profile.notify_types': 'Notifications',
+    'notif.open': 'Ouvrir', 'notif.unread_n': '{n} non lues', 'common.more': 'Plus', 'common.open': 'Ouvrir', 'common.none': '—',
+  },
+  es: {
+    'nav.short.home': 'Inicio', 'nav.short.orders': 'Pedidos', 'nav.short.tasks': 'Tareas', 'nav.short.chat': 'Chat',
+    'page.orders.sub': 'Compartir recursos. Más fuertes juntos.', 'page.new_order.sub': 'Elige una categoría y añade los detalles.',
+    'page.order.sub': 'Pedido del {date}', 'page.tasks.sub': 'Planifica, reparte y completa tareas de la tribu.',
+    'page.servers.sub': 'Explora el mundo, coloca marcadores y planificad juntos.', 'page.chat.sub': 'El canal común de tu tribu.',
+    'page.voice.sub': 'Salas de voz para tu tribu, directamente en el navegador.', 'page.members.sub': 'Todos los miembros activos, roles y solicitudes.',
+    'page.profile.sub': 'Tu identidad, ajustes y seguridad.', 'page.notifications.sub': 'Todo lo que ha pasado en tu tribu.',
+    'page.alliances.sub': 'Aliados, amigos y enemigos en vuestro servidor.', 'page.dinos.sub': 'Líneas de cría y stats de tu tribu.',
+    'dash.my_tasks': 'Mis tareas', 'dash.overdue_n': '{n} atrasadas', 'dash.none_overdue': 'Nada atrasado',
+    'dash.orders_sub': 'Huevos · sillas · estructuras', 'dash.urgent_sub': 'Requiere atención', 'dash.alerts_sub': 'Novedades',
+    'dash.open_tasks': 'Tareas abiertas', 'dash.done_pct': '{n} hechas ({p} %)', 'dash.members_active': 'Miembros activos',
+    'dash.voice_active': 'En voz', 'dash.voice_none': 'Nadie en voz', 'dash.orders_open': 'Pedidos abiertos', 'dash.orders_free': '{n} sin responsable',
+    'dash.requested_by': 'Pedido por', 'dash.issued_of': '{a} / {b} entregados', 'dash.legend': 'Leyenda',
+    'dash.news': 'Noticias', 'dash.last_activity': 'Actividad reciente', 'dash.all_messages': 'Todos los mensajes', 'dash.show_all': 'Ver todo',
+    'dash.details': 'Ver detalles', 'dash.pending_requests': 'Solicitudes: {n}', 'dash.active_server': 'Servidor / mapa activo', 'dash.no_markers': 'Aún no hay marcadores',
+    'orders.search_ph': 'Buscar pedidos …', 'orders.filter': 'Filtro', 'orders.filter_prio': 'Prioridad', 'orders.filter_type': 'Tipo',
+    'orders.filter_reset': 'Restablecer', 'orders.quick_title': 'Nuevo pedido', 'orders.quick_sub': 'Elige una categoría y añade los detalles.',
+    'orders.none_filtered': 'Ningún pedido coincide.',
+    'order.cat.eggs': 'Huevos', 'order.cat.embryos': 'Embriones', 'order.cat.saddles': 'Sillas', 'order.cat.structures': 'Estructuras', 'order.cat.other': 'Otros',
+    'order.selected_title': 'Artículos elegidos', 'order.qty_label': 'Cantidad', 'order.results_n': '{n} entradas',
+    'order.more_results': '{shown} de {n} – usa la búsqueda para acotar.', 'order.add': 'Añadir', 'order.added': 'Elegido', 'order.remove': 'Quitar',
+    'order.summary_n': '{n} artículos · {q} unidades', 'order.nothing_selected': 'Aún no hay nada. Elige un artículo a la izquierda.',
+    'order.filter_habitat': 'Hábitat', 'order.filter_tier': 'Nivel',
+    'order.progress': 'Progreso', 'order.responsible': 'Responsable', 'order.requested_by': 'Pedido por', 'order.status_label': 'Estado',
+    'order.item_actions': 'Cambiar estado', 'order.no_image': 'Aún sin imagen',
+    'task.more': 'Más acciones', 'task.unassigned': 'Sin asignar', 'task.overdue': 'Atrasada', 'task.no_due': 'Sin fecha',
+    'task.open_detail': 'Abrir', 'task.info': 'Tarea', 'task.form_sub': 'Título, responsable, prioridad y fecha.',
+    'srv.filter.base': 'Base', 'srv.filter.resources': 'Recursos', 'srv.filter.danger': 'Peligro', 'srv.filter.other': 'Otros',
+    'srv.add_marker': 'Añadir marcador', 'srv.tap_to_place': 'Haz clic o toca el mapa para colocar un marcador.', 'srv.select': 'Elegir servidor',
+    'srv.manage': 'Gestionar servidor', 'srv.marker_count': '{n} marcadores',
+    'chat.today': 'hoy', 'chat.yesterday': 'ayer', 'chat.attach_hint': 'Solo texto',
+    'voice.online_n': '{n} en línea', 'voice.sound_off': 'Sonido off', 'voice.sound_on': 'Sonido on', 'voice.settings': 'Ajustes',
+    'voice.channels': 'Canales de voz', 'voice.new_channel': 'Nuevo canal', 'voice.you': 'Tú', 'voice.muted': 'Silenciado', 'voice.empty_slot': 'Libre',
+    'voice.network': 'Conexión', 'voice.delete_channel': 'Eliminar canal',
+    'members.more': 'Acciones', 'members.joined': 'Miembro desde {date}', 'members.grant_breeder': 'Dar rol breeder/crafter',
+    'members.revoke_breeder': 'Quitar rol breeder/crafter', 'members.grant_admin': 'Dar rol admin', 'members.revoke_admin': 'Quitar rol admin',
+    'members.you': 'Tú', 'members.count': '{n} miembros',
+    'profile.settings': 'Ajustes del perfil', 'profile.change_image': 'Cambiar imagen', 'profile.security_settings': 'Seguridad y ajustes',
+    'profile.readonly': 'Solo lectura', 'profile.more_areas': 'Más áreas', 'profile.notify_types': 'Notificaciones',
+    'notif.open': 'Abrir', 'notif.unread_n': '{n} sin leer', 'common.more': 'Más', 'common.open': 'Abrir', 'common.none': '—',
+  },
+};
+for (const [code, values] of Object.entries(REDESIGN)) Object.assign(STRINGS[code], values);
+const REDESIGN2 = {
+  de: {
+    'role.breeder': 'Breeder', 'role.crafter': 'Crafter',
+    'members.admins': 'Admins', 'members.breeders': 'Breeder', 'members.crafters': 'Crafter', 'members.members_group': 'Mitglieder',
+    'members.grant_breeder': 'Breeder-Rolle geben', 'members.revoke_breeder': 'Breeder-Rolle entziehen',
+    'members.grant_crafter': 'Crafter-Rolle geben', 'members.revoke_crafter': 'Crafter-Rolle entziehen',
+    'members.legacy_role': 'Alte kombinierte Rolle – bitte Breeder oder Crafter vergeben', 'members.online': 'Online', 'members.offline': 'Offline',
+    'members.access': 'Vaults & PINs',
+    'vault.title': 'Vaults', 'vault.my': 'Mein Vault', 'vault.none': 'Dir ist noch kein Vault zugewiesen.',
+    'vault.pin': 'Vault-PIN', 'vault.pin_hint': 'Genau 4 Ziffern. Nur du kannst deinen PIN ändern; Admins sehen ihn in der Vault-Übersicht.',
+    'vault.pin_save': 'PIN speichern', 'vault.pin_generate': 'Zufälligen PIN erzeugen', 'vault.pin_show': 'PIN anzeigen', 'vault.pin_hide': 'PIN verbergen',
+    'vault.pin_saved': 'PIN gespeichert.', 'vault.pin_invalid': 'Der PIN muss genau 4 Ziffern haben.', 'vault.pin_none': 'Noch kein PIN gesetzt',
+    'vault.pin_generated': 'Neuer PIN: {pin}', 'vault.new': 'Neuer Vault', 'vault.name': 'Vault-Name / Nummer', 'vault.note': 'Notiz (z. B. Standort)',
+    'vault.assign': 'Zugewiesen an', 'vault.unassigned': 'Nicht vergeben', 'vault.create': 'Vault anlegen', 'vault.created': 'Vault angelegt.',
+    'vault.saved': 'Vault gespeichert.', 'vault.deleted': 'Vault gelöscht.', 'vault.delete_confirm': 'Vault {name} löschen?',
+    'vault.admin_hint': 'Lege Vaults an und weise sie Mitgliedern zu. Den PIN legt jedes Mitglied selbst im Profil fest – Admins können ihn nur einsehen.',
+    'vault.empty': 'Noch keine Vaults angelegt.', 'vault.count': '{n} Vaults', 'vault.free': '{n} frei', 'vault.assigned': '{n} vergeben',
+    'vault.pin_set': 'PIN gesetzt', 'vault.pin_missing': 'Kein PIN',
+    'chat.online_n': '{n} online', 'chat.offline_n': '{n} offline', 'chat.presence': 'Tribe-Mitglieder',
+    'dash.active_servers': 'Aktive Server', 'dash.your_server': 'Dein Server', 'dash.switch_server': 'Server wechseln', 'dash.markers_n': '{n} Markierungen',
+    'srv.featured': 'Ausgewählter Server', 'srv.all': 'Alle Server', 'srv.open_map': 'Karte öffnen', 'srv.active_n': '{n} aktiv', 'srv.inactive_n': '{n} inaktiv',
+    'srv.maps_n': '{n} Maps', 'srv.stats': 'Übersicht', 'srv.no_notes': 'Keine Notizen hinterlegt.',
+    'alliance.list_empty': 'Noch niemand eingetragen.', 'alliance.relations': 'Beziehungen',
+  },
+  en: {
+    'role.breeder': 'Breeder', 'role.crafter': 'Crafter',
+    'members.admins': 'Admins', 'members.breeders': 'Breeders', 'members.crafters': 'Crafters', 'members.members_group': 'Members',
+    'members.grant_breeder': 'Grant breeder role', 'members.revoke_breeder': 'Remove breeder role',
+    'members.grant_crafter': 'Grant crafter role', 'members.revoke_crafter': 'Remove crafter role',
+    'members.legacy_role': 'Old combined role – please assign breeder or crafter', 'members.online': 'Online', 'members.offline': 'Offline',
+    'members.access': 'Vaults & PINs',
+    'vault.title': 'Vaults', 'vault.my': 'My vault', 'vault.none': 'No vault assigned to you yet.',
+    'vault.pin': 'Vault PIN', 'vault.pin_hint': 'Exactly 4 digits. Only you can change your PIN; admins can see it in the vault overview.',
+    'vault.pin_save': 'Save PIN', 'vault.pin_generate': 'Generate random PIN', 'vault.pin_show': 'Show PIN', 'vault.pin_hide': 'Hide PIN',
+    'vault.pin_saved': 'PIN saved.', 'vault.pin_invalid': 'The PIN must be exactly 4 digits.', 'vault.pin_none': 'No PIN set yet',
+    'vault.pin_generated': 'New PIN: {pin}', 'vault.new': 'New vault', 'vault.name': 'Vault name / number', 'vault.note': 'Note (e.g. location)',
+    'vault.assign': 'Assigned to', 'vault.unassigned': 'Unassigned', 'vault.create': 'Create vault', 'vault.created': 'Vault created.',
+    'vault.saved': 'Vault saved.', 'vault.deleted': 'Vault deleted.', 'vault.delete_confirm': 'Delete vault {name}?',
+    'vault.admin_hint': 'Create vaults and assign them to members. Each member sets their own PIN in the profile – admins can only view it.',
+    'vault.empty': 'No vaults yet.', 'vault.count': '{n} vaults', 'vault.free': '{n} free', 'vault.assigned': '{n} assigned',
+    'vault.pin_set': 'PIN set', 'vault.pin_missing': 'No PIN',
+    'chat.online_n': '{n} online', 'chat.offline_n': '{n} offline', 'chat.presence': 'Tribe members',
+    'dash.active_servers': 'Active servers', 'dash.your_server': 'Your server', 'dash.switch_server': 'Switch server', 'dash.markers_n': '{n} markers',
+    'srv.featured': 'Selected server', 'srv.all': 'All servers', 'srv.open_map': 'Open map', 'srv.active_n': '{n} active', 'srv.inactive_n': '{n} inactive',
+    'srv.maps_n': '{n} maps', 'srv.stats': 'Overview', 'srv.no_notes': 'No notes yet.',
+    'alliance.list_empty': 'Nobody listed yet.', 'alliance.relations': 'Relations',
+  },
+  fr: {
+    'role.breeder': 'Breeder', 'role.crafter': 'Crafter',
+    'members.admins': 'Admins', 'members.breeders': 'Breeders', 'members.crafters': 'Crafters', 'members.members_group': 'Membres',
+    'members.grant_breeder': 'Donner le rôle breeder', 'members.revoke_breeder': 'Retirer le rôle breeder',
+    'members.grant_crafter': 'Donner le rôle crafter', 'members.revoke_crafter': 'Retirer le rôle crafter',
+    'members.legacy_role': 'Ancien rôle combiné – attribuez breeder ou crafter', 'members.online': 'En ligne', 'members.offline': 'Hors ligne',
+    'members.access': 'Coffres et PIN',
+    'vault.title': 'Coffres', 'vault.my': 'Mon coffre', 'vault.none': 'Aucun coffre ne vous est attribué.',
+    'vault.pin': 'PIN du coffre', 'vault.pin_hint': 'Exactement 4 chiffres. Vous seul pouvez le changer ; les admins peuvent le voir.',
+    'vault.pin_save': 'Enregistrer le PIN', 'vault.pin_generate': 'Générer un PIN', 'vault.pin_show': 'Afficher le PIN', 'vault.pin_hide': 'Masquer le PIN',
+    'vault.pin_saved': 'PIN enregistré.', 'vault.pin_invalid': 'Le PIN doit comporter exactement 4 chiffres.', 'vault.pin_none': 'Aucun PIN défini',
+    'vault.pin_generated': 'Nouveau PIN : {pin}', 'vault.new': 'Nouveau coffre', 'vault.name': 'Nom / numéro du coffre', 'vault.note': 'Note (ex. emplacement)',
+    'vault.assign': 'Attribué à', 'vault.unassigned': 'Non attribué', 'vault.create': 'Créer le coffre', 'vault.created': 'Coffre créé.',
+    'vault.saved': 'Coffre enregistré.', 'vault.deleted': 'Coffre supprimé.', 'vault.delete_confirm': 'Supprimer le coffre {name} ?',
+    'vault.admin_hint': 'Créez des coffres et attribuez-les. Chaque membre définit son PIN dans son profil – les admins peuvent seulement le voir.',
+    'vault.empty': 'Aucun coffre.', 'vault.count': '{n} coffres', 'vault.free': '{n} libres', 'vault.assigned': '{n} attribués',
+    'vault.pin_set': 'PIN défini', 'vault.pin_missing': 'Pas de PIN',
+    'chat.online_n': '{n} en ligne', 'chat.offline_n': '{n} hors ligne', 'chat.presence': 'Membres de la tribu',
+    'dash.active_servers': 'Serveurs actifs', 'dash.your_server': 'Votre serveur', 'dash.switch_server': 'Changer de serveur', 'dash.markers_n': '{n} marqueurs',
+    'srv.featured': 'Serveur sélectionné', 'srv.all': 'Tous les serveurs', 'srv.open_map': 'Ouvrir la carte', 'srv.active_n': '{n} actifs', 'srv.inactive_n': '{n} inactifs',
+    'srv.maps_n': '{n} cartes', 'srv.stats': 'Aperçu', 'srv.no_notes': 'Aucune note.',
+    'alliance.list_empty': 'Personne pour l’instant.', 'alliance.relations': 'Relations',
+  },
+  es: {
+    'role.breeder': 'Breeder', 'role.crafter': 'Crafter',
+    'members.admins': 'Admins', 'members.breeders': 'Breeders', 'members.crafters': 'Crafters', 'members.members_group': 'Miembros',
+    'members.grant_breeder': 'Dar rol breeder', 'members.revoke_breeder': 'Quitar rol breeder',
+    'members.grant_crafter': 'Dar rol crafter', 'members.revoke_crafter': 'Quitar rol crafter',
+    'members.legacy_role': 'Rol combinado antiguo: asigna breeder o crafter', 'members.online': 'En línea', 'members.offline': 'Desconectado',
+    'members.access': 'Bóvedas y PIN',
+    'vault.title': 'Bóvedas', 'vault.my': 'Mi bóveda', 'vault.none': 'Aún no tienes bóveda asignada.',
+    'vault.pin': 'PIN de la bóveda', 'vault.pin_hint': 'Exactamente 4 dígitos. Solo tú puedes cambiarlo; los admins pueden verlo.',
+    'vault.pin_save': 'Guardar PIN', 'vault.pin_generate': 'Generar PIN', 'vault.pin_show': 'Mostrar PIN', 'vault.pin_hide': 'Ocultar PIN',
+    'vault.pin_saved': 'PIN guardado.', 'vault.pin_invalid': 'El PIN debe tener exactamente 4 dígitos.', 'vault.pin_none': 'Sin PIN',
+    'vault.pin_generated': 'Nuevo PIN: {pin}', 'vault.new': 'Nueva bóveda', 'vault.name': 'Nombre / número', 'vault.note': 'Nota (p. ej. ubicación)',
+    'vault.assign': 'Asignada a', 'vault.unassigned': 'Sin asignar', 'vault.create': 'Crear bóveda', 'vault.created': 'Bóveda creada.',
+    'vault.saved': 'Bóveda guardada.', 'vault.deleted': 'Bóveda eliminada.', 'vault.delete_confirm': '¿Eliminar la bóveda {name}?',
+    'vault.admin_hint': 'Crea bóvedas y asígnalas. Cada miembro fija su PIN en el perfil; los admins solo pueden verlo.',
+    'vault.empty': 'Aún no hay bóvedas.', 'vault.count': '{n} bóvedas', 'vault.free': '{n} libres', 'vault.assigned': '{n} asignadas',
+    'vault.pin_set': 'PIN fijado', 'vault.pin_missing': 'Sin PIN',
+    'chat.online_n': '{n} en línea', 'chat.offline_n': '{n} desconectados', 'chat.presence': 'Miembros de la tribu',
+    'dash.active_servers': 'Servidores activos', 'dash.your_server': 'Tu servidor', 'dash.switch_server': 'Cambiar servidor', 'dash.markers_n': '{n} marcadores',
+    'srv.featured': 'Servidor seleccionado', 'srv.all': 'Todos los servidores', 'srv.open_map': 'Abrir mapa', 'srv.active_n': '{n} activos', 'srv.inactive_n': '{n} inactivos',
+    'srv.maps_n': '{n} mapas', 'srv.stats': 'Resumen', 'srv.no_notes': 'Sin notas.',
+    'alliance.list_empty': 'Nadie todavía.', 'alliance.relations': 'Relaciones',
+  },
+};
+for (const [code, values] of Object.entries(REDESIGN2)) Object.assign(STRINGS[code], values);
+
+
 // Dino-Tamagotchi: der Menüpunkt steht hier, alle weiteren Texte bringt
 // public/js/tamagotchi/texts.js über addStrings() mit.
 Object.assign(STRINGS.de, { 'nav.tamagotchi': 'Dino-Tamagotchi' });
@@ -1091,3 +1364,40 @@ export function timeAgo(iso) {
 }
 
 document.documentElement.lang = current;
+
+const LOCALES = { de: 'de-DE', en: 'en-GB', fr: 'fr-FR', es: 'es-ES' };
+function asDate(value) {
+  if (!value) return null;
+  // Reine Kalenderdaten ("2026-09-27") als lokalen Tag lesen, nicht als UTC.
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? new Date(value + 'T12:00:00') : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+/** Lokalisiertes, kurzes Datum: 27. Sep. 2026 / 27 Sept 2026 … */
+export function fmtDate(value) {
+  const d = asDate(value);
+  return d ? d.toLocaleDateString(LOCALES[current], { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+}
+/** Uhrzeit ohne Sekunden. */
+export function fmtTime(value) {
+  const d = asDate(value);
+  return d ? d.toLocaleTimeString(LOCALES[current], { hour: '2-digit', minute: '2-digit' }) : '';
+}
+/** "heute, 14:32" / "gestern, 13:15" / "24. Sep., 11:47" */
+export function fmtStamp(value) {
+  const d = asDate(value);
+  if (!d) return '';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const day = new Date(d); day.setHours(0, 0, 0, 0);
+  const diff = Math.round((today - day) / 864e5);
+  const prefix = diff === 0 ? t('chat.today') : diff === 1 ? t('chat.yesterday')
+    : d.toLocaleDateString(LOCALES[current], { day: 'numeric', month: 'short' });
+  return `${prefix}, ${fmtTime(d)}`;
+}
+/** Kalendertag vor heute? (fuer Faelligkeiten) */
+export function isPastDay(value) {
+  const d = asDate(value);
+  if (!d) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  return d < today;
+}

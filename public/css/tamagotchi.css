@@ -169,7 +169,8 @@
   scrollbar-width: none;
 }
 .tama-tabs::-webkit-scrollbar { display: none; }
-.tama-tab {
+/* Doppelte Klasse schlägt die globale Linkfarbe des Themes (.ark-theme a). */
+.tama-tab.tama-tab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -182,7 +183,7 @@
   white-space: nowrap;
   transition: color .15s ease, background .15s ease;
 }
-.tama-tab:hover { color: var(--t-text); text-decoration: none; background: rgba(255, 255, 255, .06); }
+.tama-tab.tama-tab:hover { color: var(--t-text); text-decoration: none; background: rgba(255, 255, 255, .06); }
 .tama-tab svg { width: 18px; height: 18px; flex: none; }
 .tama-tab small {
   padding: 1px 7px;
@@ -191,7 +192,7 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-.tama-tab.is-on {
+.tama-tab.tama-tab.is-on {
   color: var(--t-on-acc);
   background: linear-gradient(180deg, color-mix(in srgb, var(--t-acc) 82%, #fff), var(--t-acc));
   box-shadow: 0 6px 22px -4px color-mix(in srgb, var(--t-acc) 55%, transparent), inset 0 1px 0 rgba(255, 255, 255, .6);
@@ -1461,7 +1462,7 @@ button.tama-mode { flex-direction: column; gap: 2px; }
   .tama-hero { align-items: start; gap: 10px; }
   .tama-hero h1 { font-size: clamp(32px, 8.6vw, 46px); }
   .tama-tabs { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; width: 100%; }
-  .tama-tab { padding: 9px 8px; }
+  .tama-tab.tama-tab { padding: 9px 8px; }
   .tama-stats { gap: 8px; }
   .tama-stat { gap: 4px; padding: 12px; border-radius: 16px; }
   .tama-stat strong { font-size: 22px; }
@@ -1492,7 +1493,7 @@ button.tama-mode { flex-direction: column; gap: 2px; }
   .tama-ring { width: 100px; }
   .tama-meter { grid-template-columns: 78px minmax(0, 1fr) 44px; gap: 10px; }
   .tama-card { padding: 16px; }
-  .tama-tab { flex-direction: column; gap: 3px; padding: 7px 4px; font-size: 14px; }
+  .tama-tab.tama-tab { flex-direction: column; gap: 3px; padding: 7px 4px; font-size: 14px; }
   .tama-tab small { display: none; }
 }
 @media (max-width: 420px) {

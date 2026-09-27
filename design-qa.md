@@ -53,3 +53,37 @@ Der Gesamtvergleich zeigt Quelle und Anwendung gemeinsam bei identischen 1491 ×
 ## Freigegebene Entwürfe – nächste Umsetzungsetappe
 
 26.09.2026: Eigenes Werkstattpanorama für Unterseiten ergänzt. Profil in persönliche Daten links und aufklappbare Passwort-/E-Mail-Einstellungen rechts gegliedert; Desktop und 390px-Mobilansicht im Browser geprüft. Öffnen der Passwortsektion zeigt unverändert alle drei Eingaben. Nachweis: `docs/profile-approved.jpg`. Bestellungen mobil zweispaltig, redundante Einzelartikelzeile durch Mengenangabe ersetzt. Aufgaben nach Status gruppiert; Tastaturöffnung ergänzt. Drohnenillustration als Konzeptmotiv ergänzt. Desktop-Hero bewahrt das Seitenverhältnis seiner Bilddatei. 78 Tests bestanden. Diese Etappe ersetzt nicht die noch offene vollständige Katalogbebilderung und den echten Voice-Test.
+
+## Umsetzung freigegebene Vorlagen 01–04 – 27.09.2026
+
+**Quellen:** 01-Startseite-Zielvorlage, 02-Bestellungen-Desktop-und-Mobil, 03-Maps-und-Aufgaben, 04-Profil-Chat-Voice-Mitglieder.
+**Ausgangsstand:** main `ca3e6cb` (laut Render-API Deploy `dep-das4c760…` live).
+
+### Behobene Fehler
+1. Seitenleiste: zweites Emblem entfernt; Camp-Motiv ist reiner Hintergrund, Menüpunkte bleiben klickbar (Profil, Mitteilungen, Allianzen, Tier-Stats im Browser geklickt).
+2. Genau ein aktiver Menüpunkt (längster passender Pfad); mobil wird bei „Neue Bestellung“ „Bestellungen“ markiert.
+3. „Meine Aufgaben“ zählt überall dieselbe Menge; Tribe-Status zeigt „Offene Aufgaben“ (tribeweit) getrennt.
+4. Bestellfortschritt in Stück (ausgegebene Menge / Gesamtmenge) statt Positionen.
+5. Datums-/Zeitangaben lokalisiert (`fmtDate`, `fmtStamp`), Chat ohne Sekunden.
+
+### Gestaltung
+- Ein gemeinsames Theme (`command-center.css` neu geschrieben, alte Dashboard-/Karten-/Laufband-Regeln aus `app.css` entfernt).
+- Startseite: Hero 5:1 (Desktop ≈ 234 px bei 1440 px Breite), mobil 200 px mit Rex rechts; vier Kennzahlen; drei vollflächige Bestellkarten; Karte mit Markern, Legende, Kompass; Tribe-Status, Chat, letzte Aktivität (News dort statt Laufband).
+- Jede Unterseite hat ein eigenes Bildbanner (`public/assets/banners/`, Zuschnitte vorhandener Motive; Profil- und Mitteilungsbanner aus den freigegebenen Tafeln 04/02 zugeschnitten).
+- Bestellungen: Tabs mit Zählern, Suche, Filter, Karten mit Status oben links, Schnellleiste mit Kategorie-Kacheln; Neue Bestellung mit Bildkacheln, Unterfiltern, gleich hohen Artikelkacheln, −/+-Menge, Auswahlpanel, mobil Sticky-Leiste; Detail mit Bild, Status, Fortschritt, Zuständigkeit, Positionen, Kommentaren, ⋯-Menü.
+- Eier/Embryos zeigen Ei bzw. Embryo mit Tier-Abzeichen statt des Tiers; fehlende Motive als gestaltete Platzhalter.
+- Aufgaben: Statusgruppen, Themenbild, Initialen-Avatar, Datum mit Icon, Status-Pill, ⋯-Menü; Formular und Detail im selben Design.
+- Server & Maps: Server-Auswahl im Banner, Karte im exakten Seitenverhältnis (keine Verzerrung, Marker auf ±0,6 % gemessen), Filter, Legende, Kompass, Markerliste; „Server löschen“ im Verwaltungsmenü.
+- Chat kompakte Zeilen, einzeilige Eingabe mit Senden-Knopf; Voice mit Teilnehmer-Kreisen, Beitreten/Verlassen, Mikro, lokalem Ton-aus, Einstellungen; Mitglieder als Liste mit Rollen-Badges und ⋯-Menü; Profil mit Banner, Initialen-Avatar, Schaltern, einem Sicherheitsbereich.
+- Tier-Stats als Bildkarten, Detail mit Stat-Raster; Allianzen als Beziehungskarten.
+
+### Prüfung
+- Lokaler, isolierter Server mit temporärer SQLite-Datenbank und Beispieldaten (nur Scratchpad, keine Produktion).
+- Desktop 1440 × 900 und Mobil 390 × 844 im Browser aufgenommen; alle Member-Seiten, Detail- und Formularseiten; FR/ES stichprobenartig.
+- 36 automatisierte Bedienschritte (Navigation, Bestellung aufgeben, Menge, Kommentar, Suche/Filter, Chat, Aufgabe übernehmen, Kartenfilter/-klick, Profil-Schalter, Rollen-Menü, Voice-Steuerung, Mehr-Menü); 35 bestanden, 1 Rundungsabweichung (69,8 statt 70,0 % beim Testklick). Keine Konsolenfehler. Kein horizontaler Überlauf auf 14 mobilen Seiten.
+- `npm test`: 79 bestanden, 0 fehlgeschlagen (Strukturtests für Karte, Profil und Bestellbereiche auf die neue Gestaltung umgestellt, ein Regressionstest für die fünf Fehler ergänzt).
+
+### Grenzen
+- Keine erfundenen Online-Status, Lagerbestände oder Bestellfristen – die API liefert sie nicht („Noch X Tage“ entfällt daher).
+- Banner-Zuschnitte aus den Tafeln haben begrenzte Auflösung (Profil 938 px, Mitteilungen 628 px breit).
+- Katalogbilder weiterhin nicht vollständig (fehlende Motive als Platzhalter); echter Mehrgeräte-Voicetest mit Mikrofon steht aus.

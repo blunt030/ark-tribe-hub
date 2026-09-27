@@ -1,12 +1,19 @@
-import { el, spinner, emptyState, toast, confirmDialog, fileToBase64 } from '../ui.js';
+import { el, spinner, emptyState, toast, confirmDialog, fileToBase64, pageHead, pill, kebabMenu, tabBar, panel, emptyBlock } from '../ui.js';
+import { itemArt } from '../icons.js';
+import { uiIcon } from '../ui-icons.js';
 import { t } from '../i18n.js';
 import { api } from '../api.js';
 
 const STAT_KEYS = ['health', 'stamina', 'oxygen', 'food', 'weight', 'melee', 'movement_speed', 'torpor'];
 
 function statusBadge(status) {
-  const cls = status === 'active' ? 'completed' : status === 'breeding' ? 'issued' : status === 'reserve' ? 'role' : 'pending';
-  return el('span.badge.b-' + cls, { text: t('dino.status.' + status) });
+  const tone = status === 'active' ? 'done' : status === 'breeding' ? 'progress' : status === 'reserve' ? 'role' : 'muted';
+  return pill(t('dino.status.' + status), tone);
+}
+/** Bild eines Tiers: eigener Upload, sonst das passende Artenbild (falls vorhanden). */
+function dinoArt(d, className = '') {
+  const key = String(d.species || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  return itemArt({ key, product_type: 'creature', image_path: d.image_path || null }, { className });
 }
 
 /* ========================================================================== */
@@ -21,8 +28,8 @@ export async function renderDinos(mount, ctx) {
 
   let query = '';
   let statusFilter = null;
-  const listBox = el('div.list');
-  const search = el('input', { type: 'search', placeholder: t('dino.search_ph') });
+  const listBox = el('div.dino-grid');
+  const search = el('input', { type: 'search', placeholder: t('dino.search_ph'), 'aria-label': t('dino.search_ph') });
 
   function draw() {
     const filtered = dinos.filter(
@@ -33,51 +40,37 @@ export async function renderDinos(mount, ctx) {
     listBox.replaceChildren(
       ...(filtered.length
         ? filtered.map((d) =>
-            el('div.row', {
-              style: 'cursor:pointer',
+            el('article.dino-card', {
               onclick: () => go('/dinos/' + d.id),
-              role: 'button',
+              role: 'link',
               tabindex: '0',
               onkeydown: (e) => { if (e.key === 'Enter') go('/dinos/' + d.id); },
             },
-              d.image_path
-                ? el('img', { src: '/uploads/' + d.image_path, alt: '', style: 'width:40px;height:40px;object-fit:contain;border-radius:8px;flex:0 0 40px' })
-                : null,
-              el('div.grow', {},
-                el('div.rt', { text: `${d.name} (${d.species})` }),
-                el('div.rs', { text: [d.owner_name ? t('dino.breeder_name', { name: d.owner_name }) : null, statsSummary(d), d.server].filter(Boolean).join(' · ') })
-              ),
-              statusBadge(d.status)
+              el('div.dino-card-art', {}, dinoArt(d), statusBadge(d.status)),
+              el('div.dino-card-body', {},
+                el('h3', { text: d.name }),
+                el('small', { text: [d.species, d.level ? 'Lvl ' + d.level : null].filter(Boolean).join(' · ') }),
+                statsSummary(d) ? el('p.dino-card-stats', { text: statsSummary(d) }) : null,
+                d.owner_name ? el('small.dino-card-owner', {}, uiIcon('leaf'), el('span', { text: d.owner_name })) : null)
             )
           )
-        : [emptyState(t('dino.none'))])
+        : [emptyBlock('chart-bar', t('dino.none'))])
     );
   }
 
   search.addEventListener('input', () => { query = search.value.trim(); draw(); });
 
-  mount.replaceChildren();
-  mount.append(
-    el('div.page-head', {},
-      el('div', {}, el('h1', { text: t('dino.title') }), el('p', { text: t('dino.sub', { n: dinos.length }) })),
-      canEdit ? el('button.btn.primary', { text: '+ ' + t('dino.new'), onclick: () => go('/dinos/new') }) : null
-    ),
-    el('div.card', {}, search,
-      el('div.chips', { style: 'margin-top:12px' },
-        el('button.btn.sm.primary', { text: t('common.all'), onclick: (e) => { statusFilter = null; setActive(e); draw(); } }),
-        ...['active', 'breeding', 'paused', 'reserve'].map((s) =>
-          el('button.btn.sm', { text: t('dino.status.' + s), onclick: (e) => { statusFilter = s; setActive(e); draw(); } })
-        )
-      )
-    ),
-    el('div', { style: 'margin-top:16px' }, listBox)
+  mount.replaceChildren(
+    pageHead({
+      title: t('dino.title'), sub: t('dino.sub', { n: dinos.length }), icon: 'chart-bar',
+      actions: [canEdit ? el('button.btn.primary.lux', { type: 'button', onclick: () => go('/dinos/new') }, uiIcon('plus'), el('span', { text: t('dino.new') })) : null],
+    }),
+    el('div.task-toolbar', {},
+      tabBar([{ key: 'all', label: t('common.all') }, ...['active', 'breeding', 'paused', 'reserve'].map((st) => ({ key: st, label: t('dino.status.' + st), count: dinos.filter((d) => d.status === st).length }))],
+        'all', (key) => { statusFilter = key === 'all' ? null : key; draw(); }),
+      el('div.search-field', {}, uiIcon('magnifying-glass'), search)),
+    listBox
   );
-
-  function setActive(e) {
-    [...e.target.parentElement.children].forEach((b) => b.classList.remove('primary'));
-    e.target.classList.add('primary');
-  }
-
   draw();
 }
 
@@ -109,7 +102,8 @@ export async function renderDinoForm(mount, ctx, idParam) {
   const speciesList = el('datalist', { id: 'species-list' }, ...[...new Set(allDinos.map((x) => x.species))].map((s) => el('option', { value: s })));
   const sex = el('select', {}, ...['unknown', 'male', 'female'].map((s) => el('option', { value: s, text: t('dino.sex.' + s), selected: (d.sex || 'unknown') === s })));
   const level = el('input', { type: 'number', min: '1', value: d.level || '' });
-  const breeders = members.filter((m) => (m.roles || []).includes('breeder_crafter'));
+  // Zuchttiere gehoeren Breedern (bzw. Konten mit der alten kombinierten Rolle).
+  const breeders = members.filter((m) => { const r = m.roles || []; return r.includes('breeder') || (r.includes('breeder_crafter') && !r.includes('crafter')); });
   const owner = el('select', {}, el('option', { value: '', text: '—' }), ...breeders.map((m) => el('option', { value: m.id, text: m.username, selected: d.owner_id === m.id })));
   const server = el('input', { type: 'text', value: d.server || '' });
   const map = el('input', { type: 'text', value: d.map || '' });
@@ -131,7 +125,7 @@ export async function renderDinoForm(mount, ctx, idParam) {
     return el('div.field', {}, el('label', { text: t('dino.stat.' + k) }), inp);
   });
 
-  const submit = el('button.btn.primary.block', { text: editingId ? t('dino.save') : t('dino.create') });
+  const submit = el('button.btn.primary.lux', { type: 'button', text: editingId ? t('dino.save') : t('dino.create') });
 
   submit.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -165,34 +159,19 @@ export async function renderDinoForm(mount, ctx, idParam) {
     } catch (err) { toast(err.message, 'err'); submit.disabled = false; }
   });
 
+  const f = (key, input, cls = '') => el('div.field' + cls, {}, el('label', { text: t(key) }), input);
   mount.append(
-    el('div.page-head', {}, el('button.btn.sm', { text: '← ' + t('common.back'), onclick: () => go(editingId ? '/dinos/' + editingId : '/dinos') })),
-    el('h1', { text: editingId ? t('dino.edit') : t('dino.new') }),
+    pageHead({ title: editingId ? t('dino.edit') : t('dino.new'), icon: 'chart-bar', back: { onclick: () => go(editingId ? '/dinos/' + editingId : '/dinos') } }),
     speciesList,
-    el('div.card', {},
-      el('div.field', {}, el('label', { text: t('dino.name') }), name),
-      el('div.field', {}, el('label', { text: t('dino.species') }), species),
-      el('div.field', {}, el('label', { text: t('dino.sex_label') }), sex),
-      el('div.field', {}, el('label', { text: t('dino.level') }), level),
-      el('div.field', {}, el('label', { text: t('dino.breeder') }), owner),
-      el('div.field', {}, el('label', { text: t('dino.server') }), server),
-      el('div.field', {}, el('label', { text: t('dino.map') }), map),
-      el('div.field', {}, el('label', { text: t('dino.location') }), location),
-      el('div.field', {}, el('label', { text: t('dino.status_label') }), status)
-    ),
-    el('div.section-title', { style: 'margin-top:18px' }, t('dino.breeding')),
-    el('div.card', {},
-      el('div.field', {}, el('label', { text: t('dino.generation') }), generation),
-      el('div.field', {}, el('label', { text: t('dino.mutations_male') }), mutM),
-      el('div.field', {}, el('label', { text: t('dino.mutations_female') }), mutF),
-      el('div.field', {}, el('label', { text: t('dino.father') }), father),
-      el('div.field', {}, el('label', { text: t('dino.mother') }), mother)
-    ),
-    el('div.section-title', { style: 'margin-top:18px' }, t('dino.stats')),
-    el('div.card', {}, ...statFields),
-    el('div.section-title', { style: 'margin-top:18px' }, t('dino.notes')),
-    el('div.card', {}, notes),
-    el('div', { style: 'margin-top:18px' }, submit)
+    el('div.dino-form', {},
+      panel({ title: t('dino.title'), icon: 'paw-print' },
+        el('div.form-grid', {}, f('dino.name', name), f('dino.species', species), f('dino.sex_label', sex), f('dino.level', level),
+          f('dino.breeder', owner), f('dino.status_label', status), f('dino.server', server), f('dino.map', map), f('dino.location', location, '.span-2'))),
+      panel({ title: t('dino.breeding'), icon: 'egg' },
+        el('div.form-grid', {}, f('dino.generation', generation), el('div'), f('dino.mutations_male', mutM), f('dino.mutations_female', mutF), f('dino.father', father), f('dino.mother', mother))),
+      panel({ title: t('dino.stats'), icon: 'chart-bar' }, el('div.stat-form-grid', {}, ...statFields)),
+      panel({ title: t('dino.notes'), icon: 'clipboard-text' }, notes)),
+    el('div.form-actions', {}, el('button.btn.ghost', { type: 'button', text: t('common.cancel'), onclick: () => go(editingId ? '/dinos/' + editingId : '/dinos') }), submit)
   );
 }
 
@@ -214,90 +193,69 @@ export async function renderDinoDetail(mount, ctx, idParam) {
 
   mount.replaceChildren();
 
-  const avatarImg = el('img', {
-    src: data.image_path ? '/uploads/' + data.image_path : '',
-    alt: '',
-    style: `width:88px;height:88px;border-radius:12px;object-fit:cover;background:var(--raised);border:1px solid var(--line);${data.image_path ? '' : 'display:none'}`,
-  });
-  const fileInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', style: 'display:none' });
+  const artBox = el('div.dino-hero-art', {}, dinoArt(data), statusBadge(data.status));
+  const fileInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', hidden: true });
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files[0];
     if (!file) return;
     try {
       const base64 = await fileToBase64(file);
       const res = await api.uploadDinoImage(id, { imageBase64: base64, mimeType: file.type });
-      avatarImg.src = '/uploads/' + res.imagePath + '?v=' + Date.now();
-      avatarImg.style.display = '';
+      data.image_path = res.imagePath + '?v=' + Date.now();
+      artBox.replaceChildren(dinoArt(data), statusBadge(data.status));
       toast(t('dino.image_saved'));
     } catch (err) { toast(err.message, 'err'); }
   });
 
   const canDelete = user.roles.includes('admin') || user.roles.includes('developer');
   const canEdit = canDelete || user.roles.includes('breeder_crafter');
+  const fact = (label, value) => el('div.fact', {}, el('dt', { text: label }), el('dd', {}, value instanceof Node ? value : el('span', { text: String(value) })));
+  const statEntries = STAT_KEYS.filter((k) => data.stats && data.stats[k] != null);
 
   mount.append(
-    el('div.page-head', {}, el('button.btn.sm', { text: '← ' + t('common.back'), onclick: () => go('/dinos') })),
-    el('div.card', {},
-      el('div', { style: 'display:flex;gap:16px;align-items:center;flex-wrap:wrap' },
-        avatarImg,
-        el('div', { style: 'flex:1' },
-          el('div', { style: 'font-family:var(--ff-display);font-size:1.3rem;font-weight:700', text: data.name }),
-          el('div', { style: 'color:var(--muted)', text: data.species }),
-          el('div.chips', { style: 'margin-top:8px' }, statusBadge(data.status), data.level ? el('span.badge', { text: 'Lvl ' + data.level }) : null)
-        ),
-        canEdit ? el('button.btn.sm', { text: t('dino.image_upload'), onclick: () => fileInput.click() }) : null,
-        fileInput
-      )
-    ),
-    el('div.card', { style: 'margin-top:14px' },
-      infoRow(t('dino.breeder'), data.ownerName || '—'),
-      infoRow(t('dino.sex_label'), t('dino.sex.' + data.sex)),
-      infoRow(t('dino.server'), data.server || '—'),
-      infoRow(t('dino.map'), data.map || '—'),
-      infoRow(t('dino.location'), data.location || '—'),
-      infoRow(t('dino.generation'), data.generation ?? '—'),
-      infoRow(t('dino.mutations_male'), String(data.mutations_male || 0)),
-      infoRow(t('dino.mutations_female'), String(data.mutations_female || 0))
-    ),
-    // Bedingte Karten: NIE ein rohes null direkt an mount.append() übergeben - das
-    // native DOM-append() wandelt null/undefined-Argumente in den sichtbaren Text
-    // "null" um (anders als der eigene el()-Helfer, der Kinder korrekt filtert).
-    // Deshalb hier erst sammeln und mit .filter(Boolean) bereinigen.
-    ...[
-      (data.father || data.mother || data.children?.length)
-        ? el('div.card', { style: 'margin-top:14px' },
-            el('div.section-title', {}, t('dino.breeding')),
+    pageHead({
+      title: data.name, sub: [data.species, data.level ? 'Lvl ' + data.level : null].filter(Boolean).join(' · '), icon: 'chart-bar',
+      back: { onclick: () => go('/dinos') },
+      actions: [
+        canEdit ? el('button.btn', { type: 'button', onclick: () => go('/dinos/' + id + '/edit') }, uiIcon('pencil-simple'), el('span', { text: t('dino.edit') })) : null,
+        kebabMenu([
+          canEdit ? { label: t('dino.image_upload'), icon: 'image', onclick: () => fileInput.click() } : null,
+          canDelete ? { label: t('common.delete'), icon: 'trash', danger: true, onclick: async () => {
+            const ok = await confirmDialog({ title: t('dino.delete_confirm', { name: data.name }), danger: true });
+            if (!ok) return;
+            try { await api.deleteDino(id); toast(t('dino.deleted')); go('/dinos'); }
+            catch (err) { toast(err.message, 'err'); }
+          } } : null,
+        ]),
+      ],
+    }),
+    fileInput,
+    el('div.task-detail-grid', {},
+      el('div.task-detail-main', {},
+        el('section.dino-hero', {}, artBox,
+          el('div.dino-stat-grid', {}, ...(statEntries.length
+            ? statEntries.map((k) => el('div.dino-stat', {}, el('span', { text: t('dino.stat.' + k) }), el('strong', { text: String(data.stats[k]) })))
+            : [el('p.hint', { text: t('dino.stats') + ': —' })]))),
+        (data.father || data.mother || data.children?.length) ? panel({ title: t('dino.breeding'), icon: 'egg' },
+          el('dl.fact-list', {},
             ...[
-              data.father ? infoRow(t('dino.father'), linkTo(data.father, go)) : null,
-              data.mother ? infoRow(t('dino.mother'), linkTo(data.mother, go)) : null,
-              data.children?.length
-                ? infoRow(t('dino.children'), el('div.chips', {}, ...data.children.map((c) => el('button.btn.sm', { text: c.name, onclick: () => go('/dinos/' + c.id) }))))
-                : null,
-            ].filter(Boolean)
-          )
-        : null,
-      data.stats
-        ? el('div.card', { style: 'margin-top:14px' },
-            el('div.section-title', {}, t('dino.stats')),
-            ...STAT_KEYS.filter((k) => data.stats[k] != null).map((k) => infoRow(t('dino.stat.' + k), String(data.stats[k])))
-          )
-        : null,
-      data.notes ? el('div.card', { style: 'margin-top:14px' }, el('div.section-title', {}, t('dino.notes')), el('p', { text: data.notes })) : null,
-    ].filter(Boolean),
-    el('div.chips', { style: 'margin-top:18px' },
-      canEdit ? el('button.btn', { text: t('dino.edit'), onclick: () => go('/dinos/' + id + '/edit') }) : null,
-      canDelete
-        ? el('button.btn.danger', {
-            text: t('common.delete'),
-            onclick: async () => {
-              const ok = await confirmDialog({ title: t('dino.delete_confirm', { name: data.name }), danger: true });
-              if (!ok) return;
-              try { await api.deleteDino(id); toast(t('dino.deleted')); go('/dinos'); }
-              catch (err) { toast(err.message, 'err'); }
-            },
-          })
-        : null
-    )
+              data.father ? fact(t('dino.father'), linkTo(data.father, go)) : null,
+              data.mother ? fact(t('dino.mother'), linkTo(data.mother, go)) : null,
+              data.children?.length ? fact(t('dino.children'), el('div.chips', {}, ...data.children.map((c) => el('button.btn.sm', { type: 'button', text: c.name, onclick: () => go('/dinos/' + c.id) })))) : null,
+            ].filter(Boolean))) : el('span', { hidden: true }),
+        data.notes ? panel({ title: t('dino.notes'), icon: 'clipboard-text' }, el('p', { text: data.notes })) : el('span', { hidden: true })),
+      el('aside.task-detail-side', {},
+        panel({ title: t('dino.title'), icon: 'info' },
+          el('dl.fact-list', {},
+            fact(t('dino.status_label'), statusBadge(data.status)),
+            fact(t('dino.breeder'), data.ownerName || data.owner_name || '—'),
+            fact(t('dino.sex_label'), t('dino.sex.' + data.sex)),
+            fact(t('dino.server'), data.server || '—'),
+            fact(t('dino.map'), data.map || '—'),
+            fact(t('dino.location'), data.location || '—'),
+            fact(t('dino.generation'), data.generation ?? '—'),
+            fact(t('dino.mutations_male'), String(data.mutations_male || 0)),
+            fact(t('dino.mutations_female'), String(data.mutations_female || 0))))))
   );
 }
 
@@ -306,11 +264,6 @@ function statsSummary(dino) {
   return entries.slice(0, 3).map(([key, value]) => `${t('dino.stat.' + key)} ${value}`).join(' · ');
 }
 
-function infoRow(label, value) {
-  const valueNode = value instanceof Node ? value : el('div.rt', { text: String(value) });
-  return el('div.row', {}, el('div.grow', {}, el('div.rs', { text: label }), value instanceof Node ? null : valueNode), value instanceof Node ? value : null);
-}
-
 function linkTo(ref, go) {
-  return el('button.btn.sm', { text: `${ref.name} (${ref.species})`, onclick: () => go('/dinos/' + ref.id) });
+  return el('button.btn.sm', { type: 'button', text: `${ref.name} (${ref.species})`, onclick: () => go('/dinos/' + ref.id) });
 }

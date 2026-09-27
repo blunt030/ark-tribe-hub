@@ -94,7 +94,7 @@ async function referenzenPruefen(db, tribeId, v, eigeneId = null) {
       `SELECT u.id FROM users u
        JOIN user_roles ur ON ur.user_id = u.id
        JOIN roles r ON r.id = ur.role_id
-       WHERE u.id = ? AND u.tribe_id = ? AND u.status = 'active' AND r.key = 'breeder_crafter'`,
+       WHERE u.id = ? AND u.tribe_id = ? AND u.status = 'active' AND r.key IN ('breeder_crafter','breeder')`,
       [v.ownerId, tribeId]
     );
     if (!owner) throw badRequest('Der ausgewählte Breeder gehört nicht als aktiver Breeder zu diesem Tribe');

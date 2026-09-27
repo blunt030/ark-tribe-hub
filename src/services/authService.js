@@ -15,7 +15,12 @@ export async function getUserRoles(db, userId) {
     `SELECT r.key FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = ?`,
     [userId]
   );
-  return rows.map((r) => r.key);
+  const keys = rows.map((r) => r.key);
+  // Breeder und Crafter sind getrennte Rollen, haben aber dieselben Rechte wie
+  // die bisherige kombinierte Rolle. Deshalb wird breeder_crafter hier als
+  // Berechtigung ergaenzt - alle bestehenden Pruefungen bleiben unveraendert.
+  if ((keys.includes('breeder') || keys.includes('crafter')) && !keys.includes('breeder_crafter')) keys.push('breeder_crafter');
+  return keys;
 }
 
 async function loadFullUser(db, userId) {
