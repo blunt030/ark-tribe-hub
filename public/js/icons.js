@@ -8,6 +8,7 @@ import { catalogRegion } from './catalog-regions.js';
  * Platzhalter zu zeigen.
  */
 const EXAKTE_BILDER = new Set([
+  'angler', 'araneo', 'achatina', 'ovis', 'equus', 'arthropluera',
   'thylacoleo', 'castoroides', 'dire_bear', 'woolly_rhino', 'sarco', 'dunkleosteus', 'plesiosaur', 'tusoteuthis', 'snow_owl', 'tapejara', 'dilophosaur',
   'carbonemys', 'stegosaurus', 'raptor', 'parasaur', 'mammoth', 'sabertooth', 'dodo',
   'rex', 'argentavis', 'giganotosaurus', 'brontosaurus', 'direwolf',
