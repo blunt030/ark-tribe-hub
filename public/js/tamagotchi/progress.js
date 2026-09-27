@@ -43,6 +43,18 @@ export const ENV = {
   minuteOfDay: (ms) => { const d = new Date(ms); return d.getHours() * 60 + d.getMinutes(); },
 };
 
+/**
+ * Einstellungen des Betreibers (Tamagotchi-Verwaltung): abgeschaltete
+ * Kalender-Events, Evolution-Wochenende, eigene Aktionen und Startguthaben.
+ * Ohne Server gelten die Standardwerte.
+ */
+const LIVE = { events: { off: [], weekend: true }, custom: [], startShards: 30 };
+export function setLive(next = {}) {
+  LIVE.events = { off: [], weekend: true, ...(next.events || {}) };
+  LIVE.custom = Array.isArray(next.custom) ? next.custom : [];
+  LIVE.startShards = Number.isInteger(next.startShards) ? next.startShards : 30;
+}
+
 export function dayNumber(key) {
   const [y, m, d] = String(key).split('-').map(Number);
   return Math.round(Date.UTC(y, m - 1, d) / E.DAY);
@@ -55,7 +67,7 @@ export function dayNumber(key) {
 export function newPlayer(seed = E.newSeed()) {
   return {
     seed: seed >>> 0,
-    shards: 30,
+    shards: LIVE.startShards,
     earned: 0,
     xp: 0,
     streak: 0,
@@ -109,11 +121,17 @@ export const itemCount = (doc, id) => doc.player?.inv?.[id] || 0;
 /* Events, Rang, Belohnungen                                                    */
 /* -------------------------------------------------------------------------- */
 
-/** Aktive Events am Tag von `now` (Saison-Event nach Kalender, Wochenend-Event). */
+/**
+ * Aktive Events am Tag von `now`: Saison-Event nach Kalender, Wochenend-Event
+ * und eigene Aktionen des Betreibers (mit Namen und Zeitraum).
+ */
 export function eventsAt(now, env = ENV) {
-  const md = env.dayKey(now).slice(5);
-  const list = EVENTS.filter((e) => (e.from <= e.to ? md >= e.from && md <= e.to : md >= e.from || md <= e.to));
-  if (WEEKEND_EVENT.days.includes(env.weekday(now))) list.push(WEEKEND_EVENT);
+  const day = env.dayKey(now);
+  const md = day.slice(5);
+  const off = new Set(LIVE.events.off || []);
+  const list = EVENTS.filter((e) => !off.has(e.id) && (e.from <= e.to ? md >= e.from && md <= e.to : md >= e.from || md <= e.to));
+  if (LIVE.events.weekend !== false && WEEKEND_EVENT.days.includes(env.weekday(now))) list.push(WEEKEND_EVENT);
+  for (const c of LIVE.custom) if (day >= c.from && day <= c.to) list.push({ id: c.id, name: c.name, mult: c.mult, custom: true });
   return list;
 }
 

@@ -4,14 +4,16 @@
  * Rangaufstiegen.
  */
 import { el } from '../ui.js';
-import { t } from '../i18n.js';
+import { t, getLang } from '../i18n.js';
 import * as P from './progress.js';
 import { ITEMS, DECOR, SHELLS, SLOTS, ACHIEVEMENTS } from './catalog.js';
 import { icon } from './scene.js';
 import { decorArt } from './props.js';
 import { petState, petNow, petAct, onPetChange } from './store.js';
 import { sfx } from './sound.js';
-import { svg, artImg, itemImg, shards, rankName, decorEffects, clock, rewardChips } from './common.js';
+import { svg, artImg, itemImg, shards, rankName, decorEffects, clock, rewardChips, creatureThumb } from './common.js';
+import { roster, nestSpecies, speciesAccess, priceOf, formatPrice, isNew } from './roster.js';
+import { openBuy } from './buy.js';
 
 function itemEffect(id) {
   const d = ITEMS[id];
@@ -122,11 +124,28 @@ export function shopPanel({ toast }) {
       return product({ art: el('span.tama-swatch.shell-' + shell + '.is-preview'), name: t('tama.shell.' + shell), desc: t('tama.shop.shell_desc'), price: owned ? null : def.price, lock, action });
     }).filter(Boolean);
 
-    const section = (key, iconName, list) => el('section.tama-shop-section', {},
+    const section = (key, iconName, list, hint = null) => el('section.tama-shop-section.is-' + key, {},
       el('h3.tama-card-title', {}, svg(icon(iconName)), el('span', { text: t('tama.shop.' + key) })),
+      hint ? el('p.tama-hint', { text: hint }) : null,
       el('div.tama-products', {}, list));
 
-    root.replaceChildren(head, dealCard, section('supplies', 'feed', items), section('decor', 'home', decor), section('shells', 'egg', shells));
+    // Tiere mit echtem Geld freischalten (nur wenn der Betreiber den Verkauf geöffnet hat)
+    const cfg = roster();
+    let creatures = null;
+    if (cfg.sale) {
+      const buyable = nestSpecies(doc).filter((sp) => speciesAccess(sp.key, doc) === 'buy');
+      const list = buyable.map((sp) => product({
+        art: creatureThumb(sp, { stage: 'adult', alt: sp.name }),
+        name: sp.name,
+        desc: `${t('tama.hab.' + sp.hab)} · ${t('tama.rarity.' + sp.rarity)}`,
+        note: isNew(sp.key) ? t('tama.access.new') : null,
+        action: el('button.btn.sm.primary', { type: 'button', onclick: () => openBuy(sp) }, formatPrice(priceOf(sp.key), getLang())),
+        cls: 'is-creature',
+      }));
+      creatures = section('creatures', 'star', list.length ? list : [el('p.tama-muted', { text: t('tama.shop.creatures_none') })], t('tama.shop.creatures_hint'));
+    }
+
+    root.replaceChildren(...[head, creatures, dealCard, section('supplies', 'feed', items), section('decor', 'home', decor), section('shells', 'egg', shells)].filter(Boolean));
     tick();
   }
 
@@ -142,7 +161,10 @@ export function shopPanel({ toast }) {
     if (seen || Date.now() - born > 10_000) { off(); clearInterval(timer); }
     return true;
   };
-  const off = onPetChange((state, ev) => { if (!detached() && ['tick', 'load', 'conflict'].includes(ev?.type) && ev.notes?.some((n) => n.type === 'day')) draw(); });
+  const off = onPetChange((state, ev) => {
+    if (detached()) return;
+    if (['roster', 'gift', 'conflict', 'load'].includes(ev?.type) || (ev?.type === 'tick' && ev.notes?.some((n) => n.type === 'day'))) draw();
+  });
   const timer = setInterval(() => { if (!detached()) tick(); }, 1000);
   draw();
   return root;

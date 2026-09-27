@@ -10,6 +10,8 @@ import { creatureArt } from './art.js';
 import { foodArt, poopArt } from './scene.js';
 import { toDataUrl, fitViewBox } from './vdom.js';
 import { sfx, buzz } from './sound.js';
+import { artFor } from './roster.js';
+import { artFilter } from './real.js';
 
 function image(node) {
   const img = new Image();
@@ -19,16 +21,25 @@ function image(node) {
 }
 
 /**
- * Das Tier nach rechts und nach links blickend als Bild. Gespiegelt wird im SVG
- * selbst: Eine negative CSS- oder Canvas-Skalierung verdunkelt in Chromium das
- * 3D-Licht. Beide Bilder bekommen denselben, gespiegelten Ausschnitt.
+ * Das Tier nach rechts und nach links blickend als Bild. Gemalte Motive werden
+ * beim Zeichnen gespiegelt (flipLeft/flipRight). Die gezeichnete Grafik wird im
+ * SVG selbst gespiegelt: Eine negative CSS- oder Canvas-Skalierung verdunkelt in
+ * Chromium das 3D-Licht. Beide Bilder bekommen denselben, gespiegelten Ausschnitt.
  */
 function spritePair(sp, o) {
+  const art = artFor(sp.key);
+  if (art) return { right: art.src, left: art.src, flipRight: art.face === -1, flipLeft: art.face === 1, aspect: art.w / art.h, filter: artFilter(sp, o) };
   const right = fitViewBox(creatureArt(sp, o));
   const [x, y, w, hgt] = String(right.attrs.viewBox).split(' ').map(Number);
   const left = creatureArt(sp, { ...o, facing: -1 });
   left.attrs.viewBox = [200 - x - w, y, w, hgt].join(' ');
-  return [toDataUrl(right), toDataUrl(left)];
+  return { right: toDataUrl(right), left: toDataUrl(left), flipRight: false, flipLeft: false, aspect: w / hgt, filter: '' };
+}
+
+function showSprite(img, pair, look) {
+  img.src = look < 0 ? pair.left : pair.right;
+  img.classList.toggle('is-flip', look < 0 ? pair.flipLeft : pair.flipRight);
+  if (pair.filter) img.style.filter = pair.filter;
 }
 
 function fitCanvas(canvas) {
@@ -50,8 +61,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 function leftRight(host, { pet, sp, onEnd }) {
   const total = 5;
   let round = 0, hits = 0, busy = false, done = false;
-  const [lookRight, lookLeft] = spritePair(sp, { stage: pet.stage, variant: pet.variant, colors: pet.colors });
-  const sprite = el('img.game-lr-pet', { src: lookRight, alt: '' });
+  const pair = spritePair(sp, { stage: pet.stage, variant: pet.variant, colors: pet.colors });
+  const sprite = el('img.game-lr-pet', { alt: '' });
+  showSprite(sprite, pair, 1);
   const title = el('div.game-caption', { text: t('tama.game.guess', { name: pet.name }) });
   const score = el('div.game-score', { text: '' });
   const verdict = el('div.game-verdict', { 'aria-live': 'polite' });
@@ -71,7 +83,7 @@ function leftRight(host, { pet, sp, onEnd }) {
     sprite.classList.add('is-turning');
     await wait(280);
     sprite.classList.remove('is-turning');
-    sprite.src = look < 0 ? lookLeft : lookRight;
+    showSprite(sprite, pair, look);
     const ok = look === dir;
     if (ok) hits += 1;
     verdict.textContent = ok ? '✓' : '✗';
@@ -81,7 +93,7 @@ function leftRight(host, { pet, sp, onEnd }) {
     update();
     await wait(650);
     verdict.textContent = '';
-    sprite.src = lookRight;
+    showSprite(sprite, pair, 1);
     busy = false;
     if (round >= total || hits >= 3 || round - hits > 2) {
       done = true;
@@ -109,9 +121,12 @@ function catchGame(host, { pet, sp, food, onEnd }) {
   const hud = el('div.game-hud', {});
   host.replaceChildren(canvas, hud, el('div.game-hint', { text: t('tama.game.controls_catch') }));
   const ctx = fitCanvas(canvas);
-  const [petRight, petLeft] = spritePair(sp, { stage: pet.stage === 'egg' ? 'baby' : pet.stage, variant: pet.variant, colors: pet.colors });
-  const petImg = image(petRight);
-  const petImgLeft = image(petLeft);
+  const pair = spritePair(sp, { stage: pet.stage === 'egg' ? 'baby' : pet.stage, variant: pet.variant, colors: pet.colors });
+  const petImg = image(pair.right);
+  const petImgLeft = pair.left === pair.right ? petImg : image(pair.left);
+  // Gemalte Motive sind breiter als hoch: in ein 76er-Feld einpassen, Füße unten
+  const spriteW = pair.aspect >= 1 ? 76 : 76 * pair.aspect;
+  const spriteH = pair.aspect >= 1 ? 76 / pair.aspect : 76;
   const goodImg = image(foodArt(food));
   const bonusImg = image(foodArt('kibble'));
   const badImg = image(poopArt());
@@ -156,7 +171,9 @@ function catchGame(host, { pet, sp, food, onEnd }) {
     ctx.save();
     ctx.globalAlpha = hurt ? 0.55 : 1;
     ctx.translate(x, 206);
-    ctx.drawImage(facing < 0 ? petImgLeft : petImg, -38, -64, 76, 76);
+    if (facing < 0 ? pair.flipLeft : pair.flipRight) ctx.scale(-1, 1);
+    if (pair.filter && 'filter' in ctx) ctx.filter = pair.filter;
+    ctx.drawImage(facing < 0 ? petImgLeft : petImg, -spriteW / 2, 12 - spriteH, spriteW, spriteH);
     ctx.restore();
     const left = Math.max(0, Math.ceil((DURATION - elapsed) / 1000));
     hud.textContent = `${t('tama.game.score', { n: score })} · ${left}s`;
@@ -272,7 +289,8 @@ export function whistleGame(host, { pet, sp, steps = 4, onEnd }) {
   const KEYS = ['a', 'b', 'c'];
   const seq = Array.from({ length: steps }, () => KEYS[Math.floor(Math.random() * 3)]);
   const pads = KEYS.map((k, i) => el('button.game-pad.is-' + k, { type: 'button', 'aria-label': t('tama.game.pad_' + k), onclick: () => input(k) }, el('span', { text: ['♪', '♫', '♬'][i] })));
-  const sprite = el('img.game-whistle-pet', { src: toDataUrl(fitViewBox(creatureArt(sp, { stage: pet.stage === 'egg' ? 'baby' : pet.stage, variant: pet.variant, colors: pet.colors }))), alt: '' });
+  const sprite = el('img.game-whistle-pet', { alt: '' });
+  showSprite(sprite, spritePair(sp, { stage: pet.stage === 'egg' ? 'baby' : pet.stage, variant: pet.variant, colors: pet.colors }), 1);
   const caption = el('div.game-caption', { text: t('tama.game.whistle_watch', { name: pet.name }) });
   const score = el('div.game-score');
   const verdict = el('div.game-verdict', { 'aria-live': 'polite' });

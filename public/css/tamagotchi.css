@@ -2345,3 +2345,385 @@ a.tama-stat-pill:hover { border-color: color-mix(in srgb, var(--t-acc) 60%, tran
   }
   .tama-sweep { display: none; }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Echte Bilder: Karten-Landschaft, gemalte Kulissen, Nest und Brutkapsel        */
+/* -------------------------------------------------------------------------- */
+
+.tama-land, .tama-nest { position: absolute; inset: 0; overflow: hidden; background: #0b1420; }
+.tama-land-sky, .tama-land-ground, .tama-land-haze, .tama-land-fx, .tama-land-tint { position: absolute; pointer-events: none; }
+
+/* Stil „Karte“: Ausschnitt einer ARK-Karte als schräger Boden, gemalter Himmel darüber */
+.tama-land-sky { inset: 0; background-repeat: no-repeat; }
+.tama-land-ground {
+  left: -80%;
+  right: -80%;
+  bottom: -4%;
+  height: 230%;
+  background-repeat: no-repeat;
+  transform-origin: 50% 100%;
+  transform: perspective(95cqw) rotateX(62deg);
+  -webkit-mask-image: linear-gradient(0deg, #000 54%, transparent 88%);
+  mask-image: linear-gradient(0deg, #000 54%, transparent 88%);
+  transition: filter .8s ease;
+}
+.tama-land-haze { left: 0; right: 0; top: 24%; height: 40%; background: linear-gradient(180deg, transparent, var(--haze, rgba(215, 235, 250, .42)) 50%, transparent); }
+.tama-land-tint, .tama-land-fx { inset: 0; }
+.tama-land.is-map .tama-land-tint { background: linear-gradient(0deg, rgba(0, 0, 0, .3), transparent 26%), radial-gradient(125% 95% at 50% 40%, transparent 62%, rgba(0, 0, 0, .32)); }
+
+/* Tageszeit */
+.tama-land.phase-dawn { --haze: rgba(150, 128, 150, .38); }
+.tama-land.phase-dawn .tama-land-ground { filter: brightness(.74) saturate(.9); }
+.tama-land.phase-dusk { --haze: rgba(255, 168, 118, .36); }
+.tama-land.phase-dusk .tama-land-ground { filter: brightness(.78) sepia(.24) saturate(1.1); }
+.tama-land.phase-night { --haze: rgba(38, 58, 112, .42); }
+.tama-land.phase-night .tama-land-ground { filter: brightness(.36) saturate(.7) hue-rotate(8deg); }
+.tama-land.is-map.phase-night .tama-land-tint { background: linear-gradient(0deg, rgba(0, 0, 10, .42), rgba(6, 12, 40, .18) 40%, transparent 70%), radial-gradient(125% 95% at 50% 40%, transparent 55%, rgba(0, 0, 20, .45)); }
+.tama-lcd:has(.phase-night):not(:has(.tama-dark.is-on)) .tama-pet-flip { filter: brightness(.76) saturate(.86); }
+.tama-lcd:has(.phase-dusk):not(:has(.tama-dark.is-on)) .tama-pet-flip { filter: brightness(.94) sepia(.08); }
+
+/* Lebensräume: Schnee, Glut, Höhlenlicht, Hitze, Sumpfnebel */
+.tama-land.biome-snow .tama-land-fx {
+  background-image:
+    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, .95) 0 .45cqw, transparent .6cqw),
+    radial-gradient(circle at 65% 40%, rgba(255, 255, 255, .8) 0 .35cqw, transparent .5cqw),
+    radial-gradient(circle at 40% 75%, rgba(255, 255, 255, .9) 0 .4cqw, transparent .55cqw),
+    radial-gradient(circle at 85% 85%, rgba(255, 255, 255, .7) 0 .3cqw, transparent .45cqw);
+  background-size: 26cqw 26cqw;
+  animation: tama-snowfall 8s linear infinite;
+}
+.tama-land.biome-volcano .tama-land-tint { background: radial-gradient(120% 60% at 50% 115%, rgba(255, 92, 24, .38), transparent 62%), radial-gradient(125% 95% at 50% 40%, transparent 62%, rgba(0, 0, 0, .32)); }
+.tama-land.biome-volcano .tama-land-fx {
+  background-image:
+    radial-gradient(circle at 30% 70%, rgba(255, 176, 70, .95) 0 .3cqw, transparent .5cqw),
+    radial-gradient(circle at 72% 35%, rgba(255, 120, 40, .9) 0 .25cqw, transparent .45cqw),
+    radial-gradient(circle at 52% 92%, rgba(255, 206, 96, .9) 0 .2cqw, transparent .4cqw);
+  background-size: 30cqw 30cqw;
+  animation: tama-embers 7s linear infinite;
+}
+.tama-land.biome-cave .tama-land-tint { background: radial-gradient(95% 85% at 50% 58%, transparent 38%, rgba(0, 4, 12, .6)); }
+.tama-land.biome-cave .tama-land-fx {
+  background-image: radial-gradient(circle at 25% 60%, rgba(120, 255, 230, .8) 0 .3cqw, transparent .55cqw), radial-gradient(circle at 75% 30%, rgba(160, 140, 255, .7) 0 .25cqw, transparent .5cqw);
+  background-size: 34cqw 34cqw;
+  animation: tama-spores 11s ease-in-out infinite alternate;
+}
+.tama-land.biome-desert .tama-land-haze { --haze: rgba(255, 214, 160, .45); }
+.tama-land.biome-swamp .tama-land-haze { --haze: rgba(150, 188, 142, .5); }
+.tama-land.biome-ocean .tama-land-haze { --haze: rgba(190, 230, 250, .42); }
+
+/* Stil „Gemälde“ */
+.tama-land-painting { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tama-land.is-painted.phase-night .tama-land-tint { background: rgba(6, 12, 36, .22); }
+
+/* Wasser vor Meerestieren (liegt über dem Tier, daher eigene Ebene) */
+.tama-water {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(150, 225, 245, .12) 0%, rgba(40, 130, 180, .3) 50%, rgba(10, 50, 95, .5) 100%);
+  -webkit-backdrop-filter: blur(1px) saturate(1.15);
+  backdrop-filter: blur(1px) saturate(1.15);
+}
+.tama-water-shine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -.5cqw;
+  height: 1.2cqw;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .85) 20%, rgba(255, 255, 255, .25) 45%, rgba(255, 255, 255, .8) 70%, transparent);
+  background-size: 200% 100%;
+  filter: blur(.25cqw);
+  animation: tama-shine 6s linear infinite;
+}
+.tama-land.phase-night .tama-water { background: linear-gradient(180deg, rgba(60, 110, 170, .16), rgba(10, 40, 90, .45) 45%, rgba(2, 14, 40, .7)); }
+
+/* Das Tier als gemaltes Bild */
+.tama-real-turn { position: relative; transition: transform .22s ease; filter: drop-shadow(0 1.1cqw .9cqw rgba(0, 0, 0, .45)); }
+.tama-pet-flip:not(.is-left) .tama-real-turn[data-face="-1"],
+.tama-pet-flip.is-left .tama-real-turn[data-face="1"] { transform: scaleX(-1); }
+.tama-real { position: relative; display: block; width: 100%; height: auto; transform-origin: 50% 96%; -webkit-user-drag: none; user-select: none; animation: tama-real-breathe 3.6s ease-in-out infinite; }
+.tama-real-turn::before { content: ''; position: absolute; inset: 14% 8% 4%; border-radius: 50%; pointer-events: none; opacity: 0; }
+.tama-real-turn.var-alpha::before { opacity: 1; background: radial-gradient(closest-side, rgba(255, 50, 50, .55), transparent); animation: tama-pulse 2.4s ease-in-out infinite; }
+.tama-real-turn.var-tek::before { opacity: 1; background: radial-gradient(closest-side, rgba(53, 215, 255, .5), transparent); animation: tama-pulse 2.2s ease-in-out infinite; }
+.tama-real-turn.var-loyal::before { opacity: .8; background: radial-gradient(closest-side, rgba(255, 211, 106, .35), transparent); }
+.tama-real-turn.var-alpha { filter: drop-shadow(0 1.1cqw .9cqw rgba(0, 0, 0, .45)) drop-shadow(0 0 .8cqw rgba(255, 60, 60, .75)); }
+.tama-real-turn.var-tek { filter: drop-shadow(0 1.1cqw .9cqw rgba(0, 0, 0, .45)) drop-shadow(0 0 .8cqw rgba(53, 215, 255, .8)); }
+.tama-pet.is-real { transition-property: left, bottom; }
+.tama-pet.is-walking .tama-real { animation: tama-real-step .42s ease-in-out infinite; }
+.tama-pet.is-walking.is-trot .tama-real { animation-duration: .3s; }
+.tama-pet.is-floating .tama-real { animation: tama-real-glide 3.2s ease-in-out infinite; }
+.tama-pet.is-swimming .tama-real { animation: tama-real-swim 3.4s ease-in-out infinite; }
+.tama-pet[data-mood="sleep"] .tama-real { animation: tama-real-breathe 5.5s ease-in-out infinite; }
+.tama-pet.expr-eat .tama-real { animation: tama-real-chomp .32s ease-in-out infinite; }
+.tama-pet.expr-refuse .tama-real { animation: tama-no .6s ease-in-out; }
+.tama-pet.expr-flinch .tama-real { animation: tama-shiver .12s linear infinite; }
+.tama-pet.expr-scolded .tama-real { animation: tama-squash .55s ease-out; }
+.tama-pet.expr-sad .tama-real { animation: tama-droop 1.2s ease-in-out both; }
+.tama-pet.expr-cuddle .tama-real { animation: tama-wiggle .5s ease-in-out infinite; }
+.tama-pet:is(.expr-cheer, .expr-poke) .tama-real { animation: tama-jump .5s ease-out 2; }
+.tama-pet.expr-poke .tama-real { animation-iteration-count: 1; }
+.tama-pet.is-dirty .tama-real-turn { filter: drop-shadow(0 1.1cqw .9cqw rgba(0, 0, 0, .45)) sepia(.28) saturate(.82) brightness(.92); }
+.tama-pet.is-nest { cursor: pointer; }
+.tama-pet.is-nest .tama-pet-flip { position: absolute; inset: 0; }
+
+/* Ei im gemalten Nest */
+.tama-nest-bg, .tama-nest-copy { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tama-nest-egg { position: absolute; inset: 0; animation: tama-egg-breathe 3.6s ease-in-out infinite; }
+.tama-nest-egg.is-close { animation: tama-egg-wobble 1.8s ease-in-out infinite; }
+.tama-nest-glow { position: absolute; border-radius: 50%; scale: 1.25; background: radial-gradient(closest-side, rgba(255, 214, 120, .6), rgba(255, 170, 60, .18) 70%, transparent); opacity: 0; transition: opacity .6s ease; }
+.tama-nest.cracks-2 .tama-nest-glow { opacity: .45; }
+.tama-nest.cracks-3 .tama-nest-glow { opacity: .9; animation: tama-pulse 1.6s ease-in-out infinite; }
+.tama-nest-crackbox { position: absolute; }
+.tama-nest-cracks { display: block; width: 100%; height: 100%; overflow: visible; }
+.tama-nest-cracks path { fill: none; stroke-linecap: round; stroke-linejoin: round; animation: tama-crack .6s ease-out; }
+.tama-nest-cracks .is-glow { stroke: rgba(255, 224, 150, .85); }
+.tama-nest-cracks .is-line { stroke: #2b1a0e; }
+.tama-lcd:has(.tama-pet.is-warming) .tama-nest-egg { animation: tama-egg-warm-real .7s ease-in-out; }
+.tama-lcd:has(.tama-pet.is-warming) .tama-nest-glow { opacity: 1; }
+.tama-nest.phase-dusk .tama-land-tint { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 150, 90, .16), rgba(60, 20, 40, .18)); }
+.tama-nest.phase-night .tama-land-tint, .tama-nest.phase-dawn .tama-land-tint { position: absolute; inset: 0; background: rgba(6, 12, 40, .5); }
+
+/* Brutkapsel für Säugetiere */
+.tama-capsule { position: absolute; aspect-ratio: 546 / 900; }
+.tama-capsule-img { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 1.4cqw 1.4cqw rgba(0, 0, 0, .55)); }
+.tama-capsule-glow { position: absolute; left: 14%; right: 14%; top: 20%; bottom: 24%; z-index: 1; border-radius: 50%; mix-blend-mode: screen; background: radial-gradient(closest-side, rgba(180, 150, 255, .55), transparent); animation: tama-pulse 2.6s ease-in-out infinite; }
+.tama-capsule-bubbles { position: absolute; inset: 22% 24% 28%; z-index: 1; overflow: hidden; border-radius: 40%; }
+.tama-capsule-bubbles i { position: absolute; bottom: 0; width: 1.3cqw; height: 1.3cqw; border-radius: 50%; border: 1px solid rgba(235, 240, 255, .75); opacity: 0; animation: tama-capsule-bubble 3.2s linear infinite; }
+.tama-capsule-bubbles i:nth-child(1) { left: 22%; }
+.tama-capsule-bubbles i:nth-child(2) { left: 55%; animation-delay: -1.1s; }
+.tama-capsule-bubbles i:nth-child(3) { left: 76%; animation-delay: -2.2s; }
+.tama-lcd:has(.tama-pet.is-warming) .tama-capsule-glow { animation: tama-egg-warm-real .7s ease-in-out; background: radial-gradient(closest-side, rgba(255, 200, 140, .7), transparent); }
+
+/* Was im Ei bzw. in der Kapsel heranwächst */
+.tama-inside {
+  position: absolute;
+  right: 5%;
+  bottom: 8%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, .34), rgba(14, 28, 44, .66) 72%);
+  border: .45cqw solid rgba(255, 255, 255, .6);
+  box-shadow: 0 1cqw 3cqw rgba(0, 0, 0, .45), inset 0 0 2cqw rgba(143, 227, 255, .35);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.tama-inside .tama-thumb { width: 84%; }
+
+.tama-hud-map { padding-left: 1.4cqw; border-left: 1px solid rgba(255, 255, 255, .4); font: 600 2.6cqw/1 var(--t-font); letter-spacing: .02em; opacity: .9; }
+
+/* Echte Motive in Karten, Rastern und Listen */
+.tama-thumb.is-real { filter: drop-shadow(0 .4rem .5rem rgba(0, 0, 0, .35)); }
+.tama-thumb.is-mirror { transform: scaleX(-1); }
+
+@keyframes tama-real-breathe { 0%, 100% { scale: 1 1; } 50% { scale: 1.006 1.016; } }
+@keyframes tama-real-step { 0%, 50%, 100% { translate: 0 0; rotate: 0deg; } 25% { translate: 0 -2.4%; rotate: -1.1deg; } 75% { translate: 0 -2.4%; rotate: 1.1deg; } }
+@keyframes tama-real-glide { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -4%; rotate: -1.5deg; } }
+@keyframes tama-real-swim { 0%, 100% { translate: 0 0; rotate: -1deg; } 50% { translate: 0 2.5%; rotate: 1.2deg; } }
+@keyframes tama-real-chomp { 0%, 100% { rotate: 0deg; scale: 1 1; } 50% { rotate: 1.6deg; scale: 1.01 .99; } }
+@keyframes tama-egg-breathe { 0%, 100% { scale: 1 1; } 50% { scale: 1.01 1.016; } }
+@keyframes tama-egg-wobble { 0%, 100% { rotate: 0deg; scale: 1.01; } 20% { rotate: -1.2deg; } 40% { rotate: 1deg; } 60% { rotate: -.6deg; } 80% { rotate: .4deg; } }
+@keyframes tama-egg-warm-real { 0%, 100% { scale: 1; } 40% { scale: 1.035 .975; } }
+@keyframes tama-capsule-bubble { 0% { translate: 0 0; opacity: 0; } 15% { opacity: .85; } 100% { translate: 0 -24cqw; opacity: 0; } }
+@keyframes tama-snowfall { from { background-position: 0 0, 0 0, 0 0, 0 0; } to { background-position: 3cqw 26cqw, -2cqw 26cqw, 1cqw 26cqw, -1cqw 26cqw; } }
+@keyframes tama-embers { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 2cqw -30cqw, -3cqw -30cqw, 1cqw -30cqw; } }
+@keyframes tama-spores { from { background-position: 0 0, 0 0; } to { background-position: 6cqw -8cqw, -5cqw 6cqw; } }
+@keyframes tama-shine { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Brutstation mit echten Motiven: Gratis/Preis-Kennzeichnung und Kauf */
+.tama-egg-stack.is-real { display: grid; place-items: center; }
+.tama-egg-stack.is-real > .tama-thumb { position: static; width: 94%; max-height: 100%; object-fit: contain; }
+.tama-egg-stack.is-big { width: 190px; height: 190px; }
+.tama-birth-badge {
+  position: absolute;
+  right: 1%;
+  bottom: 1%;
+  display: grid;
+  place-items: center;
+  width: 34%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .3), rgba(10, 24, 36, .78) 72%);
+  border: 2px solid rgba(255, 255, 255, .55);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .4);
+}
+.tama-birth-badge img { width: 62%; height: 62%; object-fit: contain; }
+.tama-tile-meta { flex-wrap: wrap; justify-content: center; }
+.tama-access { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.tama-access svg { width: 12px; height: 12px; }
+.tama-access.is-free { background: rgba(98, 255, 160, .14); color: #8ff0b4; }
+.tama-access.is-owned { background: color-mix(in srgb, var(--t-acc) 20%, transparent); color: var(--t-acc); }
+.tama-access.is-buy { background: rgba(255, 207, 90, .16); color: #ffd978; }
+.tama-access.is-soon { background: rgba(183, 196, 207, .12); color: var(--t-muted); }
+.tama-access.is-new { background: #ff5a8a; color: #fff; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.tama-tile.is-locked .tama-tile-art { filter: saturate(.55) brightness(.82); transition: filter .2s ease; }
+.tama-tile.is-locked:is(:hover, :focus-visible) .tama-tile-art { filter: none; }
+.tama-tile.is-unknown .tama-thumb.is-real { opacity: .6; filter: brightness(0) invert(.32) drop-shadow(0 0 1px rgba(170, 222, 255, .5)) !important; }
+.tama-filter.is-access { padding-left: 8px; border-left: 1px solid var(--t-line); }
+.tama-dex-hero.is-real { display: grid; place-items: center; }
+.tama-dex-hero.is-real > .tama-thumb { width: min(80%, 440px); max-height: 92%; object-fit: contain; }
+.tama-dex-hero.is-real .tama-birth-badge { right: 16px; bottom: 16px; width: 70px; }
+
+.tama-buy { display: grid; gap: 14px; }
+.tama-buy-hero {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: clamp(170px, 30vh, 250px);
+  overflow: hidden;
+  border-radius: 24px;
+  background: radial-gradient(75% 60% at 50% 88%, color-mix(in srgb, var(--b1, #2c8a5c) 75%, transparent), transparent 72%), linear-gradient(180deg, color-mix(in srgb, var(--b1, #2c8a5c) 30%, #0a1218), var(--b2, #0b2a22));
+}
+.tama-buy-hero > .tama-thumb { width: min(80%, 360px); max-height: 90%; object-fit: contain; }
+.tama-buy-egg { position: absolute; right: 14px; bottom: 14px; display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .3), rgba(10, 24, 36, .78) 72%); border: 2px solid rgba(255, 255, 255, .55); }
+.tama-buy-egg img { width: 62%; height: 62%; object-fit: contain; }
+.tama-buy-copy h3 { margin: 0 0 2px; font: 700 28px/1.1 var(--t-display); }
+.tama-buy-copy p { margin: 4px 0; }
+.tama-buy-price { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
+.tama-buy-price strong { color: #ffd978; font: 800 30px/1 var(--t-display); }
+.tama-buy-price small { color: var(--t-muted); font-size: 14px; }
+.tama-buy-consent { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--t-line); border-radius: 16px; background: rgba(255, 255, 255, .05); font-size: 14px; line-height: 1.45; cursor: pointer; }
+.tama-buy-consent input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--t-acc); }
+.tama-buy-legal, .tama-buy-note { margin: 0; color: var(--t-muted); font-size: 13px; }
+.tama-buy-legal a { color: var(--t-acc); }
+.tama-buy-note.is-error { color: #ff9a9a; }
+.btn.is-busy { opacity: .7; pointer-events: none; }
+/* Im Nest bzw. an der Brutkapsel keine Einrichtung davor */
+.tama-lcd.is-nest :is(.tama-decor, .tama-props) { display: none; }
+
+/* -------------------------------------------------------------------------- */
+/* Tamagotchi-Verwaltung (Developer)                                             */
+/* -------------------------------------------------------------------------- */
+
+.tadm-page { display: grid; gap: 16px; }
+.tadm-page .page-head { margin-bottom: 0; }
+.tadm-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.tadm-tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: var(--radius-sm); color: var(--muted); font: 600 .98rem/1 var(--ff-display); text-decoration: none; }
+.tadm-tab svg { width: 18px; height: 18px; }
+.tadm-tab:hover { color: var(--text); background: var(--raised); }
+.tadm-tab.is-on { color: #17130A; background: var(--gold); }
+.tadm-body { display: grid; gap: 16px; }
+.tadm-card { display: grid; gap: 12px; }
+.tadm-title { margin: 0; font: 700 1.25rem/1.2 var(--ff-display); }
+.tadm-sub { margin: 6px 0 0; font: 700 1rem/1.2 var(--ff-display); color: var(--muted); }
+.tadm-lead { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.5; }
+.tadm-muted { color: var(--faint); }
+.tadm-warn { margin: 0; color: #f0b44c; font-size: .86rem; }
+.tadm-block { display: block; color: var(--muted); }
+.tadm-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.tadm-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tadm-actions.is-sticky { position: sticky; bottom: 12px; z-index: 2; justify-content: flex-end; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(6px); }
+.tadm-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tadm-inline select { min-width: 200px; flex: 1; }
+.tadm-stats .stat .n { font-size: 1.6rem; }
+.tadm-top { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.tadm-top li { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--raised); }
+.tadm-top .tama-thumb { width: 56px; height: 40px; object-fit: contain; }
+.tadm-checks { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.tadm-check { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; }
+.tadm-check-ico { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-weight: 800; }
+.tadm-check.is-ok .tadm-check-ico { background: color-mix(in srgb, var(--st-available) 20%, transparent); color: var(--st-available); }
+.tadm-check.is-missing .tadm-check-ico { background: color-mix(in srgb, var(--red) 20%, transparent); color: #ff8080; }
+.tadm-check small { display: block; color: var(--muted); font-size: .82rem; }
+.tadm-steps { display: grid; gap: 8px; margin: 0; padding-left: 20px; line-height: 1.5; }
+.tadm-steps li::marker { color: var(--gold); font-weight: 700; }
+.tadm-code { display: block; margin: 6px 0; padding: 8px 10px; overflow-wrap: anywhere; border-radius: var(--radius-sm); background: #0b0e12; color: var(--gold); font-size: .85rem; }
+.tadm-events { display: block; margin-top: 6px; color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+
+/* Tiere */
+.tadm-counts { display: flex; flex-wrap: wrap; gap: 10px 16px; font-weight: 600; }
+.tadm-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tadm-toolbar input[type="search"] { flex: 1; min-width: 200px; }
+.tadm-seg { flex-wrap: wrap; }
+.tadm-species { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.tadm-sp { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.tadm-sp.is-free { border-color: color-mix(in srgb, var(--st-available) 45%, var(--line)); }
+.tadm-sp.is-buy { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); }
+.tadm-sp.is-off, .tadm-sp.is-noart { opacity: .72; }
+.tadm-sp-art { position: relative; display: grid; place-items: center; height: 120px; padding: 6px; border: 0; border-radius: var(--radius-sm); background: radial-gradient(80% 70% at 50% 80%, rgba(80, 140, 110, .35), transparent 70%), #0d1216; cursor: pointer; }
+.tadm-sp-art .tama-thumb { max-width: 100%; max-height: 108px; object-fit: contain; }
+.tadm-sp-art:hover { outline: 2px solid var(--gold); }
+.tadm-tag { position: absolute; top: 6px; left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--gold); color: #17130A; font-size: .7rem; font-weight: 700; }
+.tadm-sp-copy strong { display: block; font: 700 1.05rem/1.1 var(--ff-display); }
+.tadm-sp-copy small { color: var(--muted); font-size: .8rem; }
+.tadm-status { width: 100%; }
+.tadm-status button { flex: 1; padding: 6px 4px; font-size: .85rem; }
+.tadm-price { display: flex; align-items: center; gap: 6px; }
+.tadm-price span { color: var(--muted); font-weight: 700; }
+.tadm-price input { width: 100%; }
+
+/* Bild-Editor */
+.tadm-art { display: grid; gap: 14px; }
+.tadm-art-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; }
+.tadm-art-stage { display: grid; place-items: center; min-height: 220px; padding: 10px; border-radius: 16px; background: repeating-conic-gradient(rgba(255, 255, 255, .06) 0 25%, transparent 0 50%) 0 0 / 18px 18px, #0d1216; }
+.tadm-art-box { position: relative; width: 100%; max-height: 380px; cursor: crosshair; }
+.tadm-art-box img { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; pointer-events: none; }
+.tadm-art-empty { display: grid; justify-items: center; gap: 8px; color: var(--t-muted); }
+.tadm-art-empty svg { width: 48px; height: 48px; }
+.tadm-mark { position: absolute; width: 16px; height: 16px; translate: -50% -50%; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0, 0, 0, .5); pointer-events: none; }
+.tadm-mark.is-head { background: #ff3b3b; }
+.tadm-mark.is-mouth { background: #2f8bff; }
+.tadm-baseline { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed #62ff9a; pointer-events: none; }
+.tadm-field { display: grid; gap: 6px; margin-bottom: 12px; }
+.tadm-field > span { color: var(--t-muted); font-size: 14px; }
+.tadm-lcd { container-type: inline-size; }
+.tadm-lcd-screen { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 18px; background: #000; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+.tadm-lcd-screen .tama-land { position: absolute; inset: 0; }
+.tadm-lcd-pet { position: absolute; z-index: 2; filter: drop-shadow(0 1.1cqw .9cqw rgba(0, 0, 0, .45)); }
+.tadm-lcd-pet img { display: block; width: 100%; }
+.tadm-lcd-call { position: absolute; translate: -50% 0; display: grid; place-items: center; width: 7cqw; height: 7cqw; border-radius: 50%; background: #ff5a5a; color: #fff; font: 800 4.6cqw/1 var(--t-display); box-shadow: 0 0 0 .6cqw rgba(255, 255, 255, .8); }
+
+/* Tabellen */
+.tadm-table-wrap { overflow-x: auto; }
+.tadm-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.tadm-table th { padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font-weight: 600; text-align: left; white-space: nowrap; }
+.tadm-table td { padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); vertical-align: middle; }
+.tadm-num { text-align: right; font-variant-numeric: tabular-nums; }
+.tadm-badge { margin-right: 4px; }
+.tadm-badge.is-paid, .tadm-badge.is-purchase { color: var(--st-available); border-color: color-mix(in srgb, var(--st-available) 45%, transparent); }
+.tadm-badge.is-refunded, .tadm-badge.is-revoked, .tadm-badge.is-failed { color: #ff8080; border-color: color-mix(in srgb, var(--red) 45%, transparent); }
+.tadm-badge.is-gift { color: var(--gold); border-color: var(--gold-dim, #8a7424); }
+.tadm-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.tadm-pet { display: flex; align-items: center; gap: 8px; }
+.tadm-pet .tama-thumb { width: 54px; height: 38px; object-fit: contain; }
+.tadm-row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.tadm-table.is-players td { white-space: nowrap; }
+
+/* Spiel & Events, Geschenke */
+.tadm-switch { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); cursor: pointer; }
+.tadm-switch input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--gold); }
+.tadm-switch small { display: block; color: var(--muted); }
+.tadm-events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.tadm-event { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--raised); cursor: pointer; }
+.tadm-event input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--gold); }
+.tadm-event small { display: block; color: var(--muted); font-size: .8rem; }
+.tadm-custom-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: end; }
+.tadm-custom-form .field { margin: 0; }
+.tadm-mult { display: grid; gap: 5px; color: var(--muted); font-size: .86rem; }
+.tadm-gift-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 12px; }
+.tadm-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.tadm-item { display: grid; grid-template-columns: 32px 1fr 72px; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--raised); font-size: .88rem; }
+.tadm-item .tama-art { width: 32px; height: 32px; }
+.tadm-item input { width: 100%; padding: 4px 6px; }
+.tadm-grant { display: grid; gap: 12px; }
+
+@media (max-width: 760px) {
+  .tadm-art-grid { grid-template-columns: minmax(0, 1fr); }
+  .tadm-species { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .tadm-tab { padding: 8px 10px; }
+  .tadm-tab span { font-size: .9rem; }
+}
+/* Minispiele: gemalte Motive werden beim Blick in die andere Richtung gespiegelt */
+:is(.game-lr-pet, .game-whistle-pet).is-flip { scale: -1 1; }
+:is(.game-lr-pet, .game-whistle-pet) { object-fit: contain; }
+.tama-hud-chip { max-width: 24cqw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tama-hud-time { min-width: 0; }
+.tama-hud-map { max-width: 22cqw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Gemaltes Ei bzw. Brutkapsel in Karten: nach Höhe einpassen */
+:is(.tama-mini-art, .dash-tama-art) .tama-thumb.is-egg-art { width: auto; height: 80%; max-width: 72%; object-fit: contain; }

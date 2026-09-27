@@ -11,13 +11,16 @@ import * as E from './engine.js';
 import * as P from './progress.js';
 import { ITEMS, KIBBLE, TRICKS, TRICK_SESSIONS, ZONES, DECOR, SLOTS } from './catalog.js';
 import { creatureArt, FORMS } from './art.js';
-import { sceneArt, dayPhase, poopArt, foodArt, cryoArt, graveArt, icon, DIET_FOOD } from './scene.js';
+import { dayPhase, poopArt, foodArt, cryoArt, graveArt, icon, DIET_FOOD } from './scene.js';
+import { NEST_EGG, MAP_NAMES, landFor } from './artwork.js';
+import { artFor } from './roster.js';
+import { realPet, landscape, landscapeKey, nestScene, embryoScene, CAPSULE } from './real.js';
 import { eggArt, itemArt, decorArt, eventArt } from './props.js';
 import { h } from './vdom.js';
 import { petState, petNow, onPetChange, petAct, tickPet } from './store.js';
 import { sfx, buzz } from './sound.js';
 import { GAMES, whistleGame } from './games.js';
-import { BY_KEY, svg, dur, hhmm, requestText, itemImg, rewardChips, noteText, decorEffects, faceFor } from './common.js';
+import { BY_KEY, svg, dur, hhmm, requestText, itemImg, rewardChips, noteText, decorEffects, faceFor, eventShort } from './common.js';
 import { createHub } from './hub.js';
 import { openDropSheet, openLootSheet } from './daily.js';
 
@@ -144,8 +147,9 @@ export function createCare({ openNest, toast, go }) {
   const root = el('div.tama-care', {}, el('div.tama-device-col', {}, device, dock), hub.root);
 
   let stack = [], mode = null, stationSel = 0, game = null, busy = false;
-  let artKey = '', sceneKey = '', decoKey = '', eventKey = '', poopCount = -1, hudSig = '';
-  let anchors = { head: [120, 60], mouth: [150, 90], floating: false };
+  let artKey = '', sceneKey = '', decoKey = '', eventKey = '', poopCount = -1, hudSig = '', landName = '';
+  // Kopf und Maul als Anteile der Tierfläche (Blickrichtung rechts), Seitenverhältnis der Fläche
+  let anchors = { head: [0.59, 0.31], mouth: [0.73, 0.45], floating: false, swim: false, aspect: 1, svg: true };
   let facing = 1, walkEnd = 0, wanderTimer = 0, secondTimer = 0, lastCall = 0, destroyed = false;
 
   const pet = () => petState.doc?.pet || null;
@@ -168,7 +172,12 @@ export function createCare({ openNest, toast, go }) {
 
   /* ------------------------------ Bildschirm ------------------------------ */
 
-  function toPct([x, y]) { return [((x + 8) / 216) * 100, ((y + 8) / 216) * 100]; }
+  /** SVG-Koordinaten der gezeichneten Grafik (viewBox -8 … 208) als Anteil der Fläche. */
+  const fromSvg = ([x, y]) => [(x + 8) / 216, (y + 8) / 216];
+  const pctOf = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
+  /** Höhe der Tierfläche in Prozent der Bildschirmhöhe (Bildschirm 4:3). */
+  const boxHeight = () => pctOf(petBox.style.width, 50) * 4 / 3 / (anchors.aspect || 1);
+  const sceneStyle = () => (petState.doc?.settings?.scene === 'painted' ? 'painted' : 'map');
 
   function renderDecor() {
     const deco = player()?.deco || {};
@@ -193,14 +202,16 @@ export function createCare({ openNest, toast, go }) {
     const doc = petState.doc;
     const drop = P.dropReady(doc, now);
     const evs = P.eventsAt(now);
-    const sig = [minute, drop, evs.map((e) => e.id)].join('|');
+    const sig = [minute, drop, evs.map((e) => e.id), landName].join('|');
     if (sig === hudSig) return;
     hudSig = sig;
     const night = dayPhase(now) === 'night';
     hud.replaceChildren(
-      el('span.tama-hud-time', {}, svg(icon(night ? 'moon' : 'sun')), el('b', { text: hhmm(minute) })),
+      el('span.tama-hud-time', {}, svg(icon(night ? 'moon' : 'sun')), el('b', { text: hhmm(minute) }),
+        landName ? el('small.tama-hud-map', { text: landName }) : null),
       el('span.tama-hud-right', {},
-        ...evs.map((e) => el('span.tama-hud-chip.ev-' + e.id, { text: t('tama.event.' + e.id + '_short') })),
+        // Höchstens zwei Events, damit Uhrzeit und Kiste Platz behalten
+        ...evs.slice(0, 2).map((e) => el('span.tama-hud-chip.ev-' + e.id, { text: eventShort(e), title: eventShort(e) })),
         drop ? el('span.tama-hud-drop', {}, svg(icon('crate'))) : null));
   }
 
@@ -210,41 +221,83 @@ export function createCare({ openNest, toast, go }) {
     if (!p || !sp) return;
     const now = petNow();
     const phase = dayPhase(now);
-    const sk = sp.biome + phase;
-    if (sk !== sceneKey) { scene.replaceChildren(svg(sceneArt(sp.biome, phase))); sceneKey = sk; }
+    const day = P.dayNumber(P.ENV.dayKey(now));
+    const art = artFor(sp.key);
+    const stage = p.stage;
+    const cracks = stage === 'egg' ? Math.min(3, Math.floor(E.stageInfo(p, now).pct / 34)) : 0;
+    // Ei und Brutkapsel mit echtem Bild sind Teil der gemalten Kulisse
+    const nest = Boolean(art) && stage === 'egg' && !p.end && !p.cryo;
+    const capsule = nest && sp.birth === 'embryo';
+    const style = sceneStyle();
+    const sk = nest ? ['nest', sp.key, capsule ? 'embryo' : 'egg', phase, cracks].join('|') : landscapeKey(sp, phase, { day, style });
+    lcd.classList.toggle('is-nest', nest);
+    if (sk !== sceneKey) {
+      sceneKey = sk;
+      if (nest) {
+        scene.replaceChildren(capsule ? embryoScene(sp, { phase }) : nestScene(sp, { cracks, phase }));
+        landName = '';
+      } else {
+        const land = landscape(sp, phase, { day, style });
+        scene.replaceChildren(land.node);
+        landName = land.label || '';
+      }
+      hudSig = '';
+    }
     screen.classList.toggle('is-retro', Boolean(petState.doc.settings.retro));
     renderDecor();
     renderEvents(now);
     renderHud(now);
 
-    const stage = p.stage;
-    const cracks = stage === 'egg' ? Math.min(3, Math.floor(E.stageInfo(p, now).pct / 34)) : '';
-    const key = [p.id, stage, p.variant, p.teen, JSON.stringify(p.colors), p.end ? 'end' : '', cracks].join('|');
+    const key = [p.id, stage, p.variant, p.teen, JSON.stringify(p.colors), p.end ? 'end' : '', p.cryo ? 'cryo' : '', cracks, art ? art.src + art.size + art.w : 'svg'].join('|');
     if (key !== artKey) {
       artKey = key;
-      petBox.classList.remove('is-egg', 'is-grave', 'is-floating');
+      petBox.classList.remove('is-egg', 'is-grave', 'is-floating', 'is-swimming', 'is-real', 'is-nest');
+      petBox.style.height = '';
       // Ei und Grabstein nie gespiegelt zeigen (sonst stünde der Name verkehrt herum)
       if (stage === 'egg' || p.end) setFacing(1);
-      if (stage === 'egg') {
+      if (nest) {
+        // Nur die Fläche zum Antippen (Wärmen) über dem gemalten Ei bzw. der Kapsel
+        flip.replaceChildren();
+        petBox.classList.add('is-egg', 'is-nest');
+        if (capsule) {
+          const hgt = CAPSULE.width * 100 * 4 / 3 / CAPSULE.aspect;
+          Object.assign(petBox.style, { left: CAPSULE.left * 100 + '%', width: CAPSULE.width * 100 + '%', bottom: CAPSULE.bottom * 100 + '%', height: hgt.toFixed(1) + '%' });
+          anchors = { head: [0.5, 0.02], mouth: [0.5, 0.45], floating: false, swim: false, aspect: CAPSULE.aspect, svg: false };
+        } else {
+          const e = NEST_EGG;
+          Object.assign(petBox.style, { left: ((e.cx - e.rx) * 100).toFixed(1) + '%', width: (e.rx * 200).toFixed(1) + '%', bottom: ((1 - e.bottom) * 100).toFixed(1) + '%', height: (e.ry * 200).toFixed(1) + '%' });
+          anchors = { head: [0.5, 0.02], mouth: [0.5, 0.4], floating: false, swim: false, aspect: (e.rx * 4) / (e.ry * 6), svg: false };
+        }
+      } else if (stage === 'egg') {
         flip.replaceChildren(svg(eggArt(sp, { cracks })));
         petBox.classList.add('is-egg');
-        petBox.style.width = '34%';
-        petBox.style.left = '33%';
-        petBox.style.bottom = '5%';
-        anchors = { head: [100, 10], mouth: [100, 60], floating: false };
+        Object.assign(petBox.style, { width: '34%', left: '33%', bottom: '5%' });
+        anchors = { head: fromSvg([100, 10]), mouth: fromSvg([100, 60]), floating: false, swim: false, aspect: 1, svg: true };
       } else if (p.end) {
         flip.replaceChildren(svg(graveArt(p.name)));
         petBox.classList.add('is-grave');
-        petBox.style.width = '40%';
-        petBox.style.left = '30%';
-        petBox.style.bottom = '8%';
+        Object.assign(petBox.style, { width: '40%', left: '30%', bottom: '8%' });
+      } else if (art) {
+        const r = realPet(sp, { stage, variant: p.variant, colors: p.colors, title: p.name });
+        flip.replaceChildren(r.node);
+        const floating = r.motion === 'fly', swim = r.motion === 'swim';
+        anchors = { head: r.head, mouth: r.mouth, floating, swim, aspect: r.aspect, svg: false };
+        petBox.classList.add('is-real');
+        petBox.classList.toggle('is-floating', floating);
+        petBox.classList.toggle('is-swimming', swim);
+        petBox.style.width = r.width + '%';
+        const hgt = r.width * 4 / 3 / r.aspect;
+        // Füße auf den Boden (durchsichtiger Rand unten), Flieger in der Luft, Meerestiere halb im Wasser
+        petBox.style.bottom = (floating ? 24 : swim ? 18 - hgt * 0.3 : 4 - (1 - r.base) * hgt).toFixed(1) + '%';
+        const left = pctOf(petBox.style.left, 26);
+        if (left + r.width > 98) petBox.style.left = Math.max(1, 98 - r.width).toFixed(1) + '%';
       } else {
-        const art = creatureArt(sp, { stage, variant: p.variant, teen: p.teen, colors: p.colors, title: p.name });
-        flip.replaceChildren(svg(art));
-        const head = (art.attrs['data-head'] || '120,60').split(',').map(Number);
-        const mouth = (art.attrs['data-mouth'] || '150,90').split(',').map(Number);
-        const floating = String(art.attrs.class).includes('is-floating');
-        anchors = { head, mouth, floating };
+        const svgArt = creatureArt(sp, { stage, variant: p.variant, teen: p.teen, colors: p.colors, title: p.name });
+        flip.replaceChildren(svg(svgArt));
+        const head = (svgArt.attrs['data-head'] || '120,60').split(',').map(Number);
+        const mouth = (svgArt.attrs['data-mouth'] || '150,90').split(',').map(Number);
+        const floating = String(svgArt.attrs.class).includes('is-floating');
+        anchors = { head: fromSvg(head), mouth: fromSvg(mouth), floating, swim: false, aspect: 1, svg: true };
         petBox.classList.toggle('is-floating', floating);
         const size = (FORMS[stage]?.size || 1) * 50;
         petBox.style.width = size + '%';
@@ -284,7 +337,7 @@ export function createCare({ openNest, toast, go }) {
     } else if (!away.hidden) { away.hidden = true; away.replaceChildren(); }
 
     // Markierungen über dem Kopf (bewegen sich mit dem Tier)
-    const [hx, hy] = toPct(anchors.head);
+    const [hx, hy] = anchors.head.map((v) => v * 100);
     const left = facing < 0 ? 100 - hx : hx;
     const list = [];
     // Abstände in cqw (Bildschirmbreite), damit Markierungen auch bei kleinen Babys nicht übereinanderliegen
@@ -297,7 +350,7 @@ export function createCare({ openNest, toast, go }) {
       if (calls.length && !p.asleep) list.push(el('div.tama-mark.is-call', { style: at(10, -11) }, el('b', { text: '!' })));
       if (p.request && !p.asleep) list.push(el('div.tama-mark.is-request', { style: at(-1, -19), title: requestText(p.request, sp) }, svg(requestArt(p.request, sp))));
       // Beutel auf der Seite, auf der im Bild noch Platz ist
-      const nearRight = (parseFloat(petBox.style.left) || 26) + (parseFloat(petBox.style.width) || 50) > 80;
+      const nearRight = pctOf(petBox.style.left, 26) + pctOf(petBox.style.width, 50) > 80;
       if (p.exp?.done) list.push(el('button.tama-loot' + (nearRight ? '.is-left' : ''), { type: 'button', title: t('tama.act.loot'), 'aria-label': t('tama.act.loot'), onclick: (e) => { e.stopPropagation(); doLoot(); } }, svg(itemArt('shard')), svg(icon('gift'))));
     }
     marks.replaceChildren(...list);
@@ -320,8 +373,8 @@ export function createCare({ openNest, toast, go }) {
     const p = pet();
     if (!p || destroyed || busy || game || mode || p.stage === 'egg' || p.end || p.cryo || p.asleep || E.isAway(p)) return;
     if (calm?.matches) return; // ohne Übergänge würde das Tier nur springen
-    const cur = parseFloat(petBox.style.left) || 26;
-    const width = parseFloat(petBox.style.width) || 50;
+    const cur = pctOf(petBox.style.left, 26);
+    const width = pctOf(petBox.style.width, 50);
     const max = Math.max(4, 96 - width);
     const target = 2 + Math.random() * (max - 2);
     const dist = Math.abs(target - cur);
@@ -338,12 +391,13 @@ export function createCare({ openNest, toast, go }) {
   /* ------------------------------ Effekte -------------------------------- */
 
   function headPos() {
-    const [hx, hy] = toPct(anchors.head);
-    const width = parseFloat(petBox.style.width) || 50;
-    const left = parseFloat(petBox.style.left) || 26;
-    const x = left + (facing < 0 ? 100 - hx : hx) * width / 100;
-    const bottomPct = parseFloat(petBox.style.bottom) || 4;
-    const y = 100 - bottomPct - (100 - hy) * width / 100 * (4 / 3) * 0.75;
+    const [hx, hy] = anchors.head;
+    const width = pctOf(petBox.style.width, 50);
+    const left = pctOf(petBox.style.left, 26);
+    const x = left + (facing < 0 ? 1 - hx : hx) * width;
+    const bottomPct = pctOf(petBox.style.bottom, 4);
+    // Bei der gezeichneten Grafik etwas tiefer ansetzen (Rand in der viewBox)
+    const y = 100 - bottomPct - (1 - hy) * boxHeight() * (anchors.svg ? 0.75 : 0.98);
     return [x, Math.max(2, y)];
   }
 
@@ -390,12 +444,12 @@ export function createCare({ openNest, toast, go }) {
   }
 
   function mouthPos() {
-    const [mx, my] = toPct(anchors.mouth);
-    const width = parseFloat(petBox.style.width) || 50;
-    const left = parseFloat(petBox.style.left) || 26;
-    const bottomPct = parseFloat(petBox.style.bottom) || 4;
-    const x = left + (facing < 0 ? 100 - mx : mx) * width / 100;
-    const y = 100 - bottomPct - (100 - my) * width / 100 * (4 / 3);
+    const [mx, my] = anchors.mouth;
+    const width = pctOf(petBox.style.width, 50);
+    const left = pctOf(petBox.style.left, 26);
+    const bottomPct = pctOf(petBox.style.bottom, 4);
+    const x = left + (facing < 0 ? 1 - mx : mx) * width;
+    const y = 100 - bottomPct - (1 - my) * boxHeight();
     return [x, y];
   }
 
@@ -496,7 +550,7 @@ export function createCare({ openNest, toast, go }) {
     const res = run((d, now) => P.tuck(d, now));
     if (!res) return;
     sfx('cuddle');
-    const blanket = el('div.tama-blanket', { style: `left:${(parseFloat(petBox.style.left) || 26) + 4}%;width:${(parseFloat(petBox.style.width) || 50) * 0.8}%` });
+    const blanket = el('div.tama-blanket', { style: `left:${pctOf(petBox.style.left, 26) + 4}%;width:${pctOf(petBox.style.width, 50) * 0.8}%` });
     fx.append(blanket);
     setTimeout(() => blanket.remove(), 2200);
     burst('star', 2);
@@ -545,8 +599,8 @@ export function createCare({ openNest, toast, go }) {
   }
 
   async function walkAcross(ms = 1600) {
-    const start = parseFloat(petBox.style.left) || 26;
-    const width = parseFloat(petBox.style.width) || 50;
+    const start = pctOf(petBox.style.left, 26);
+    const width = pctOf(petBox.style.width, 50);
     const far = start > 30 ? 0 : 96 - width;
     setFacing(far < start ? -1 : 1);
     petBox.style.transitionDuration = `${ms / 1000}s`;

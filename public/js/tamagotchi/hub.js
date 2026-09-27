@@ -11,9 +11,10 @@ import { DROPS, QUESTS, QUEST_BONUS, TRICKS } from './catalog.js';
 import { foodArt, icon, DIET_FOOD } from './scene.js';
 import { crateArt, itemArt } from './props.js';
 import { h } from './vdom.js';
-import { petState, petNow, petAct, onPetChange } from './store.js';
+import { petState, petNow, petAct, onPetChange, claimGift } from './store.js';
 import { sfx } from './sound.js';
-import { BY_KEY, svg, dur, clock, hearts, creatureThumb, requestText, artImg, itemImg, shards, questText, rankName, rewardChips } from './common.js';
+import { roster } from './roster.js';
+import { BY_KEY, svg, dur, clock, hearts, creatureThumb, requestText, artImg, itemImg, shards, questText, rankName, rewardChips, eventName } from './common.js';
 
 const QUEST_ICON = {
   drop: 'crate', feed: 'feed', kibble: 'feed', play: 'play', win: 'star', cuddle: 'cuddle', clean: 'clean', groom: 'bath',
@@ -61,7 +62,7 @@ function nextEvent(now) {
   for (let d = 1; d <= 60; d++) {
     const at = now + d * E.DAY;
     const ev = P.eventsAt(at).find((e) => e.id !== 'evolution');
-    if (ev) return { id: ev.id, days: d };
+    if (ev) return { ev, days: d };
   }
   return null;
 }
@@ -130,8 +131,8 @@ export function createHub({ openDrop, go, toast }) {
     const evs = P.eventsAt(now);
     const upcoming = evs.some((e) => e.id !== 'evolution') ? null : nextEvent(now);
     const events = el('div.tama-events-row', {},
-      evs.map((e) => el('span.tama-event.ev-' + e.id, {}, svg(icon('sparkle')), el('strong', { text: t('tama.event.' + e.id) }), el('small', { text: multText(e.mult) }))),
-      upcoming ? el('span.tama-event.is-soon', {}, svg(icon('clock')), el('strong', { text: t('tama.event.' + upcoming.id) }), el('small', { text: t('tama.event.in', { n: upcoming.days }) })) : null);
+      evs.map((e) => el('span.tama-event.ev-' + e.id + (e.custom ? '.is-custom' : ''), {}, svg(icon('sparkle')), el('strong', { text: eventName(e) }), el('small', { text: multText(e.mult) }))),
+      upcoming ? el('span.tama-event.is-soon', {}, svg(icon('clock')), el('strong', { text: eventName(upcoming.ev) }), el('small', { text: t('tama.event.in', { n: upcoming.days }) })) : null);
 
     return card('is-today', t('tama.card.today'), 'sparkle',
       el('p.tama-today-date', { text: date }),
@@ -255,11 +256,53 @@ export function createHub({ openDrop, go, toast }) {
     return cards;
   }
 
+  /** Geschenke des Betreibers: annehmen schreibt sie direkt in den Spielstand. */
+  function giftCards() {
+    return (roster().gifts || []).map((g) => {
+      const btn = el('button.btn.primary.tama-cta', { type: 'button', onclick: async () => {
+        btn.disabled = true;
+        try {
+          await claimGift(g.id);
+          sfx('coin');
+          toast?.(t('tama.gift.claimed'));
+        } catch (err) {
+          btn.disabled = false;
+          toast?.(err?.message || t('tama.gift.error'), 'err');
+        }
+      } }, svg(icon('gift')), el('span', { text: t('tama.gift.claim') }));
+      const until = g.until ? new Date(g.until).toLocaleDateString(locale()) : null;
+      return card('is-gift', t('tama.gift.title'), 'gift',
+        g.message ? el('p.tama-gift-msg', { text: g.message }) : null,
+        el('div.tama-gift-row', {},
+          el('span.tama-gift-loot', {}, ...rewardChips({ shards: g.shards, items: Object.entries(g.items || {}) })),
+          btn),
+        el('small.tama-gift-from', { text: t('tama.gift.from') + (until ? ' · ' + t('tama.gift.until', { date: until }) : '') }));
+    });
+  }
+
+  /** Ankündigung des Betreibers, bis der Spieler sie ausblendet. */
+  function newsCard() {
+    const news = roster().news;
+    if (!news?.text) return null;
+    let seen = '';
+    try { seen = localStorage.getItem('tama_news_seen') || ''; } catch { /* privat */ }
+    if (seen === news.at) return null;
+    const hide = el('button.btn.ghost.sm', { type: 'button', onclick: () => {
+      try { localStorage.setItem('tama_news_seen', news.at); } catch { /* privat */ }
+      render();
+    } }, t('tama.news.hide'));
+    return card('is-news', t('tama.news.title'), 'info',
+      el('p.tama-news-text', { text: news.text }),
+      el('div.tama-row-actions', {},
+        news.link ? el('a.btn.sm', { href: news.link, target: news.link.startsWith('/') ? null : '_blank', rel: 'noopener', text: t('tama.news.more') }) : null,
+        hide));
+  }
+
   function render() {
     const doc = petState.doc;
     if (!doc?.player) { root.replaceChildren(); return; }
     const now = petNow();
-    root.replaceChildren(todayCard(doc, now), rankCard(doc), ...petCards(doc, now));
+    root.replaceChildren(...[...giftCards(), newsCard(), todayCard(doc, now), rankCard(doc), ...petCards(doc, now)].filter(Boolean));
     tick(now);
   }
 

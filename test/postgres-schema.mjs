@@ -78,3 +78,66 @@ test('PostgreSQL: Tamagotchi-Spielstand mit Revision, Konflikt und Löschkaskade
   await pg.query('DELETE FROM users WHERE id=$1', [user.id]);
   assert.equal((await pg.query('SELECT COUNT(*)::int AS n FROM pets')).rows[0].n, 0);
 });
+
+test('PostgreSQL: Tamagotchi-Verwaltung (Einstellungen, Bilder, Freischaltungen, Geschenke, Käufe)', async t => {
+  const cfg = await import('../src/services/petConfigService.js');
+  const shop = await import('../src/services/petShopService.js');
+  const admin = await import('../src/services/petAdminService.js');
+  const pg = new PGlite();
+  t.after(() => pg.close());
+  await pg.exec(readFileSync(new URL('../src/db/schema.postgres.sql', import.meta.url), 'utf8'));
+  const query = (sql,args=[]) => {let n=0;return pg.query(sql.replace(/\?/g,()=>`$${++n}`),args);};
+  const db = {
+    kind: 'postgres',
+    all: async (s,a) => (await query(s,a)).rows,
+    get: async (s,a) => (await query(s,a)).rows[0],
+    run: async (s,a) => ({ changes: (await query(s,a)).affectedRows ?? 0 }),
+  };
+  db.transaction = async (fn) => fn(db);
+  const { rows: [tribe] } = await pg.query("INSERT INTO tribes (slug,name) VALUES ('shop','Shop') RETURNING id");
+  const { rows: [user] } = await pg.query("INSERT INTO users (tribe_id,username,password_hash,status) VALUES ($1,'Buyer','x','active') RETURNING id",[tribe.id]);
+  cfg.invalidatePetConfig();
+
+  const settings = await cfg.updateSettings(db, { roster: { free: ['rex'], prices: { quetzal: 399 } }, game: { news: { text: 'Hallo' } } }, user.id);
+  assert.deepEqual(settings.roster.free, ['rex']);
+  assert.equal((await cfg.loadSettings(db)).roster.prices.quetzal, 399);
+  await cfg.saveArt(db, 'raptor', { meta: { w: 20, h: 20, face: 1, head: [0.8, 0.1], mouth: [0.9, 0.3], base: 0.9, size: 'm' }, buffer: Buffer.from([1, 2, 3, 4]), mime: 'image/png' }, user.id);
+  const img = await cfg.artImage(db, 'raptor');
+  assert.deepEqual([...img.buffer], [1, 2, 3, 4]);
+  assert.ok((await cfg.artSpecies(db)).has('raptor'));
+  assert.equal(await cfg.grantUnlock(db, { userId: user.id, species: 'quetzal', source: 'gift' }), true);
+  assert.equal(await cfg.grantUnlock(db, { userId: user.id, species: 'quetzal', source: 'gift' }), false);
+  const allowed = await cfg.allowedSpecies(db, { id: user.id, roles: [] });
+  assert.deepEqual([...allowed].sort(), ['quetzal', 'rex']);
+
+  const doc = { v: 2, pet: null, dex: {}, hall: [], settings: { shell: 'tek', retro: false }, player: { seed: 1, shards: 5, earned: 0, xp: 0, streak: 0, best: 0, lastDay: null, day: null, quests: [], bonus: false, swapped: false, inv: {}, owned: [], deco: {}, ach: {}, tally: {} } };
+  await pg.query('INSERT INTO pets (user_id,state,revision,updated_at) VALUES ($1,$2,1,$3)', [user.id, JSON.stringify(doc), new Date().toISOString()]);
+  const gift = cfg.cleanGift({ shards: 40, items: { treat: 3 } });
+  const giftId = await cfg.createGift(db, { userId: null, gift, by: user.id });
+  assert.equal((await cfg.pendingGifts(db, user.id)).length, 1);
+  const claim = await cfg.claimGift(db, user.id, giftId, 1);
+  assert.equal(claim.ok, true);
+  assert.equal(claim.doc.player.shards, 45);
+  assert.equal(claim.revision, 2);
+  assert.equal((await cfg.pendingGifts(db, user.id)).length, 0);
+  assert.equal((await admin.listGifts(db))[0].claims, 1);
+
+  await pg.query("INSERT INTO pet_purchases (session_id,user_id,species,amount_cents,currency,status,consent_at,created_at,updated_at) VALUES ('cs_test_aaaaaaaaaaaa',$1,'mosasaurus',199,'eur','open','x','x','x')", [user.id]);
+  const res = await shop.fulfillSession(db, { id: 'cs_test_aaaaaaaaaaaa', payment_status: 'paid', client_reference_id: String(user.id), metadata: { app: 'ark-tribe-hub-tamagotchi', user_id: String(user.id), species: 'mosasaurus' }, amount_total: 199, payment_intent: 'pi_1', livemode: false });
+  assert.equal(res.status, 'paid');
+  assert.equal((await shop.fulfillSession(db, { id: 'cs_test_aaaaaaaaaaaa', payment_status: 'paid', client_reference_id: String(user.id), metadata: { app: 'ark-tribe-hub-tamagotchi', species: 'mosasaurus' } })).already, true);
+  const ov = await admin.overview(db);
+  assert.equal(ov.sales.count, 1);
+  assert.equal(ov.sales.cents, 199);
+  assert.equal(ov.players, 1);
+  const list = await admin.players(db, { search: 'buy' });
+  assert.equal(list[0].username, 'Buyer');
+  assert.deepEqual(list[0].unlocks.map((u) => u.species).sort(), ['mosasaurus', 'quetzal']);
+  assert.equal(await shop.refundIntent(db, 'pi_1'), true);
+  assert.equal((await shop.listPurchases(db))[0].status, 'refunded');
+  assert.equal(await cfg.revokeUnlock(db, user.id, 'quetzal'), true);
+  assert.equal(await admin.resetPlayer(db, user.id), true);
+  await admin.writeStripeState(db, { at: 'now', type: 'x' });
+  assert.equal((await admin.readStripeState(db)).type, 'x');
+  cfg.invalidatePetConfig();
+});

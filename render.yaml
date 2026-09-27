@@ -45,3 +45,12 @@ services:
         value: 120
       - key: RATE_LIMIT_AUTH_MAX
         value: 10
+      # Verkauf von Tamagotchi-Tieren über Stripe (optional). Die Werte trägt
+      # der Betreiber im Render-Dashboard ein (sync: false = nie im Repository):
+      # geheimer Schlüssel sk_live_… bzw. zum Testen sk_test_… und das Signing
+      # Secret whsec_… des Webhooks auf /api/stripe/webhook. Ohne Schlüssel
+      # bleibt der Kaufen-Knopf aus.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

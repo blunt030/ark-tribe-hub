@@ -86,6 +86,7 @@ function navItems() {
     platform.push({ path: '/tribes', icon: '⬢', label: t('nav.tribes') });
     platform.push({ path: '/users', icon: '⚏', label: t('nav.users') });
     platform.push({ path: '/catalog', icon: '⌗', label: t('nav.catalog') });
+    platform.push({ path: '/tamagotchi-admin', icon: 'sliders-horizontal', label: t('nav.tamagotchi_admin') });
   }
 
   return { main, tools, tribe, platform, isBreeder };
@@ -312,12 +313,22 @@ const ROUTES = [
   { re: /^\/users$/, view: renderUsers },
   { re: /^\/catalog$/, view: renderCatalog },
   { re: /^\/tamagotchi(?:\/(shop|awards|dossier|hall|tribe))?$/, view: renderTamagotchi },
+  { re: /^\/tamagotchi-admin(?:\/(overview|species|sale|game|gifts|players))?(?:\?.*)?$/, view: renderTamagotchiAdmin, dev: true },
 ];
 
 // Das Tamagotchi bringt eigene Grafik- und Spielmodule mit. Sie werden erst beim
 // ersten Besuch der Seite geladen, damit der Start der App schlank bleibt.
 function renderTamagotchi(...args) {
   return import('./views/tamagotchi.js').then((m) => m.renderTamagotchi(...args));
+}
+
+// Tamagotchi-Verwaltung nur für Developer (das Backend prüft die Rolle ebenfalls).
+function renderTamagotchiAdmin(mount, context, ...args) {
+  if (!context.user.roles.includes('developer')) {
+    mount.append(el('div.empty', {}, el('div.big', { text: '403' })));
+    return null;
+  }
+  return import('./views/tamagotchi-admin.js').then((m) => m.renderTamagotchiAdmin(mount, context, ...args));
 }
 
 export function go(path, replace = false) {

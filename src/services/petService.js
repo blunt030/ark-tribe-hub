@@ -19,6 +19,7 @@ export const PET_STATE_MAX = 64 * 1024;
 const SPECIES = new Set(
   JSON.parse(readFileSync(path.join(config.rootDir, 'data', 'catalog', 'creatures.json'), 'utf8')).creatures.map((c) => c[0])
 );
+export const KNOWN_SPECIES = SPECIES;
 const STAGES = ['egg', 'baby', 'juvenile', 'adolescent', 'adult', 'elder'];
 const VARIANTS = ['alpha', 'loyal', 'feral', 'tek'];
 const MODES = ['relaxed', 'classic'];
@@ -116,6 +117,7 @@ export function validatePetDoc(doc) {
     checkColors(h.colors);
   }
   if (!isObj(doc.settings) || !SHELLS[doc.settings.shell] || typeof doc.settings.retro !== 'boolean') throw invalid('settings');
+  if (doc.settings.scene !== undefined && !['map', 'painted'].includes(doc.settings.scene)) throw invalid('settings');
   const state = JSON.stringify(doc);
   if (state.length > PET_STATE_MAX) throw payloadTooLarge('Spielstand zu groß');
   return state;
@@ -136,10 +138,17 @@ export async function loadPet(db, userId) {
 /**
  * Speichert mit optimistischer Sperre: Nur wer die aktuelle Revision kennt, darf
  * schreiben. Sonst kommt der neuere Stand zurück und der Browser übernimmt ihn.
+ * `check(bisher)` prüft den neuen Stand gegen den gespeicherten (z. B. ob neue
+ * Arten freigeschaltet sind) und wirft, wenn er nicht gespeichert werden darf.
  */
-export async function savePet(db, userId, state, baseRevision) {
+export async function savePet(db, userId, state, baseRevision, { check = null } = {}) {
   const now = new Date().toISOString();
   return db.transaction(async (tx) => {
+    if (check) {
+      const before = await tx.get('SELECT state, revision FROM pets WHERE user_id = ?', [userId]);
+      const stored = before ? Number(before.revision) : 0;
+      if (stored === baseRevision) check(before ? JSON.parse(before.state) : null);
+    }
     const row = baseRevision === 0
       ? await tx.get('INSERT INTO pets (user_id, state, revision, updated_at) VALUES (?, ?, 1, ?) ON CONFLICT (user_id) DO NOTHING RETURNING revision', [userId, state, now])
       : await tx.get('UPDATE pets SET state = ?, revision = revision + 1, updated_at = ? WHERE user_id = ? AND revision = ? RETURNING revision', [state, now, userId, baseRevision]);

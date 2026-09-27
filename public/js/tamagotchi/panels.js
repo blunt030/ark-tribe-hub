@@ -3,66 +3,23 @@
  * Tribe-Gehege mit Rangliste, Einstellungen und Anleitung.
  */
 import { el } from '../ui.js';
-import { t } from '../i18n.js';
+import { t, getLang } from '../i18n.js';
 import { api } from '../api.js';
 import * as E from './engine.js';
 import * as P from './progress.js';
 import { SHELLS } from './catalog.js';
-import { SPECIES } from './species.js';
 import { creatureArt, FORMS } from './art.js';
 import { eggArt, foodArt, icon, DIET_FOOD } from './scene.js';
 import { toSvgString } from './vdom.js';
 import { petState, petNow, petAct } from './store.js';
 import { soundOn, setSoundOn, sfx } from './sound.js';
-import { BY_KEY, creatureThumb, dur, faceFor, svg, rankName } from './common.js';
-import { mitgeliefertesBild } from '../icons.js';
+import { BY_KEY, creatureThumb, eggThumb, dur, faceFor, svg, rankName } from './common.js';
+import { sheet, confirmSheet } from './sheet.js';
+import { roster, speciesAccess, canHatch, nestSpecies, priceOf, formatPrice, isNew, ownedSource, hasArt } from './roster.js';
+import { openBuy } from './buy.js';
 const NAMES = ['Krümel', 'Nugget', 'Pixel', 'Knuddel', 'Zappel', 'Mampf', 'Tiki', 'Momo', 'Brummi', 'Flocke', 'Schnuffel', 'Zottel', 'Bolt', 'Kiwi', 'Mochi', 'Rumpel', 'Sprout', 'Noodle', 'Blitz', 'Pebble'];
 
-/* -------------------------------------------------------------------------- */
-/* Dialog                                                                       */
-/* -------------------------------------------------------------------------- */
-
-export function sheet(title, content, { wide = false, onClose } = {}) {
-  const root = document.getElementById('modal-root');
-  const before = document.activeElement;
-  const panel = el('div.tama-sheet' + (wide ? '.is-wide' : ''), { role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
-    el('header.tama-sheet-head', {}, el('h2', { text: title }),
-      el('button.tama-sheet-close', { type: 'button', 'aria-label': t('tama.close'), onclick: () => close() }, '×')),
-    el('div.tama-sheet-body', {}, content));
-  const bg = el('div.tama-sheet-bg', { dataset: { shell: petState.doc?.settings?.shell || 'tek' }, onclick: (e) => { if (e.target === bg) close(); } }, panel);
-  function onKey(e) {
-    if (e.key === 'Escape') { e.stopPropagation(); close(); }
-    if (e.key === 'Tab') {
-      const items = [...panel.querySelectorAll('button:not([disabled]), input, select, a[href]')].filter((n) => n.offsetParent !== null);
-      if (!items.length) return;
-      const first = items[0], last = items.at(-1);
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    }
-  }
-  function close() {
-    bg.remove();
-    document.removeEventListener('keydown', onKey, true);
-    onClose?.();
-    before?.focus?.();
-  }
-  root.append(bg);
-  document.addEventListener('keydown', onKey, true);
-  requestAnimationFrame(() => panel.querySelector('.tama-sheet-close')?.focus());
-  return { close, panel };
-}
-
-function confirmSheet(text, { confirm = t('tama.confirm'), danger = false } = {}) {
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = (v) => { if (done) return; done = true; s.close(); resolve(v); };
-    const s = sheet(t('tama.confirm'), el('div.tama-confirm', {},
-      el('p', { text }),
-      el('div.tama-row-actions', {},
-        el('button.btn.ghost', { type: 'button', text: t('common.cancel'), onclick: () => finish(false) }),
-        el('button.btn' + (danger ? '.danger' : '.primary'), { type: 'button', text: confirm, onclick: () => finish(true) }))), { onClose: () => { if (!done) { done = true; resolve(false); } } });
-  });
-}
+export { sheet, confirmSheet };
 
 /* -------------------------------------------------------------------------- */
 /* Artenraster (Brutstation & Dossier)                                         */
@@ -72,6 +29,13 @@ const eggCache = new Map();
 function eggSrc(sp) {
   if (!eggCache.has(sp.key)) eggCache.set(sp.key, 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(toSvgString(eggArt(sp))));
   return eggCache.get(sp.key);
+}
+
+/** Ei bzw. Brutkapsel als kleines Abzeichen (wie bei den Bestellungen). */
+function birthBadge(sp) {
+  if (!hasArt(sp.key)) return null;
+  const src = sp.birth === 'embryo' ? '/assets/items/cut/embryo.webp' : '/assets/items/cut/egg.webp';
+  return el('span.tama-birth-badge', { title: t('tama.birth.' + sp.birth) }, el('img', { src, alt: '', loading: 'lazy', decoding: 'async' }));
 }
 
 function lazyThumb(factory, cls) {
@@ -90,41 +54,76 @@ function observeLazy(container) {
   return io;
 }
 
+/** Kennzeichnung einer Art in der Brutstation: gratis, freigeschaltet, Preis oder bald. */
+function accessBadge(sp, doc) {
+  const a = speciesAccess(sp.key, doc);
+  const fresh = isNew(sp.key) ? el('span.tama-access.is-new', { text: t('tama.access.new') }) : null;
+  if (a === 'free') return [el('span.tama-access.is-free', { text: t('tama.access.free') }), fresh];
+  if (a === 'owned') return [el('span.tama-access.is-owned', {}, svg(icon('check')), el('span', { text: t(ownedSource(sp.key) === 'gift' ? 'tama.access.gift' : 'tama.access.owned') })), fresh];
+  if (a === 'kept') return [fresh];
+  if (a === 'buy') return [el('span.tama-access.is-buy', {}, svg(icon('lock')), el('span', { text: formatPrice(priceOf(sp.key), getLang()) })), fresh];
+  if (a === 'locked') return [el('span.tama-access.is-soon', {}, svg(icon('lock')), el('span', { text: t('tama.access.soon') }))];
+  return [];
+}
+
+const ORDER = { free: 0, owned: 0, kept: 0, buy: 1, locked: 2, off: 3 };
+
 function speciesGrid({ doc, mode, onPick }) {
-  let hab = 'all', query = '', onlyNew = false, io = null;
+  let hab = 'all', query = '', onlyNew = false, access = 'all', io = null;
   const grid = el('div.tama-grid', { role: 'list' });
   const count = el('span.tama-grid-count');
   const chips = ['all', 'L', 'W', 'F', 'M'].map((code) => el('button.tama-filter-chip', {
     type: 'button', 'aria-pressed': code === hab ? 'true' : 'false',
     onclick: () => { hab = code; chips.forEach((c, i) => c.setAttribute('aria-pressed', ['all', 'L', 'W', 'F', 'M'][i] === hab ? 'true' : 'false')); draw(); },
   }, t('tama.hab.' + code)));
+  const accessKeys = ['all', 'open', 'buy'];
+  const accessChips = mode === 'nest' ? accessKeys.map((k) => el('button.tama-filter-chip.is-access', {
+    type: 'button', 'aria-pressed': k === access ? 'true' : 'false',
+    onclick: () => { access = k; accessChips.forEach((c, i) => c.setAttribute('aria-pressed', accessKeys[i] === access ? 'true' : 'false')); draw(); },
+  }, t('tama.nest.filter_' + k))) : [];
   const search = el('input.tama-search', { type: 'search', placeholder: t('tama.nest.search'), 'aria-label': t('tama.nest.search'), oninput: (e) => { query = e.target.value.trim().toLowerCase(); draw(); } });
   const newOnly = el('label.tama-check', {}, el('input', { type: 'checkbox', onchange: (e) => { onlyNew = e.target.checked; draw(); } }), el('span', { text: t('tama.nest.only_new') }));
 
   function tile(sp) {
     const e = doc.dex[sp.key];
     const raised = e?.a > 0;
+    const a = speciesAccess(sp.key, doc);
+    const locked = mode === 'nest' && !canHatch(sp.key, doc);
     const art = mode === 'nest'
-      ? lazyThumb(() => el('span.tama-egg-stack', {}, el('img.tama-thumb.is-egg', { src: eggSrc(sp), alt: '', decoding: 'async' }), creatureThumb(sp, { stage: 'baby' }, 'is-peek')))
-      : lazyThumb(() => creatureThumb(sp, { stage: raised ? 'adult' : 'baby', variant: e?.v?.includes('tek') ? 'tek' : e?.v?.includes('alpha') ? 'alpha' : null }));
-    return el('button.tama-tile.rarity-' + sp.rarity + (raised ? '.is-raised' : '') + (mode === 'dex' && !e ? '.is-unknown' : ''), {
+      ? lazyThumb(() => el('span.tama-egg-stack' + (hasArt(sp.key) ? '.is-real' : ''), {},
+        hasArt(sp.key) ? creatureThumb(sp, { stage: 'adult' }) : el('img.tama-thumb.is-egg', { src: eggSrc(sp), alt: '', decoding: 'async' }),
+        hasArt(sp.key) ? birthBadge(sp) : creatureThumb(sp, { stage: 'baby' }, 'is-peek')))
+      : lazyThumb(() => el('span.tama-egg-stack.is-real', {}, creatureThumb(sp, { stage: raised || hasArt(sp.key) ? 'adult' : 'baby', variant: e?.v?.includes('tek') ? 'tek' : e?.v?.includes('alpha') ? 'alpha' : null })));
+    return el('button.tama-tile.rarity-' + sp.rarity + (raised ? '.is-raised' : '') + (mode === 'dex' && !e ? '.is-unknown' : '') + (locked ? '.is-locked' : '') + '.access-' + a, {
       type: 'button', role: 'listitem', title: sp.name, onclick: () => onPick(sp),
     },
     el('span.tama-tile-art', {}, art),
     el('span.tama-tile-name', { text: sp.name }),
     el('span.tama-tile-meta', {},
-      el('span.tama-rarity', { text: t('tama.rarity.' + sp.rarity) }),
+      mode === 'nest' ? accessBadge(sp, doc) : el('span.tama-rarity', { text: t('tama.rarity.' + sp.rarity) }),
       raised ? el('span.tama-tile-check', { title: t('tama.dex.times', { n: e.a }) }, svg(icon('star'))) : null));
   }
 
   function draw() {
     io?.disconnect();
-    const list = SPECIES.filter((s) => (hab === 'all' || s.hab === hab) && (!query || s.name.toLowerCase().includes(query)) && (!onlyNew || !(doc.dex[s.key]?.a > 0)));
+    const list = nestSpecies(doc).filter((s) => {
+      if (hab !== 'all' && s.hab !== hab) return false;
+      if (query && !s.name.toLowerCase().includes(query)) return false;
+      if (onlyNew && doc.dex[s.key]?.a > 0) return false;
+      if (access !== 'all') {
+        const open = canHatch(s.key, doc);
+        if (access === 'open' ? !open : open) return false;
+      }
+      return true;
+    });
+    if (mode === 'nest') list.sort((x, y) => (ORDER[speciesAccess(x.key, doc)] - ORDER[speciesAccess(y.key, doc)]) || x.name.localeCompare(y.name));
     grid.replaceChildren(...list.map(tile));
     count.textContent = t('tama.nest.count', { n: list.length });
     io = observeLazy(grid);
   }
-  const node = el('div.tama-species', {}, el('div.tama-toolbar', {}, search, el('div.tama-filter', {}, chips), newOnly, count), grid);
+  const node = el('div.tama-species', {},
+    el('div.tama-toolbar', {}, search, el('div.tama-filter', {}, chips), accessChips.length ? el('div.tama-filter.is-access', {}, accessChips) : null, newOnly, count),
+    grid);
   requestAnimationFrame(draw);
   return node;
 }
@@ -135,16 +134,26 @@ function speciesGrid({ doc, mode, onPick }) {
 
 export function nestPanel({ onStart, current, species = null }) {
   const doc = petState.doc;
-  const body = el('div.tama-nest');
+  const body = el('div.tama-nest-panel');
+
+  function pick(sp) {
+    if (canHatch(sp.key, doc)) confirmStep(sp, false);
+    else openBuy(sp);
+  }
 
   function chooseStep() {
-    const surprise = el('button.tama-surprise', { type: 'button', onclick: () => confirmStep(SPECIES[Math.floor(Math.random() * SPECIES.length)], true) },
+    const open = nestSpecies(doc).filter((s) => canHatch(s.key, doc) && hasArt(s.key));
+    const pool = open.length ? open : nestSpecies(doc).filter((s) => canHatch(s.key, doc));
+    const surprise = el('button.tama-surprise', { type: 'button', disabled: pool.length ? null : true, onclick: () => pool.length && confirmStep(pool[Math.floor(Math.random() * pool.length)], true) },
       el('span.tama-surprise-egg', { 'aria-hidden': 'true' }, '?'),
       el('span', {}, el('strong', { text: t('tama.nest.random') }), el('small', { text: t('tama.nest.random_desc') })));
-    body.replaceChildren(
-      el('p.tama-lead', { text: t('tama.nest.sub', { n: SPECIES.length }) }),
+    const cfg = roster();
+    const total = nestSpecies(doc).length;
+    body.replaceChildren(...[
+      el('p.tama-lead', { text: t('tama.nest.sub', { n: total }) + (cfg.free.length ? ' ' + t('tama.nest.sub_free', { n: cfg.free.length }) : '') }),
+      cfg.dev ? el('p.tama-hint', { text: t('tama.nest.dev_hint') }) : null,
       surprise,
-      speciesGrid({ doc, mode: 'nest', onPick: (sp) => confirmStep(sp, false) }));
+      speciesGrid({ doc, mode: 'nest', onPick: pick })].filter(Boolean));
   }
 
   function confirmStep(sp, surprise) {
@@ -156,8 +165,11 @@ export function nestPanel({ onStart, current, species = null }) {
       el('input', { type: 'radio', name: 'tama-mode', value: m, checked: m === mode ? true : null, onchange: () => { mode = m; modes.forEach((node, i) => node.classList.toggle('is-on', E.MODES[i] === m)); } }),
       el('span', {}, el('strong', { text: t('tama.mode.' + m) }), el('small', { text: t('tama.mode_desc.' + m) }))));
     const alive = current && !current.end;
+    const art = surprise ? el('span.tama-surprise-egg.is-big', { text: '?' })
+      : hasArt(sp.key) ? el('span.tama-egg-stack.is-real.is-big', {}, creatureThumb(sp, { stage: 'adult', alt: sp.name }), birthBadge(sp))
+        : svg(eggArt(sp));
     body.replaceChildren(el('div.tama-confirm-egg', {},
-      el('div.tama-confirm-art' + (surprise ? '.is-surprise' : ''), {}, surprise ? el('span.tama-surprise-egg.is-big', { text: '?' }) : svg(eggArt(sp))),
+      el('div.tama-confirm-art' + (surprise ? '.is-surprise' : ''), {}, art),
       el('div.tama-confirm-copy', {},
         el('h3', { text: surprise ? t('tama.nest.surprise') : sp.name }),
         surprise ? null : el('p.tama-muted', { text: `${t('tama.birth.' + sp.birth)} · ${t('tama.hab.' + sp.hab)} · ${t('tama.rarity.' + sp.rarity)}` }),
@@ -174,18 +186,19 @@ export function nestPanel({ onStart, current, species = null }) {
     nameInput.select();
   }
 
-  if (species) confirmStep(species, false);
-  else chooseStep();
+  if (species) pick(species);
+  if (!species || !canHatch(species.key, doc)) chooseStep();
   return body;
 }
 
-export function openNest({ onStarted } = {}) {
+export function openNest({ onStarted, species = null } = {}) {
   let s = null;
   const current = petState.doc?.pet;
   const panel = nestPanel({
     current,
-    onStart: ({ species, name, mode }) => {
-      petAct((doc, now) => P.startEgg(doc, { species, name, mode, now }));
+    species,
+    onStart: ({ species: key, name, mode }) => {
+      petAct((doc, now) => P.startEgg(doc, { species: key, name, mode, now }));
       sfx('hatch');
       s?.close();
       onStarted?.();
@@ -210,11 +223,12 @@ export function dossierPanel({ go }) {
   const raised = entries.filter((e) => e.a > 0).length;
   const hatched = entries.filter((e) => e.h > 0).length;
   const variants = entries.reduce((n, e) => n + e.v.length, 0);
+  const total = nestSpecies(doc).length;
   return el('div.tama-dossier', {},
     el('div.tama-stats', {},
-      stat(t('tama.dex.raised'), raised, SPECIES.length),
-      stat(t('tama.dex.hatched'), hatched, SPECIES.length),
-      stat(t('tama.dex.variants'), variants, SPECIES.length * 4)),
+      stat(t('tama.dex.raised'), raised, total),
+      stat(t('tama.dex.hatched'), hatched, total),
+      stat(t('tama.dex.variants'), variants, total * 4)),
     el('p.tama-lead', { text: t('tama.dex.sub') }),
     speciesGrid({ doc, mode: 'dex', onPick: (sp) => dexDetail(sp, { go }) }));
 }
@@ -222,10 +236,29 @@ export function dossierPanel({ go }) {
 function dexDetail(sp, { go }) {
   const doc = petState.doc;
   const e = doc.dex[sp.key] || { h: 0, a: 0, v: [] };
-  const artwork = mitgeliefertesBild({ key: sp.key });
   const food = DIET_FOOD[sp.diet] || 'meat';
+  const real = hasArt(sp.key);
+  const variant = e.v.includes('tek') ? 'tek' : e.v.includes('alpha') ? 'alpha' : null;
   let s = null;
-  const hero = el('div.tama-dex-hero.biome-' + sp.biome, {}, svg(creatureArt(sp, { stage: 'adult', variant: e.v.includes('tek') ? 'tek' : e.v.includes('alpha') ? 'alpha' : null })));
+  const hero = el('div.tama-dex-hero.biome-' + sp.biome + (real ? '.is-real' : ''), {},
+    real ? creatureThumb(sp, { stage: 'adult', variant, alt: sp.name }) : svg(creatureArt(sp, { stage: 'adult', variant })),
+    real ? birthBadge(sp) : null);
+  const access = speciesAccess(sp.key, doc);
+  const hatchable = canHatch(sp.key, doc);
+  const cta = hatchable
+    ? el('button.btn.primary.tama-cta', { type: 'button', onclick: () => {
+      s.close();
+      let nest = null;
+      const panel = nestPanel({
+        current: petState.doc.pet,
+        species: sp,
+        onStart: ({ species, name, mode }) => { petAct((d, now) => P.startEgg(d, { species, name, mode, now })); sfx('hatch'); nest?.close(); go('/tamagotchi'); },
+      });
+      nest = sheet(t('tama.nest.title'), panel, { wide: true });
+    } }, svg(icon('egg')), el('span', { text: t('tama.dex.hatch_this') }))
+    : access === 'buy'
+      ? el('button.btn.primary.tama-cta', { type: 'button', onclick: () => { s.close(); openBuy(sp); } }, svg(icon('lock')), el('span', { text: t('tama.buy.unlock_cta', { price: formatPrice(priceOf(sp.key), getLang()) }) }))
+      : el('p.tama-muted', { text: t('tama.buy.soon') });
   const content = el('div.tama-dex-detail', {},
     hero,
     el('div.tama-dex-forms', { 'aria-label': t('tama.dex.forms') }, ['baby', 'juvenile', 'adolescent', 'adult'].map((stage) => {
@@ -242,17 +275,7 @@ function dexDetail(sp, { go }) {
       el('dt', { text: t('tama.dex.biome') }), el('dd', { text: t('tama.biome.' + sp.biome) })),
     el('div.tama-dex-variants', {}, ['alpha', 'loyal', 'feral', 'tek'].map((v) => el('span.tama-badge' + (e.v.includes(v) ? '.is-on' : ''), { text: e.v.includes(v) || v !== 'tek' ? t('tama.variant.' + v) : '???' }))),
     el('p.tama-muted', { text: e.a ? t('tama.dex.times', { n: e.a }) : t('tama.dex.not_yet') }),
-    artwork ? el('figure.tama-artwork', {}, el('img', { src: artwork, alt: sp.name, loading: 'lazy' }), el('figcaption', { text: t('tama.dex.artwork') })) : null,
-    el('div.tama-row-actions', {}, el('button.btn.primary.tama-cta', { type: 'button', onclick: () => {
-      s.close();
-      let nest = null;
-      const panel = nestPanel({
-        current: petState.doc.pet,
-        species: sp,
-        onStart: ({ species, name, mode }) => { petAct((d, now) => P.startEgg(d, { species, name, mode, now })); sfx('hatch'); nest?.close(); go('/tamagotchi'); },
-      });
-      nest = sheet(t('tama.nest.title'), panel, { wide: true });
-    } }, svg(icon('egg')), el('span', { text: t('tama.dex.hatch_this') }))));
+    el('div.tama-row-actions', {}, cta));
   s = sheet(sp.name, content, { wide: true });
 }
 
@@ -269,7 +292,7 @@ export function hallPanel() {
       const sp = BY_KEY.get(a.species);
       if (!sp) return null;
       return el('article.tama-mini' + (a.variant ? '.var-' + a.variant : ''), {},
-        el('div.tama-mini-art.biome-' + sp.biome, {}, a.stage === 'egg' ? el('img.tama-thumb', { src: eggSrc(sp), alt: '' }) : creatureThumb(sp, { stage: a.stage, variant: a.variant, colors: a.colors })),
+        el('div.tama-mini-art.biome-' + sp.biome, {}, a.stage === 'egg' ? eggThumb(sp) : creatureThumb(sp, { stage: a.stage, variant: a.variant, colors: a.colors })),
         el('div.tama-mini-copy', {},
           el('strong', { text: a.name }),
           el('span', { text: `${sp.name} · ${t('tama.hall.gen', { n: a.gen })}${a.variant ? ' · ' + t('tama.variant.' + a.variant) : ''}` }),
@@ -311,8 +334,7 @@ export async function tribePanel({ user }) {
       const p = { ...structuredClone(entry.pet), log: [] };
       try { E.advance(p, now); } catch { /* fremder Stand – dann eben der gespeicherte */ }
       const mood = E.mood(p, now);
-      const art = p.stage === 'egg' ? el('img.tama-thumb', { src: eggSrc(sp), alt: '' })
-        : creatureThumb(sp, { stage: p.stage, variant: p.variant, colors: p.colors });
+      const art = p.stage === 'egg' ? eggThumb(sp) : creatureThumb(sp, { stage: p.stage, variant: p.variant, colors: p.colors });
       return el('article.tama-mini.mood-' + mood + (entry.userId === user.id ? '.is-me' : ''), {},
         el('div.tama-mini-art.biome-' + sp.biome, { dataset: { face: faceFor(mood) } }, art, el('span.tama-mood-chip', { text: t('tama.mood.' + mood) })),
         el('div.tama-mini-copy', {},
@@ -355,8 +377,20 @@ export function openSettings({ onChange, toast }) {
     el('span.tama-toggle-ui', { 'aria-hidden': 'true' }),
     el('span', {}, el('strong', { text: label }), desc ? el('small', { text: desc }) : null));
 
+  const sceneNow = doc.settings.scene === 'painted' ? 'painted' : 'map';
+  const scenes = el('div.tama-modes.is-scenes', { role: 'radiogroup', 'aria-label': t('tama.set.scene') }, ['map', 'painted'].map((k) => el('button.tama-mode' + (k === sceneNow ? '.is-on' : ''), {
+    type: 'button', role: 'radio', 'aria-checked': k === sceneNow ? 'true' : 'false',
+    onclick: (e) => {
+      setting((st) => { st.scene = k; });
+      scenes.querySelectorAll('.tama-mode').forEach((n) => { n.classList.remove('is-on'); n.setAttribute('aria-checked', 'false'); });
+      e.currentTarget.classList.add('is-on');
+      e.currentTarget.setAttribute('aria-checked', 'true');
+    },
+  }, el('strong', { text: t('tama.set.scene_' + k) }), el('small', { text: t('tama.set.scene_' + k + '_desc') }))));
+
   const parts = [
     el('h3', { text: t('tama.set.shell') }), shells,
+    el('h3', { text: t('tama.set.scene') }), scenes,
     toggle(t('tama.set.retro'), t('tama.set.retro_desc'), doc.settings.retro, (v) => setting((st) => { st.retro = v; })),
     toggle(t('tama.set.sound'), t('tama.set.sound_desc'), soundOn(), (v) => { setSoundOn(v); if (v) sfx('select'); }),
   ];

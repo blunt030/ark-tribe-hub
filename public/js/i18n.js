@@ -1458,10 +1458,10 @@ for (const [code, values] of Object.entries(PEDIGREE)) Object.assign(STRINGS[cod
 
 // Dino-Tamagotchi: der Menüpunkt steht hier, alle weiteren Texte bringt
 // public/js/tamagotchi/texts.js über addStrings() mit.
-Object.assign(STRINGS.de, { 'nav.tamagotchi': 'Dino-Tamagotchi' });
-Object.assign(STRINGS.en, { 'nav.tamagotchi': 'Dino Tamagotchi' });
-Object.assign(STRINGS.fr, { 'nav.tamagotchi': 'Dino-Tamagotchi' });
-Object.assign(STRINGS.es, { 'nav.tamagotchi': 'Dino-Tamagotchi' });
+Object.assign(STRINGS.de, { 'nav.tamagotchi': 'Dino-Tamagotchi', 'nav.tamagotchi_admin': 'Tamagotchi-Verwaltung' });
+Object.assign(STRINGS.en, { 'nav.tamagotchi': 'Dino Tamagotchi', 'nav.tamagotchi_admin': 'Tamagotchi admin' });
+Object.assign(STRINGS.fr, { 'nav.tamagotchi': 'Dino-Tamagotchi', 'nav.tamagotchi_admin': 'Gestion Tamagotchi' });
+Object.assign(STRINGS.es, { 'nav.tamagotchi': 'Dino-Tamagotchi', 'nav.tamagotchi_admin': 'Gestión Tamagotchi' });
 
 /** Erweiterungsmodule bringen eigene Texte mit, ohne diese Datei aufzublähen. */
 export function addStrings(dict) {

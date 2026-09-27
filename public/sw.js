@@ -5,7 +5,7 @@
 // vertraulich und veralten schnell - sie kommen immer frisch vom Server, damit
 // niemand nach einer Abmeldung noch alte Bestellungen aus dem Cache sieht.
 
-const CACHE = 'ath-shell-command-center-v15';
+const CACHE = 'ath-shell-command-center-v16';
 const SHELL = [
   '/',
   '/index.html',
@@ -28,6 +28,10 @@ const SHELL = [
   '/js/tamagotchi/engine.js',
   '/js/tamagotchi/progress.js',
   '/js/tamagotchi/catalog.js',
+  '/js/tamagotchi/roster.js',
+  '/js/tamagotchi/artwork.js',
+  '/js/tamagotchi/access.js',
+  '/js/tamagotchi/species.js',
   '/assets/logo.png',
   '/assets/icon-192.png',
   '/manifest.webmanifest',

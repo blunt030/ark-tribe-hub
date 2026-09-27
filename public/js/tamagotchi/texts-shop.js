@@ -1,0 +1,175 @@
+/**
+ * Texte für Tiere mit echtem Bild, Gratis-Arten und Kauf, Geschenke,
+ * Ankündigungen und die Landschaft – in allen vier Sprachen der App.
+ */
+import { addStrings } from '../i18n.js';
+
+const de = {
+  'tama.request.kibble': 'Kibble', 'tama.cause.sick': 'Krankheit',
+  'tama.help.ark': 'Prägung wie in ARK: Dein Tier möchte Kuscheln, Gassi gehen, eine Mahlzeit oder Kibble – erfülle den Wunsch, bevor er verfällt. Mit wachsender Bindung lernt es per Pfiff Tricks. Auf Expeditionen sammelt es Splitter und Futter. Der Kryopod pausiert alles, zum Beispiel im Urlaub. Erwachsene bekommen Nachwuchs, manchmal mit Farbmutation. Das Dossier sammelt alle Arten der Brutstation – einige sind gratis, weitere lassen sich dauerhaft freischalten.',
+  'tama.access.free': 'Gratis', 'tama.access.owned': 'Freigeschaltet', 'tama.access.gift': 'Geschenk', 'tama.access.new': 'Neu', 'tama.access.soon': 'Bald',
+  'tama.nest.filter_all': 'Alle', 'tama.nest.filter_open': 'Verfügbar', 'tama.nest.filter_buy': 'Freischaltbar',
+  'tama.nest.sub': 'Wähle eines von {n} ARK-Tieren. Das Ei schlüpft nach zwei Minuten.',
+  'tama.nest.sub_free': '{n} davon sind gratis, weitere kannst du dauerhaft freischalten.',
+  'tama.nest.dev_hint': 'Developer-Konto: Du kannst jedes Tier mit Bild zum Testen ausbrüten.',
+
+  'tama.buy.title': '{name} freischalten',
+  'tama.buy.lead': 'Einmal freischalten und für immer behalten: ausbrüten, aufziehen und züchten, so oft du willst.',
+  'tama.buy.once': 'einmalig',
+  'tama.buy.consent': 'Ich stimme ausdrücklich zu, dass die Freischaltung sofort nach der Bezahlung beginnt. Mir ist bekannt, dass ich dadurch mein Widerrufsrecht verliere.',
+  'tama.buy.terms': 'AGB', 'tama.buy.withdrawal': 'Widerrufsbelehrung', 'tama.buy.privacy': 'Datenschutz',
+  'tama.buy.pay': 'Weiter zur Bezahlung ({price})',
+  'tama.buy.via': 'Sichere Bezahlung über Stripe – je nach Einstellung mit Karte, PayPal, Klarna und mehr.',
+  'tama.buy.redirect': 'Weiterleitung zu Stripe …',
+  'tama.buy.error': 'Die Bezahlung konnte gerade nicht gestartet werden. Bitte versuch es später erneut.',
+  'tama.buy.soon_title': 'Freischalten',
+  'tama.buy.soon': 'Dieses Tier kann bald freigeschaltet werden.',
+  'tama.buy.owned': 'Dieses Tier gehört schon dir.',
+  'tama.buy.done': '{name} ist freigeschaltet – viel Spaß beim Ausbrüten!',
+  'tama.buy.pending': 'Die Zahlung wird noch bestätigt. Dein Tier erscheint, sobald sie da ist.',
+  'tama.buy.cancel': 'Kauf abgebrochen – es wurde nichts berechnet.',
+  'tama.buy.expired': 'Die Bezahlung ist abgelaufen. Du kannst es jederzeit erneut versuchen.',
+  'tama.buy.unlock_cta': 'Freischalten · {price}',
+  'tama.ev.locked': 'Dieses Tier ist für dein Konto nicht freigeschaltet – der Spielstand wurde neu geladen.',
+
+  'tama.gift.title': 'Geschenk für dich', 'tama.gift.from': 'vom ARK-Tribe-Hub-Team', 'tama.gift.claim': 'Annehmen',
+  'tama.gift.claimed': 'Geschenk angenommen!', 'tama.gift.until': 'bis {date}', 'tama.gift.error': 'Das Geschenk konnte nicht angenommen werden.',
+  'tama.news.title': 'Neuigkeiten', 'tama.news.more': 'Mehr erfahren', 'tama.news.hide': 'Ausblenden',
+
+  'tama.shop.creatures': 'Tiere freischalten',
+  'tama.shop.creatures_hint': 'Einmal kaufen, für immer ausbrüten. Bezahlt wird mit echtem Geld über Stripe – nicht mit Splittern.',
+  'tama.shop.creatures_none': 'Alle Tiere gehören schon dir!',
+  'tama.shop.creatures_soon': 'Bald kannst du hier weitere Tiere freischalten.',
+
+  'tama.set.scene': 'Landschaft',
+  'tama.set.scene_map': 'ARK-Karte in 3D', 'tama.set.scene_map_desc': 'Der Lebensraum deines Tiers aus den ARK-Karten – jeden Tag eine andere Gegend.',
+  'tama.set.scene_painted': 'Gemälde', 'tama.set.scene_painted_desc': 'Gemalte ARK-Kulissen mit Obelisk, je nach Tageszeit.',
+};
+
+const en = {
+  'tama.request.kibble': 'Kibble', 'tama.cause.sick': 'Illness',
+  'tama.help.ark': 'Imprinting like in ARK: your pet wants cuddles, walks, a meal or kibble – fulfil the wish before it expires. As your bond grows it learns tricks by whistle. On expeditions it collects shards and food. The cryopod pauses everything, e.g. while on holiday. Adults can have offspring, sometimes with a colour mutation. The dossier collects every species in the incubator – some are free, more can be unlocked for good.',
+  'tama.access.free': 'Free', 'tama.access.owned': 'Unlocked', 'tama.access.gift': 'Gift', 'tama.access.new': 'New', 'tama.access.soon': 'Soon',
+  'tama.nest.filter_all': 'All', 'tama.nest.filter_open': 'Available', 'tama.nest.filter_buy': 'Unlockable',
+  'tama.nest.sub': 'Pick one of {n} ARK creatures. The egg hatches after two minutes.',
+  'tama.nest.sub_free': '{n} of them are free, more can be unlocked for good.',
+  'tama.nest.dev_hint': 'Developer account: you can hatch any creature with artwork for testing.',
+
+  'tama.buy.title': 'Unlock {name}',
+  'tama.buy.lead': 'Unlock once and keep it forever: hatch, raise and breed as often as you like.',
+  'tama.buy.once': 'one-time',
+  'tama.buy.consent': 'I expressly agree that the unlock starts immediately after payment. I understand that I thereby lose my right of withdrawal.',
+  'tama.buy.terms': 'Terms', 'tama.buy.withdrawal': 'Right of withdrawal', 'tama.buy.privacy': 'Privacy',
+  'tama.buy.pay': 'Continue to payment ({price})',
+  'tama.buy.via': 'Secure payment via Stripe – card, PayPal, Klarna and more, depending on settings.',
+  'tama.buy.redirect': 'Redirecting to Stripe …',
+  'tama.buy.error': 'Payment could not be started right now. Please try again later.',
+  'tama.buy.soon_title': 'Unlock',
+  'tama.buy.soon': 'This creature can be unlocked soon.',
+  'tama.buy.owned': 'This creature is already yours.',
+  'tama.buy.done': '{name} is unlocked – have fun hatching!',
+  'tama.buy.pending': 'Your payment is still being confirmed. The creature appears as soon as it arrives.',
+  'tama.buy.cancel': 'Purchase cancelled – nothing was charged.',
+  'tama.buy.expired': 'The payment expired. You can try again any time.',
+  'tama.buy.unlock_cta': 'Unlock · {price}',
+  'tama.ev.locked': 'This creature is not unlocked for your account – your game was reloaded.',
+
+  'tama.gift.title': 'A gift for you', 'tama.gift.from': 'from the ARK Tribe Hub team', 'tama.gift.claim': 'Claim',
+  'tama.gift.claimed': 'Gift claimed!', 'tama.gift.until': 'until {date}', 'tama.gift.error': 'The gift could not be claimed.',
+  'tama.news.title': 'News', 'tama.news.more': 'Learn more', 'tama.news.hide': 'Hide',
+
+  'tama.shop.creatures': 'Unlock creatures',
+  'tama.shop.creatures_hint': 'Buy once, hatch forever. Paid with real money via Stripe – not with shards.',
+  'tama.shop.creatures_none': 'All creatures are already yours!',
+  'tama.shop.creatures_soon': 'More creatures to unlock are coming soon.',
+
+  'tama.set.scene': 'Landscape',
+  'tama.set.scene_map': 'ARK map in 3D', 'tama.set.scene_map_desc': "Your creature's habitat from the ARK maps – a different area every day.",
+  'tama.set.scene_painted': 'Painting', 'tama.set.scene_painted_desc': 'Painted ARK scenery with obelisk, depending on the time of day.',
+};
+
+const fr = {
+  'tama.request.kibble': 'Croquettes', 'tama.cause.sick': 'Maladie',
+  'tama.help.ark': 'Empreinte comme dans ARK : ton compagnon veut un câlin, une balade, un repas ou des croquettes – exauce son envie avant qu’elle expire. Avec le lien, il apprend des tours au sifflet. En expédition, il récolte éclats et nourriture. Le cryopod met tout en pause, par exemple en vacances. Les adultes peuvent avoir des petits, parfois avec une mutation de couleur. Le dossier réunit toutes les espèces de l’incubateur – certaines sont gratuites, d’autres se débloquent pour toujours.',
+  'tama.access.free': 'Gratuit', 'tama.access.owned': 'Débloqué', 'tama.access.gift': 'Cadeau', 'tama.access.new': 'Nouveau', 'tama.access.soon': 'Bientôt',
+  'tama.nest.filter_all': 'Tous', 'tama.nest.filter_open': 'Disponibles', 'tama.nest.filter_buy': 'À débloquer',
+  'tama.nest.sub': "Choisis l'une des {n} créatures d'ARK. L'œuf éclôt au bout de deux minutes.",
+  'tama.nest.sub_free': "{n} d'entre elles sont gratuites, d'autres peuvent être débloquées pour toujours.",
+  'tama.nest.dev_hint': 'Compte développeur : tu peux faire éclore toute créature illustrée pour tester.',
+
+  'tama.buy.title': 'Débloquer {name}',
+  'tama.buy.lead': "Débloque une fois et garde-la pour toujours : faire éclore, élever et reproduire autant que tu veux.",
+  'tama.buy.once': 'paiement unique',
+  'tama.buy.consent': "J'accepte expressément que le déblocage commence immédiatement après le paiement. Je sais que je perds ainsi mon droit de rétractation.",
+  'tama.buy.terms': 'CGV', 'tama.buy.withdrawal': 'Droit de rétractation', 'tama.buy.privacy': 'Confidentialité',
+  'tama.buy.pay': 'Continuer vers le paiement ({price})',
+  'tama.buy.via': 'Paiement sécurisé via Stripe – carte, PayPal, Klarna et plus, selon la configuration.',
+  'tama.buy.redirect': 'Redirection vers Stripe …',
+  'tama.buy.error': "Le paiement n'a pas pu démarrer. Réessaie plus tard.",
+  'tama.buy.soon_title': 'Débloquer',
+  'tama.buy.soon': 'Cette créature pourra bientôt être débloquée.',
+  'tama.buy.owned': 'Cette créature est déjà à toi.',
+  'tama.buy.done': '{name} est débloqué – amuse-toi bien !',
+  'tama.buy.pending': 'Le paiement est en cours de confirmation. La créature apparaîtra dès sa réception.',
+  'tama.buy.cancel': "Achat annulé – rien n'a été débité.",
+  'tama.buy.expired': 'Le paiement a expiré. Tu peux réessayer à tout moment.',
+  'tama.buy.unlock_cta': 'Débloquer · {price}',
+  'tama.ev.locked': "Cette créature n'est pas débloquée pour ton compte – la partie a été rechargée.",
+
+  'tama.gift.title': 'Un cadeau pour toi', 'tama.gift.from': "de l'équipe ARK Tribe Hub", 'tama.gift.claim': 'Accepter',
+  'tama.gift.claimed': 'Cadeau accepté !', 'tama.gift.until': "jusqu'au {date}", 'tama.gift.error': "Le cadeau n'a pas pu être accepté.",
+  'tama.news.title': 'Nouveautés', 'tama.news.more': 'En savoir plus', 'tama.news.hide': 'Masquer',
+
+  'tama.shop.creatures': 'Débloquer des créatures',
+  'tama.shop.creatures_hint': "Achète une fois, fais éclore pour toujours. Payé en argent réel via Stripe – pas avec des éclats.",
+  'tama.shop.creatures_none': 'Toutes les créatures sont déjà à toi !',
+  'tama.shop.creatures_soon': "D'autres créatures à débloquer arrivent bientôt.",
+
+  'tama.set.scene': 'Paysage',
+  'tama.set.scene_map': 'Carte ARK en 3D', 'tama.set.scene_map_desc': "L'habitat de ta créature tiré des cartes d'ARK – un autre endroit chaque jour.",
+  'tama.set.scene_painted': 'Peinture', 'tama.set.scene_painted_desc': "Décors peints d'ARK avec obélisque, selon l'heure.",
+};
+
+const es = {
+  'tama.request.kibble': 'Pienso', 'tama.cause.sick': 'Enfermedad',
+  'tama.help.ark': 'Impronta como en ARK: tu mascota quiere mimos, un paseo, comida o pienso – cumple el deseo antes de que caduque. Con más vínculo aprende trucos con el silbato. En las expediciones recoge fragmentos y comida. El criópodo lo pausa todo, por ejemplo en vacaciones. Los adultos pueden tener crías, a veces con mutación de color. El dossier reúne todas las especies de la incubadora: algunas son gratis y otras se desbloquean para siempre.',
+  'tama.access.free': 'Gratis', 'tama.access.owned': 'Desbloqueado', 'tama.access.gift': 'Regalo', 'tama.access.new': 'Nuevo', 'tama.access.soon': 'Pronto',
+  'tama.nest.filter_all': 'Todos', 'tama.nest.filter_open': 'Disponibles', 'tama.nest.filter_buy': 'Desbloqueables',
+  'tama.nest.sub': 'Elige una de {n} criaturas de ARK. El huevo eclosiona a los dos minutos.',
+  'tama.nest.sub_free': '{n} de ellas son gratis; otras se pueden desbloquear para siempre.',
+  'tama.nest.dev_hint': 'Cuenta de desarrollador: puedes incubar cualquier criatura con imagen para probar.',
+
+  'tama.buy.title': 'Desbloquear {name}',
+  'tama.buy.lead': 'Desbloquéala una vez y quédatela para siempre: incubar, criar y cruzar tantas veces como quieras.',
+  'tama.buy.once': 'pago único',
+  'tama.buy.consent': 'Acepto expresamente que el desbloqueo empiece inmediatamente después del pago. Sé que así pierdo mi derecho de desistimiento.',
+  'tama.buy.terms': 'Condiciones', 'tama.buy.withdrawal': 'Derecho de desistimiento', 'tama.buy.privacy': 'Privacidad',
+  'tama.buy.pay': 'Continuar al pago ({price})',
+  'tama.buy.via': 'Pago seguro con Stripe: tarjeta, PayPal, Klarna y más, según la configuración.',
+  'tama.buy.redirect': 'Redirigiendo a Stripe …',
+  'tama.buy.error': 'No se pudo iniciar el pago. Inténtalo más tarde.',
+  'tama.buy.soon_title': 'Desbloquear',
+  'tama.buy.soon': 'Pronto podrás desbloquear esta criatura.',
+  'tama.buy.owned': 'Esta criatura ya es tuya.',
+  'tama.buy.done': '¡{name} desbloqueado! Diviértete incubando.',
+  'tama.buy.pending': 'El pago aún se está confirmando. La criatura aparecerá en cuanto llegue.',
+  'tama.buy.cancel': 'Compra cancelada: no se ha cobrado nada.',
+  'tama.buy.expired': 'El pago ha caducado. Puedes volver a intentarlo cuando quieras.',
+  'tama.buy.unlock_cta': 'Desbloquear · {price}',
+  'tama.ev.locked': 'Esta criatura no está desbloqueada para tu cuenta: la partida se ha recargado.',
+
+  'tama.gift.title': 'Un regalo para ti', 'tama.gift.from': 'del equipo de ARK Tribe Hub', 'tama.gift.claim': 'Aceptar',
+  'tama.gift.claimed': '¡Regalo aceptado!', 'tama.gift.until': 'hasta el {date}', 'tama.gift.error': 'No se pudo aceptar el regalo.',
+  'tama.news.title': 'Novedades', 'tama.news.more': 'Más información', 'tama.news.hide': 'Ocultar',
+
+  'tama.shop.creatures': 'Desbloquear criaturas',
+  'tama.shop.creatures_hint': 'Compra una vez, incuba para siempre. Se paga con dinero real a través de Stripe, no con fragmentos.',
+  'tama.shop.creatures_none': '¡Todas las criaturas ya son tuyas!',
+  'tama.shop.creatures_soon': 'Pronto habrá más criaturas para desbloquear.',
+
+  'tama.set.scene': 'Paisaje',
+  'tama.set.scene_map': 'Mapa de ARK en 3D', 'tama.set.scene_map_desc': 'El hábitat de tu criatura sacado de los mapas de ARK: cada día otra zona.',
+  'tama.set.scene_painted': 'Pintura', 'tama.set.scene_painted_desc': 'Escenarios pintados de ARK con obelisco, según la hora del día.',
+};
+
+addStrings({ de, en, fr, es });

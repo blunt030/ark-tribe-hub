@@ -127,6 +127,14 @@ export const config = {
   // davon unabhängig und greift immer).
   rateLimitGlobalMax: parseInt(process.env.RATE_LIMIT_GLOBAL_MAX || '120', 10),
   rateLimitAuthMax: parseInt(process.env.RATE_LIMIT_AUTH_MAX || '10', 10),
+  // Verkauf von Tamagotchi-Tieren über Stripe Checkout. Ohne Schlüssel bleibt
+  // der Kaufen-Knopf aus. Der geheime Schlüssel (sk_live_…/sk_test_…) und das
+  // Webhook-Secret (whsec_…) gehören nur in die Umgebungsvariablen, nie ins Repo.
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY || '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    apiBase: process.env.STRIPE_API_BASE || 'https://api.stripe.com',
+  },
   supportedLangs: ['de', 'en', 'fr', 'es'],
   defaultLang: 'de',
 };

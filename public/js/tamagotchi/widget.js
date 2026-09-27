@@ -6,14 +6,13 @@ import { el, panel } from '../ui.js';
 import { t } from '../i18n.js';
 import './texts.js';
 import './texts-play.js';
+import './texts-shop.js';
 import * as E from './engine.js';
 import * as P from './progress.js';
 import { petState, petNow, loadPet, onPetChange } from './store.js';
-import { BY_KEY, creatureThumb, dur, svg, hearts } from './common.js';
+import { BY_KEY, creatureThumb, eggThumb, dur, svg, hearts } from './common.js';
 import { icon } from './scene.js';
-import { eggArt } from './props.js';
-import { SPECIES } from './species.js';
-import { toSvgString } from './vdom.js';
+import { nestSpecies } from './roster.js';
 
 /** Kiste und Tagesaufgaben – der Grund, täglich vorbeizuschauen. */
 function daily(doc, p, now) {
@@ -42,13 +41,13 @@ export async function petWidget({ user, go }) {
     if (!p || !sp) {
       body.replaceChildren(el('button.dash-tama-body', { type: 'button', onclick: open },
         el('span.dash-tama-art.is-empty', {}, svg(icon('egg'))),
-        el('span.dash-tama-copy', {}, el('strong', { text: t('tama.widget.empty') }), el('small', { text: t('tama.widget.cta', { n: SPECIES.length }) }), daily(petState.doc, null, now))));
+        el('span.dash-tama-copy', {}, el('strong', { text: t('tama.widget.empty') }), el('small', { text: t('tama.widget.cta', { n: nestSpecies(petState.doc).length }) }), daily(petState.doc, null, now))));
       return;
     }
     const calls = p.end ? [] : E.calling(p, now);
     const mood = E.mood(p, now);
     const art = p.stage === 'egg'
-      ? el('img.tama-thumb', { src: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(toSvgString(eggArt(sp))), alt: '' })
+      ? eggThumb(sp)
       : creatureThumb(sp, { stage: p.stage, variant: p.variant, colors: p.colors });
     let status;
     if (calls.length) status = el('span.dash-tama-pill.is-call', { text: t('tama.ev.call', { name: p.name }) });

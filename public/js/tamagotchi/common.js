@@ -7,9 +7,11 @@ import { t } from '../i18n.js';
 import { SPECIES } from './species.js';
 import { creatureArt } from './art.js';
 import { icon, DIET_FOOD } from './scene.js';
-import { itemArt } from './props.js';
+import { itemArt, eggArt } from './props.js';
 import { QUESTS } from './catalog.js';
 import { toDom, toSvgString, fitViewBox } from './vdom.js';
+import { realThumb } from './real.js';
+import { hasArt } from './roster.js';
 
 export const BY_KEY = new Map(SPECIES.map((s) => [s.key, s]));
 export const svg = (node) => toDom(node);
@@ -45,9 +47,16 @@ export function requestText(req, sp) {
   return t('tama.request.' + req.type);
 }
 
-/** Beschriftete Kreatur für Karten (Dossier, Gehege …) als leichtgewichtiges Bild. */
+/**
+ * Kreatur für Karten (Dossier, Gehege …) als leichtgewichtiges Bild: das
+ * gemalte Motiv, wo es eines gibt, sonst die gezeichnete Grafik.
+ */
 const thumbCache = new Map();
 export function creatureThumb(sp, o = {}, cls = '') {
+  if (!o.drawn) {
+    const real = realThumb(sp, o, cls);
+    if (real) return real;
+  }
   const key = [sp.key, o.stage || 'adult', o.variant || '', JSON.stringify(o.colors || null)].join('|');
   let src = thumbCache.get(key);
   if (!src) {
@@ -56,6 +65,17 @@ export function creatureThumb(sp, o = {}, cls = '') {
     thumbCache.set(key, src);
   }
   return el('img.tama-thumb' + (cls ? '.' + cls : ''), { src, alt: o.alt || '', loading: 'lazy', decoding: 'async' });
+}
+
+/** Ei bzw. Brutkapsel als kleines Bild: das gemalte Motiv, sonst die gezeichnete Grafik. */
+const eggCache = new Map();
+export function eggThumb(sp, cls = '') {
+  if (hasArt(sp.key)) {
+    const src = sp.birth === 'embryo' ? '/assets/items/cut/embryo.webp' : '/assets/items/cut/egg.webp';
+    return el('img.tama-thumb.is-real.is-egg-art' + (cls ? '.' + cls : ''), { src, alt: '', loading: 'lazy', decoding: 'async' });
+  }
+  if (!eggCache.has(sp.key)) eggCache.set(sp.key, 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(toSvgString(eggArt(sp))));
+  return el('img.tama-thumb' + (cls ? '.' + cls : ''), { src: eggCache.get(sp.key), alt: '', decoding: 'async' });
 }
 
 /** Kleines Bild eines Gegenstands (als <img>, damit viele davon billig bleiben). */
@@ -90,6 +110,10 @@ export function rewardChips(given = {}) {
   for (const [id, n] of given.items || []) out.push(el('span.tama-gain.is-item', { title: t('tama.item.' + id) }, itemImg(id), el('b', { text: '×' + n })));
   return out;
 }
+
+/** Name eines Events: eigene Aktionen des Betreibers tragen ihren Namen selbst. */
+export const eventName = (e) => (e?.custom ? e.name : t('tama.event.' + e.id));
+export const eventShort = (e) => (e?.custom ? e.name : t('tama.event.' + e.id + '_short'));
 
 /** Text einer Aufgabe mit Zielwert. */
 export const questText = (q) => t('tama.quest.' + q.id, { n: q.goal });

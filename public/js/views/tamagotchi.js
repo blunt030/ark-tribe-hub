@@ -2,11 +2,11 @@ import { el, spinner, toast } from '../ui.js';
 import { t } from '../i18n.js';
 import '../tamagotchi/texts.js';
 import '../tamagotchi/texts-play.js';
+import '../tamagotchi/texts-shop.js';
 import * as P from '../tamagotchi/progress.js';
-import { SPECIES } from '../tamagotchi/species.js';
 import { ACHIEVEMENTS } from '../tamagotchi/catalog.js';
 import { icon } from '../tamagotchi/scene.js';
-import { petState, petNow, loadPet, onPetChange, petAct } from '../tamagotchi/store.js';
+import { petState, petNow, loadPet, onPetChange, petAct, refreshRosterSoon } from '../tamagotchi/store.js';
 import { BY_KEY, createCare, svg } from '../tamagotchi/device.js';
 import { shards, rankName } from '../tamagotchi/common.js';
 import { createHub } from '../tamagotchi/hub.js';
@@ -14,6 +14,8 @@ import { openDropSheet } from '../tamagotchi/daily.js';
 import { nestPanel, openNest, dossierPanel, hallPanel, tribePanel, openSettings, openHelp } from '../tamagotchi/panels.js';
 import { shopPanel, awardsPanel } from '../tamagotchi/shop.js';
 import { sfx } from '../tamagotchi/sound.js';
+import { nestSpecies, roster } from '../tamagotchi/roster.js';
+import { checkoutReturn } from '../tamagotchi/buy.js';
 
 const TABS = [
   { key: 'care', path: '/tamagotchi', icon: 'egg' },
@@ -26,7 +28,7 @@ const TABS = [
 
 /**
  * Dino-Tamagotchi: ein virtuelles ARK-Haustier nach dem Vorbild von 1996 –
- * mit allen 217 Kreaturen aus dem Katalog, ARK-Prägung, Dossier und Gehege.
+ * mit den gemalten Kreaturen aus dem Katalog, ARK-Prägung, Dossier und Gehege.
  */
 export async function renderTamagotchi(mount, ctx, tabKey) {
   const { user, go } = ctx;
@@ -48,7 +50,7 @@ export async function renderTamagotchi(mount, ctx, tabKey) {
   const nav = el('nav.tama-tabs', { 'aria-label': t('nav.tamagotchi') }, tabs.map((x) => el('a.tama-tab' + (x.key === tab.key ? '.is-on' : ''), {
     href: '#' + x.path, 'aria-current': x.key === tab.key ? 'page' : null,
   }, svg(icon(x.icon)), el('span', { text: t('tama.tab.' + x.key) }),
-  x.key === 'dossier' ? el('small', { text: `${Object.values(petState.doc.dex).filter((e) => e.a > 0).length}/${SPECIES.length}` }) : null,
+  x.key === 'dossier' ? el('small', { text: `${Object.values(petState.doc.dex).filter((e) => e.a > 0).length}/${nestSpecies(petState.doc).length}` }) : null,
   x.key === 'awards' ? el('small', { text: `${Object.keys(petState.doc.player?.ach || {}).length}/${ACHIEVEMENTS.length}` }) : null)));
   mount.replaceChildren(head, nav, body);
 
@@ -123,13 +125,24 @@ export async function renderTamagotchi(mount, ctx, tabKey) {
   }
 
   let petId = petState.doc.pet?.id || null;
+  // Was die Brutstation zeigt (Gratis, Freischaltungen, Bilder, Verkauf) – nur bei Änderung neu zeichnen
+  const rosterSig = () => { const c = roster(); return JSON.stringify([c.free, c.off, c.owned.map((o) => o.species), c.sale, Object.keys(c.art || {}), c.prices, c.price]); };
+  let lastRoster = rosterSig();
   const off = onPetChange((state, ev) => {
     if (!mount.isConnected) { off(); care?.destroy(); return; }
     const id = state.doc?.pet?.id || null;
+    if (ev?.type === 'locked') toast(t('tama.ev.locked'), 'err');
     renderHead();
+    // Neue Freischaltungen (Kauf, Geschenk): Brutstation ohne Tier neu zeichnen
+    if (ev?.type === 'roster') {
+      const sig = rosterSig();
+      if (sig === lastRoster) return;
+      lastRoster = sig;
+      if (tab.key === 'care' && !id) { renderBody(); return; }
+    }
     // Neues Tier oder Tier entfernt: Pflegeansicht neu aufbauen und nach oben
     // holen (vorher war evtl. die lange Artenliste gescrollt)
-    if (tab.key === 'care' && (id !== petId || ev?.type === 'conflict')) {
+    if (tab.key === 'care' && (id !== petId || ['conflict', 'locked'].includes(ev?.type))) {
       const fresh = id !== petId;
       petId = id;
       renderBody();
@@ -139,4 +152,8 @@ export async function renderTamagotchi(mount, ctx, tabKey) {
 
   renderHead();
   renderBody();
+  // Neue Geschenke, Ankündigungen und Aktionen des Betreibers holen
+  refreshRosterSoon(15_000);
+  // Zurück von der Bezahlung (Stripe): Kauf prüfen und Bescheid geben
+  checkoutReturn({ toast });
 }

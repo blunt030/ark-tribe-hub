@@ -118,7 +118,7 @@ test('Dino-Tamagotchi API: Konto-Spielstand, Konflikte, Prüfung und Tribe-Geheg
 
   await t.test('Tribe-Gehege zeigt nur Tiere des eigenen Tribes, ohne Protokoll', async () => {
     const rivalDoc = E.newDoc();
-    E.startEgg(rivalDoc, { species: 'dodo', name: 'Spy', now, seed: 7 });
+    E.startEgg(rivalDoc, { species: 'triceratops', name: 'Spy', now, seed: 7 });
     assert.equal((await outsider('PUT', '/api/pet', { doc: rivalDoc, baseRevision: 0 })).status, 200);
     const list = await admin('GET', '/api/pet/tribe');
     assert.equal(list.status, 200);

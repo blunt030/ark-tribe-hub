@@ -10,6 +10,7 @@
 import { api } from '../api.js';
 import * as E from './engine.js';
 import * as P from './progress.js';
+import { setRoster } from './roster.js';
 
 const listeners = new Set();
 const state = { doc: null, revision: 0, offset: 0, status: 'idle', userId: null, dirty: false, saving: false };
@@ -70,6 +71,9 @@ export function loadPet(user, { force = false } = {}) {
   loading = api.pet()
     .then((res) => {
       state.offset = Number(res.serverTime) - Date.now() || 0;
+      // Zuerst die Einstellungen des Betreibers (Startguthaben, Events, Arten)
+      setRoster(res.config || null);
+      rosterAt = Date.now();
       const upgrade = Boolean(res.doc?.pet) && !res.doc.player;
       state.doc = normalize(res.doc);
       state.revision = res.revision;
@@ -147,10 +151,13 @@ export async function savePet({ keepalive = false } = {}) {
     emit({ type: 'saved', events: [] });
   } catch (err) {
     if (err.status === 409 && err.data && 'doc' in err.data) {
-      state.doc = normalize(err.data.doc);
-      state.revision = err.data.revision;
-      P.advanceGame(state.doc, petNow());
+      adopt(err.data.doc, err.data.revision);
       emit({ type: 'conflict', events: [] });
+    } else if (err.status === 403 && err.code === 'SPECIES_LOCKED') {
+      // Art inzwischen nicht mehr frei (z. B. vom Betreiber geändert): Stand und Einstellungen neu laden
+      const user = { id: state.userId };
+      state.status = 'idle';
+      loadPet(user, { force: true }).then(() => emit({ type: 'locked', events: [] })).catch(() => {});
     } else {
       state.dirty = true;
       emit({ type: 'save-error', err, events: [] });
@@ -162,11 +169,63 @@ export async function savePet({ keepalive = false } = {}) {
   }
 }
 
+/** Stand vom Server übernehmen (Konflikt, Geschenk). */
+function adopt(doc, revision) {
+  state.doc = normalize(doc);
+  state.revision = revision;
+  P.advanceGame(state.doc, petNow());
+}
+
+/** Einstellungen des Betreibers und Freischaltungen neu holen (z. B. nach einem Kauf). */
+let rosterAt = 0;
+export async function refreshRoster(config = null) {
+  const cfg = config || (await api.petConfig()).config;
+  rosterAt = Date.now();
+  setRoster(cfg);
+  emit({ type: 'roster', events: [] });
+  return cfg;
+}
+
+/** Neue Geschenke, Ankündigungen und Events holen – höchstens alle paar Minuten. */
+export function refreshRosterSoon(maxAge = 5 * 60_000) {
+  if (state.status !== 'ready' || Date.now() - rosterAt < maxAge) return;
+  rosterAt = Date.now();
+  refreshRoster().catch(() => { rosterAt = 0; });
+}
+
+/**
+ * Geschenk annehmen: erst offene Änderungen sichern, dann schreibt der Server
+ * Splitter und Gegenstände in den Spielstand; der neue Stand wird übernommen.
+ */
+export async function claimGift(id) {
+  if (!state.doc) throw new Error('no_doc');
+  if (!state.revision) state.dirty = true;
+  await savePet();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await api.claimPetGift(id, state.revision);
+      adopt(res.doc, res.revision);
+      state.offset = Number(res.serverTime) - Date.now() || state.offset;
+      await refreshRoster();
+      emit({ type: 'gift', events: [], given: res.given });
+      return res.given;
+    } catch (err) {
+      if (err.status === 409 && err.data && 'doc' in err.data && attempt === 0) {
+        adopt(err.data.doc, err.data.revision);
+        emit({ type: 'conflict', events: [] });
+        continue;
+      }
+      throw err;
+    }
+  }
+  return null;
+}
+
 /** Offene Änderungen noch mitnehmen, wenn der Tab in den Hintergrund geht. */
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') savePet({ keepalive: true });
-    else if (state.status === 'ready') tickPet();
+    else if (state.status === 'ready') { tickPet(); refreshRosterSoon(); }
   });
 }
 
