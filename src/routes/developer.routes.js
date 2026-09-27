@@ -113,7 +113,7 @@ export function buildDeveloperRouter(db) {
     const user = await db.get('SELECT id, tribe_id FROM users WHERE id = ?', [id]);
     if (!user) throw notFound('Benutzer nicht gefunden');
     await db.transaction(async (tx) => {
-      await tx.run('UPDATE users SET totp_enabled = 0, totp_secret_encrypted = NULL, totp_last_counter = NULL WHERE id = ?', [id]);
+      await tx.run('UPDATE users SET totp_enabled = 0, mfa_method = NULL, totp_secret_encrypted = NULL, totp_last_counter = NULL, mfa_email_code_hash = NULL, mfa_email_code_expires = NULL WHERE id = ?', [id]);
       await tx.run('DELETE FROM sessions WHERE user_id = ?', [id]);
       await audit(tx, { tribeId: user.tribe_id, actorId: req.user.id, action: 'totp_reset', targetType: 'user', targetId: id });
     });

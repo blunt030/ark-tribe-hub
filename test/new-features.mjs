@@ -292,5 +292,41 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
     assert.deepEqual(breederMsg.body.allowed_mentions, { parse: [] }, 'keine @everyone-Pings');
     assert.equal((await admin.put('/api/tribes/me/discord', { breederWebhook: '', crafterWebhook: '' })).json.breeder.configured, false);
   });
+
+  await t.test('Zwei-Faktor-Anmeldung per E-Mail-Code als Alternative zur App', async () => {
+    const { hmac } = await import('../src/lib/tokens.js');
+    const { config } = await import('../src/config.js');
+    const setCode = async (uid, code) => app.db.run('UPDATE users SET mfa_email_code_hash = ?, mfa_email_code_expires = ? WHERE id = ?',
+      [hmac(config.sessionSecret, `mfa-mail:${uid}:${code}`), new Date(Date.now() + 600000).toISOString(), uid]);
+    const uid = (await app.db.get("SELECT id FROM users WHERE username='OaO Breeder'")).id;
+    const breederClient = client(base);
+    assert.equal((await breederClient.login('OaO Breeder', 'oao')).status, 200);
+    // Ohne bestaetigte E-Mail-Adresse nicht moeglich.
+    await app.db.run('UPDATE users SET email_verified = 0 WHERE id = ?', [uid]);
+    assert.equal((await breederClient.post('/api/users/me/2fa/email/setup', { currentPassword: 'ChangeMe123!' })).status, 400);
+    await app.db.run('UPDATE users SET email_verified = 1 WHERE id = ?', [uid]);
+    assert.equal((await breederClient.post('/api/users/me/2fa/email/setup', { currentPassword: 'ChangeMe123!' })).status, 200);
+    await setCode(uid, '246810');
+    assert.equal((await breederClient.post('/api/users/me/2fa/email/enable', { code: '111111' })).status, 400);
+    assert.equal((await breederClient.post('/api/users/me/2fa/email/enable', { code: '246810' })).status, 200);
+    assert.equal((await breederClient.get('/api/users/me/2fa')).json.method, 'email');
+
+    const fresh = client(base);
+    const first = await fresh.post('/api/auth/login', { identifier: 'OaO Breeder', password: 'ChangeMe123!', tribeSlug: 'oao' });
+    assert.equal(first.json.mfaRequired, true);
+    assert.equal(first.json.method, 'email');
+    assert.match(first.json.emailHint, /^b\*\*\*@/);
+    const stored = await app.db.get('SELECT mfa_email_code_hash FROM users WHERE id = ?', [uid]);
+    assert.ok(stored.mfa_email_code_hash && !/^\d{6}$/.test(stored.mfa_email_code_hash), 'nur Hash gespeichert');
+    await setCode(uid, '135790');
+    assert.equal((await fresh.post('/api/auth/login/2fa', { mfaToken: first.json.mfaToken, code: '000000' })).status, 401);
+    assert.equal((await fresh.post('/api/auth/login/2fa', { mfaToken: first.json.mfaToken, code: '135790' })).status, 200);
+    // Einmal verwendet -> ungueltig.
+    const again = await client(base).post('/api/auth/login', { identifier: 'OaO Breeder', password: 'ChangeMe123!', tribeSlug: 'oao' });
+    assert.equal((await client(base).post('/api/auth/login/2fa', { mfaToken: again.json.mfaToken, code: '135790' })).status, 401);
+    // Abschalten nur mit Passwort.
+    assert.equal((await breederClient.post('/api/users/me/2fa/disable', { currentPassword: 'falsch-falsch' })).status, 401);
+    assert.equal((await breederClient.post('/api/users/me/2fa/disable', { currentPassword: 'ChangeMe123!' })).status, 200);
+  });
 });
 

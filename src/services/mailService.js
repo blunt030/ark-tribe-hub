@@ -167,6 +167,18 @@ export async function sendVerificationEmail({ to, username, verifyUrl }) {
   });
 }
 
+export async function sendLoginCode({ to, username, code }) {
+  return sendMail({
+    to,
+    subject: 'ARK Tribe Hub – Dein Anmeldecode',
+    text:
+      `Hallo ${username},\n\n` +
+      `dein Anmeldecode lautet: ${code}\n\n` +
+      `Der Code ist 10 Minuten gültig und kann nur einmal verwendet werden.\n` +
+      `Wenn du dich gerade nicht anmelden wolltest, ändere bitte sofort dein Passwort – jemand kennt es.`,
+  });
+}
+
 export async function sendAccessPin({ to, username, pin, vaultNumber }) {
   return sendMail({
     to,

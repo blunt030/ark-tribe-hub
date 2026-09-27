@@ -2,7 +2,7 @@ import { clientIp } from '../lib/rateLimiter.js';
 import { Router } from '../lib/router.js';
 import { readJsonBody, sendJson, serializeCookie, clearCookie, badRequest } from '../lib/http.js';
 import { requireString, requirePassword, requireEmail } from '../lib/validate.js';
-import { register, login, logout, csrfTokenFor, verifyEmail, completeMfaLogin } from '../services/authService.js';
+import { register, login, logout, csrfTokenFor, verifyEmail, completeMfaLogin, resendMfaEmail } from '../services/authService.js';
 import { requireAuth, requireCsrf, SESSION_COOKIE } from '../middleware/auth.js';
 import { config } from '../config.js';
 
@@ -62,7 +62,7 @@ export function buildAuthRouter(db, { authRateLimit }) {
     const userAgent = req.headers['user-agent'] || null;
     const result = await login(db, { tribeSlug, identifier, password: body.password, ip, userAgent });
     if (result.mfaRequired) {
-      sendJson(res, 200, { mfaRequired: true, mfaToken: result.mfaToken });
+      sendJson(res, 200, { mfaRequired: true, mfaToken: result.mfaToken, method: result.method, emailHint: result.emailHint });
       return;
     }
 
@@ -71,6 +71,11 @@ export function buildAuthRouter(db, { authRateLimit }) {
       user: publicUser(result.user),
       csrfToken: result.csrfToken,
     });
+  });
+
+  router.post('/api/auth/login/2fa/resend', authRateLimit, async (req, res) => {
+    const body = await readJsonBody(req);
+    sendJson(res, 200, await resendMfaEmail(db, body.mfaToken));
   });
 
   router.post('/api/auth/login/2fa', authRateLimit, async (req, res) => {

@@ -1429,10 +1429,18 @@ body:has(.ark-theme) { background: var(--ink-0, #05090c); }
 .twofa-qr { width: 170px; height: 170px; border-radius: 8px; border: 2px solid #c89a5a; background: #f3ede1; padding: 6px; }
 .twofa-secret { display: block; padding: 8px 10px; border-radius: 6px; border: 1px solid #34414b; background: #081016; color: var(--gold-hi); font: 600 .95rem ui-monospace, Consolas, monospace; word-break: break-all; }
 .twofa .pin-row input[type="password"] { flex: 1; min-width: 0; }
+.twofa-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.twofa-choice { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid #34414b; background: rgba(8, 16, 22, .7); cursor: pointer; }
+.twofa-choice:has(input:checked) { border-color: #c89a5a; box-shadow: 0 0 0 1px rgba(200, 154, 90, .45) inset; background: rgba(60, 42, 18, .45); }
+.twofa-choice .ui-icon { width: 24px; height: 24px; color: var(--gold-hi); }
+.twofa-choice strong { display: block; color: #f3ede1; }
+.twofa-choice small { display: block; color: var(--muted); line-height: 1.35; }
+.twofa-choice.disabled { opacity: .55; cursor: not-allowed; }
 .dash-security-hint { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(245, 158, 11, .55); background: rgba(80, 50, 5, .35); color: #fcd34d; }
 .dash-security-hint .btn { margin-left: auto; }
 @media (max-width: 899px) {
   .twofa-setup { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .twofa-choices { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Zucht-Stammbaum ------------------------------------------------ */

@@ -16,6 +16,7 @@ import { sendAccessPin } from '../services/mailService.js';
 import QRCode from 'qrcode';
 import { generateTotpSecret, verifyTotp, otpauthUrl } from '../lib/totp.js';
 import { sealSecret, openSecret } from '../lib/secretBox.js';
+import { issueEmailCode, consumeEmailCode, maskEmail } from '../services/mfaEmail.js';
 
 /** Server/Map dürfen laut Spezifikation nur der Nutzer selbst sowie Admins/Breeder-Crafter
  *  des gleichen Tribes sehen – normale Mitglieder nicht. */
@@ -228,8 +229,15 @@ export function buildUsersRouter(db) {
   const needs2fa = (user) => user.roles.includes('admin') || user.roles.includes('developer');
 
   router.get('/api/users/me/2fa', requireActive, async (req, res) => {
-    const row = await db.get('SELECT totp_enabled FROM users WHERE id = ?', [req.user.id]);
-    sendJson(res, 200, { enabled: Boolean(Number(row?.totp_enabled)), recommended: needs2fa(req.user) });
+    const row = await db.get('SELECT totp_enabled, mfa_method, email, email_verified FROM users WHERE id = ?', [req.user.id]);
+    const enabled = Boolean(Number(row?.totp_enabled));
+    sendJson(res, 200, {
+      enabled,
+      method: enabled ? (row.mfa_method === 'email' ? 'email' : 'totp') : null,
+      recommended: needs2fa(req.user),
+      emailAvailable: Boolean(row?.email) && Boolean(Number(row?.email_verified)),
+      emailHint: maskEmail(row?.email),
+    });
   });
 
   // Schritt 1: neuen Schluessel erzeugen (noch nicht aktiv) und als QR-Code liefern.
@@ -254,18 +262,39 @@ export function buildUsersRouter(db) {
     if (!secret) throw badRequest('Bitte zuerst die Einrichtung starten');
     const counter = verifyTotp(secret, body.code);
     if (counter == null) throw badRequest('Der Code ist falsch. Bitte die Uhrzeit des Handys prüfen und erneut versuchen.');
-    await db.run('UPDATE users SET totp_enabled = 1, totp_last_counter = ? WHERE id = ?', [counter, req.user.id]);
+    await db.run("UPDATE users SET totp_enabled = 1, mfa_method = 'totp', totp_last_counter = ? WHERE id = ?", [counter, req.user.id]);
     await audit(db, { tribeId: req.user.tribe_id, actorId: req.user.id, action: 'totp_enabled', targetType: 'user', targetId: req.user.id });
     sendJson(res, 200, { enabled: true });
+  });
+
+  // Alternative ohne App: Code per E-Mail. Setzt eine bestaetigte Adresse voraus,
+  // damit niemand eine fremde oder falsche Adresse als zweiten Faktor nutzt.
+  router.post('/api/users/me/2fa/email/setup', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    await confirmPassword(req, body);
+    const me = await db.get('SELECT id, username, email, email_verified, totp_enabled FROM users WHERE id = ?', [req.user.id]);
+    if (Number(me.totp_enabled)) throw badRequest('Die Zwei-Faktor-Anmeldung ist bereits aktiv');
+    if (!me.email || !Number(me.email_verified)) throw badRequest('Bitte zuerst deine E-Mail-Adresse bestätigen (Link in der Bestätigungsmail)');
+    const result = await issueEmailCode(db, me);
+    sendJson(res, 200, { sent: result.sent, emailHint: maskEmail(me.email) });
+  });
+
+  router.post('/api/users/me/2fa/email/enable', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    limitCredentialChecks(req.user.id);
+    if (!await consumeEmailCode(db, req.user.id, body.code)) throw badRequest('Der Code ist falsch oder abgelaufen');
+    await db.run("UPDATE users SET totp_enabled = 1, mfa_method = 'email', totp_secret_encrypted = NULL, totp_last_counter = NULL WHERE id = ?", [req.user.id]);
+    await audit(db, { tribeId: req.user.tribe_id, actorId: req.user.id, action: 'mfa_email_enabled', targetType: 'user', targetId: req.user.id });
+    sendJson(res, 200, { enabled: true, method: 'email' });
   });
 
   router.post('/api/users/me/2fa/disable', requireActive, requireCsrf, async (req, res) => {
     const body = await readJsonBody(req);
     await confirmPassword(req, body);
-    const row = await db.get('SELECT totp_secret_encrypted, totp_last_counter FROM users WHERE id = ?', [req.user.id]);
+    const row = await db.get('SELECT totp_secret_encrypted, totp_last_counter, mfa_method FROM users WHERE id = ?', [req.user.id]);
     const secret = openSecret(row?.totp_secret_encrypted);
-    if (secret && verifyTotp(secret, body.code, { lastCounter: row.totp_last_counter }) == null) throw badRequest('Der Code ist falsch');
-    await db.run('UPDATE users SET totp_enabled = 0, totp_secret_encrypted = NULL, totp_last_counter = NULL WHERE id = ?', [req.user.id]);
+    if (row?.mfa_method !== 'email' && secret && verifyTotp(secret, body.code, { lastCounter: row.totp_last_counter }) == null) throw badRequest('Der Code ist falsch');
+    await db.run('UPDATE users SET totp_enabled = 0, mfa_method = NULL, totp_secret_encrypted = NULL, totp_last_counter = NULL, mfa_email_code_hash = NULL, mfa_email_code_expires = NULL WHERE id = ?', [req.user.id]);
     await audit(db, { tribeId: req.user.tribe_id, actorId: req.user.id, action: 'totp_disabled', targetType: 'user', targetId: req.user.id });
     sendJson(res, 200, { enabled: false });
   });

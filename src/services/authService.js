@@ -8,6 +8,7 @@ import { audit } from './auditService.js';
 import { notifyAdminOfRegistration, sendVerificationEmail } from './mailService.js';
 import { verifyTotp } from '../lib/totp.js';
 import { openSecret } from '../lib/secretBox.js';
+import { issueEmailCode, consumeEmailCode, maskEmail } from './mfaEmail.js';
 import { timingSafeEqual } from 'node:crypto';
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -203,7 +204,15 @@ export async function login(db, { tribeSlug, identifier, password, ip, userAgent
   // Zweiter Faktor: Ohne gueltigen Authenticator-Code gibt es noch keine
   // Sitzung, nur ein kurzlebiges, signiertes Zwischen-Token (5 Minuten).
   if (Number(user.totp_enabled)) {
-    return { mfaRequired: true, mfaToken: signMfaToken(user) };
+    const method = user.mfa_method === 'email' ? 'email' : 'totp';
+    let emailHint = null;
+    if (method === 'email') {
+      // Ein zu schnell erneut angeforderter Code ist hier kein Fehler - der
+      // zuletzt verschickte Code bleibt gueltig.
+      await issueEmailCode(db, user).catch((err) => { if (err.status !== 429) throw err; });
+      emailHint = maskEmail(user.email);
+    }
+    return { mfaRequired: true, mfaToken: signMfaToken(user), method, emailHint };
   }
   return createSession(db, user, { ip, userAgent });
 }
@@ -218,8 +227,8 @@ function signMfaToken(user) {
   return `${user.id}.${exp}.${mfaSignature(user, exp)}`;
 }
 
-/** Zweiter Schritt der Anmeldung: Zwischen-Token + 6-stelliger Code. */
-export async function completeMfaLogin(db, { mfaToken, code, ip, userAgent }) {
+/** Prueft das Zwischen-Token und liefert den Benutzer. */
+async function userFromMfaToken(db, mfaToken) {
   const [idPart, expPart, sig] = String(mfaToken || '').split('.');
   const userId = Number(idPart), exp = Number(expPart);
   if (!Number.isSafeInteger(userId) || !Number.isFinite(exp) || !sig || exp < Date.now()) {
@@ -232,16 +241,36 @@ export async function completeMfaLogin(db, { mfaToken, code, ip, userAgent }) {
   if (!user || expected.length !== Buffer.from(sig).length || !timingSafeEqual(expected, Buffer.from(sig))) {
     throw unauthorized('Die Anmeldung ist abgelaufen. Bitte erneut mit Passwort anmelden.');
   }
+  return user;
+}
+
+/** Neuen E-Mail-Code waehrend der Anmeldung anfordern. */
+export async function resendMfaEmail(db, mfaToken) {
+  const user = await userFromMfaToken(db, mfaToken);
+  if (user.mfa_method !== 'email') throw badRequest('Für dieses Konto werden Codes aus der App verwendet');
+  await issueEmailCode(db, user);
+  return { emailHint: maskEmail(user.email) };
+}
+
+/** Zweiter Schritt der Anmeldung: Zwischen-Token + 6-stelliger Code. */
+export async function completeMfaLogin(db, { mfaToken, code, ip, userAgent }) {
+  const user = await userFromMfaToken(db, mfaToken);
   const attemptKey = `mfa:${user.id}`;
   if (await isLockedOut(db, attemptKey, ip)) {
     throw unauthorized('Zu viele falsche Codes. Bitte in 15 Minuten erneut versuchen.');
   }
-  const secret = openSecret(user.totp_secret_encrypted);
-  const counter = secret ? verifyTotp(secret, code, { lastCounter: user.totp_last_counter }) : null;
-  await db.run('INSERT INTO login_attempts (identifier, ip, success) VALUES (?,?,?)', [attemptKey, ip, counter != null ? 1 : 0]);
-  if (counter == null) throw unauthorized('Der Code ist falsch oder abgelaufen');
-  // Jeder Code gilt nur einmal (Schutz vor Wiederverwendung).
-  await db.run('UPDATE users SET totp_last_counter = ? WHERE id = ?', [counter, user.id]);
+  let ok;
+  if (user.mfa_method === 'email') {
+    ok = await consumeEmailCode(db, user.id, code);
+  } else {
+    const secret = openSecret(user.totp_secret_encrypted);
+    const counter = secret ? verifyTotp(secret, code, { lastCounter: user.totp_last_counter }) : null;
+    ok = counter != null;
+    // Jeder Code gilt nur einmal (Schutz vor Wiederverwendung).
+    if (ok) await db.run('UPDATE users SET totp_last_counter = ? WHERE id = ?', [counter, user.id]);
+  }
+  await db.run('INSERT INTO login_attempts (identifier, ip, success) VALUES (?,?,?)', [attemptKey, ip, ok ? 1 : 0]);
+  if (!ok) throw unauthorized('Der Code ist falsch oder abgelaufen');
   if (user.status === 'disabled' || user.status === 'rejected' || (user.tribe_id && !user.tribe_active)) {
     throw unauthorized('Dieses Konto ist gesperrt. Bitte wende dich an deinen Tribe-Admin.');
   }

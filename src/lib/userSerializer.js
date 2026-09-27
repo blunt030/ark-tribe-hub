@@ -25,6 +25,7 @@ const VERWALTUNG = [
   'map',
   'personal_vault_number',
   'totp_enabled',
+  'mfa_method',
   'created_at',
   'updated_at',
 ];
@@ -37,6 +38,8 @@ export const GEHEIME_FELDER = [
   'personal_pin_encrypted',
   'totp_secret_encrypted',
   'totp_last_counter',
+  'mfa_email_code_hash',
+  'mfa_email_code_expires',
 ];
 
 function auswaehlen(user, felder) {

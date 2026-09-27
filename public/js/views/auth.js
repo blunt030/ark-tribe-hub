@@ -1,4 +1,4 @@
-import { el, clear } from '../ui.js';
+import { el, clear, toast } from '../ui.js';
 import { t, LANGS, getLang, setLang } from '../i18n.js';
 import { api, setCsrf, ApiError } from '../api.js';
 
@@ -76,7 +76,7 @@ export function renderAuth(root, { onSignedIn }) {
             identifier: identifier.value.trim(),
             password: password.value,
           });
-          if (res.mfaRequired) { form.replaceWith(mfaForm(res.mfaToken)); return; }
+          if (res.mfaRequired) { form.replaceWith(mfaForm(res.mfaToken, res.method, res.emailHint)); return; }
           setCsrf(res.csrfToken);
           onSignedIn(res.user);
         } catch (err) {
@@ -100,10 +100,16 @@ export function renderAuth(root, { onSignedIn }) {
   }
 
   // Zweiter Schritt fuer Konten mit Zwei-Faktor-Anmeldung.
-  function mfaForm(mfaToken) {
+  function mfaForm(mfaToken, method = 'totp', emailHint = null) {
     const code = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', pattern: '[0-9]{6}', maxlength: '6', required: true, id: 'f-otp', placeholder: '123456', style: 'text-align:center;letter-spacing:.4em;font-size:1.4rem' });
     const status = el('div.notice.err', { hidden: true, role: 'alert' });
     const submit = el('button.btn.primary.block', { type: 'submit', text: t('auth.login') });
+    const resend = el('button.btn.ghost.block', { type: 'button', style: 'margin-top:8px', text: t('mfa.resend'), onclick: async () => {
+      resend.disabled = true;
+      try { await api.resendMfa(mfaToken); status.hidden = true; toast(t('mfa.resent')); }
+      catch (err) { status.hidden = false; status.textContent = err instanceof ApiError ? err.message : t('common.error'); }
+      finally { setTimeout(() => { resend.disabled = false; }, 45000); }
+    } });
     const form = el('form', {
       onsubmit: async (e) => {
         e.preventDefault();
@@ -120,10 +126,11 @@ export function renderAuth(root, { onSignedIn }) {
         }
       },
     },
-      el('p', { style: 'margin:0 0 12px;color:var(--muted)', text: t('mfa.login_hint') }),
+      el('p', { style: 'margin:0 0 12px;color:var(--muted)', text: method === 'email' ? t('mfa.login_hint_email', { email: emailHint || '' }) : t('mfa.login_hint') }),
       status,
       el('div.field', {}, el('label', { for: 'f-otp', text: t('mfa.code') }), code),
       submit,
+      method === 'email' ? resend : null,
       el('button.btn.ghost.block', { type: 'button', style: 'margin-top:8px', text: t('common.back'), onclick: () => draw() })
     );
     setTimeout(() => code.focus(), 30);

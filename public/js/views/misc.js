@@ -271,27 +271,50 @@ export async function renderProfile(mount, ctx) {
 
   /* ------------------------------------------ Zwei-Faktor-Anmeldung */
   const twoFaBox = el('div.twofa');
-  function drawTwoFa(enabled) {
+  const codeInput = () => el('input', { type: 'text', inputmode: 'numeric', maxlength: '6', autocomplete: 'one-time-code', placeholder: '123456', 'aria-label': t('mfa.code'), style: 'max-width:180px;text-align:center;letter-spacing:.3em' });
+  const confirmRow = (codeField, enable, method) => el('div.pin-row', {}, codeField,
+    el('button.btn.primary', { type: 'button', onclick: async (e) => {
+      e.currentTarget.disabled = true;
+      try { await enable(codeField.value.trim()); toast(t('mfa.enabled')); drawTwoFa(true, method); }
+      catch (err) { toast(err.message, 'err'); e.currentTarget.disabled = false; }
+    } }, el('span', { text: t('mfa.confirm') })));
+  function drawTwoFa(enabled, method = 'totp') {
     const pwField = el('input', { type: 'password', autocomplete: 'current-password', placeholder: t('pw.current'), 'aria-label': t('pw.current') });
     if (enabled) {
+      const isEmail = method === 'email';
       const codeField = el('input', { type: 'text', inputmode: 'numeric', maxlength: '6', autocomplete: 'one-time-code', placeholder: t('mfa.code'), 'aria-label': t('mfa.code') });
       twoFaBox.replaceChildren(
-        el('div.sec-status', {}, uiIcon('shield-check'), el('span', { text: t('mfa.active') }), pill('✓', 'done')),
+        el('div.sec-status', {}, uiIcon(isEmail ? 'envelope' : 'device-mobile'),
+          el('span', { text: isEmail ? t('mfa.active_email', { email: twoFaRes.emailHint || '' }) : t('mfa.active') }), pill('✓', 'done')),
         el('details.disclosure', {}, el('summary', {}, uiIcon('x-circle'), el('span', { text: t('mfa.disable') }), uiIcon('caret-right', 'caret')),
-          el('div.disclosure-body', {}, el('div.field', {}, pwField), el('div.field', {}, codeField),
+          el('div.disclosure-body', {}, el('div.field', {}, pwField), isEmail ? null : el('div.field', {}, codeField),
             el('button.btn.danger', { type: 'button', onclick: async (e) => {
               e.currentTarget.disabled = true;
-              try { await api.twoFactorDisable(pwField.value, codeField.value.trim()); toast(t('mfa.disabled')); drawTwoFa(false); }
+              try { await api.twoFactorDisable(pwField.value, isEmail ? '' : codeField.value.trim()); toast(t('mfa.disabled')); drawTwoFa(false); }
               catch (err) { toast(err.message, 'err'); e.currentTarget.disabled = false; }
             } }, el('span', { text: t('mfa.disable') })))));
       return;
     }
+    let choice = 'totp';
+    const choiceBtn = (value, icon, title, desc, disabled = false) => el('label.twofa-choice' + (disabled ? '.disabled' : ''), {},
+      el('input', { type: 'radio', name: 'twofa-method', value, checked: value === choice, disabled, onchange: () => { choice = value; } }),
+      uiIcon(icon), el('span', {}, el('strong', { text: title }), el('small', { text: desc })));
     const startBtn = el('button.btn.primary.lux', { type: 'button' }, uiIcon('shield-check'), el('span', { text: t('mfa.setup') }));
     startBtn.addEventListener('click', async () => {
       startBtn.disabled = true;
       try {
+        if (choice === 'email') {
+          const setup = await api.twoFactorEmailSetup(pwField.value);
+          const codeField = codeInput();
+          twoFaBox.replaceChildren(
+            el('p.profile-form-note', { text: t('mfa.email_sent', { email: setup.emailHint || '' }) }),
+            confirmRow(codeField, (code) => api.twoFactorEmailEnable(code), 'email'),
+            el('button.btn.ghost.sm', { type: 'button', style: 'margin-top:8px', text: t('common.back'), onclick: () => drawTwoFa(false) }));
+          codeField.focus();
+          return;
+        }
         const setup = await api.twoFactorSetup(pwField.value);
-        const codeField = el('input', { type: 'text', inputmode: 'numeric', maxlength: '6', autocomplete: 'one-time-code', placeholder: '123456', 'aria-label': t('mfa.code'), style: 'max-width:180px;text-align:center;letter-spacing:.3em' });
+        const codeField = codeInput();
         const qr = el('img.twofa-qr', { src: 'data:image/svg+xml;base64,' + btoa(setup.qrSvg), alt: t('mfa.qr_alt') });
         twoFaBox.replaceChildren(
           el('ol.twofa-steps', {},
@@ -303,21 +326,21 @@ export async function renderProfile(mount, ctx) {
               el('p.hint', { text: t('mfa.manual') }),
               el('code.twofa-secret', { text: setup.secret.replace(/(.{4})/g, '$1 ').trim() }),
               el('a.btn.sm', { href: setup.otpauthUrl, style: 'margin-top:8px' }, el('span', { text: t('mfa.open_app') })))),
-          el('div.pin-row', {}, codeField,
-            el('button.btn.primary', { type: 'button', onclick: async (e) => {
-              e.currentTarget.disabled = true;
-              try { await api.twoFactorEnable(codeField.value.trim()); toast(t('mfa.enabled')); drawTwoFa(true); }
-              catch (err) { toast(err.message, 'err'); e.currentTarget.disabled = false; }
-            } }, el('span', { text: t('mfa.confirm') }))));
+          confirmRow(codeField, (code) => api.twoFactorEnable(code), 'totp'));
         codeField.focus();
       } catch (err) { toast(err.message, 'err'); startBtn.disabled = false; }
     });
     twoFaBox.replaceChildren(...[
       twoFaRes.recommended ? el('div.notice.note', { text: t('mfa.recommended') }) : null,
-      el('p.profile-form-note', { text: t('mfa.intro') }),
+      el('p.profile-form-note', { text: t('mfa.intro_choice') }),
+      el('div.twofa-choices', { role: 'radiogroup', 'aria-label': t('mfa.method') },
+        choiceBtn('totp', 'device-mobile', t('mfa.method_app'), t('mfa.method_app_desc')),
+        choiceBtn('email', 'envelope', t('mfa.method_email'),
+          twoFaRes.emailAvailable ? t('mfa.method_email_desc', { email: twoFaRes.emailHint || '' }) : t('mfa.method_email_missing'),
+          !twoFaRes.emailAvailable)),
       el('div.pin-row', {}, pwField, startBtn)].filter(Boolean));
   }
-  drawTwoFa(Boolean(twoFaRes.enabled));
+  drawTwoFa(Boolean(twoFaRes.enabled), twoFaRes.method || 'totp');
 
   /* ------------------------------------------------ Benachrichtigungen */
   const prefChanged = new Map();

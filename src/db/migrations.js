@@ -30,6 +30,10 @@ const MIGRATIONS = [
   { table: 'users', column: 'totp_secret_encrypted', sql: 'ALTER TABLE users ADD COLUMN totp_secret_encrypted TEXT' },
   { table: 'users', column: 'totp_enabled', sql: 'ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0' },
   { table: 'users', column: 'totp_last_counter', sql: 'ALTER TABLE users ADD COLUMN totp_last_counter INTEGER' },
+  // Zweiter Faktor per E-Mail als Alternative zur App ('totp' | 'email').
+  { table: 'users', column: 'mfa_method', sql: 'ALTER TABLE users ADD COLUMN mfa_method TEXT' },
+  { table: 'users', column: 'mfa_email_code_hash', sql: 'ALTER TABLE users ADD COLUMN mfa_email_code_hash TEXT' },
+  { table: 'users', column: 'mfa_email_code_expires', sql: 'ALTER TABLE users ADD COLUMN mfa_email_code_expires TEXT' },
   // Discord-Webhooks je Tribe (verschluesselt), getrennt fuer Breeder und Crafter.
   { table: 'tribes', column: 'discord_breeder_webhook', sql: 'ALTER TABLE tribes ADD COLUMN discord_breeder_webhook TEXT' },
   { table: 'tribes', column: 'discord_crafter_webhook', sql: 'ALTER TABLE tribes ADD COLUMN discord_crafter_webhook TEXT' },
