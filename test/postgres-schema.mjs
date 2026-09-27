@@ -55,3 +55,26 @@ test('PostgreSQL: email token migration is repeatable and links are single-use',
   assert.equal((await verifyEmail(db,token)).ok,true);
   assert.equal((await verifyEmail(db,token)).ok,false);
 });
+
+test('PostgreSQL: Tamagotchi-Spielstand mit Revision, Konflikt und Löschkaskade', async t => {
+  const { savePet, loadPet, tribePets } = await import('../src/services/petService.js');
+  const pg = new PGlite();
+  t.after(() => pg.close());
+  await pg.exec(readFileSync(new URL('../src/db/schema.postgres.sql', import.meta.url), 'utf8'));
+  const query = (sql,args=[]) => {let n=0;return pg.query(sql.replace(/\?/g,()=>`$${++n}`),args);};
+  const db = {all:async(s,a)=>(await query(s,a)).rows,get:async(s,a)=>(await query(s,a)).rows[0],run:query,transaction:async(fn)=>fn(db)};
+  const { rows: [tribe] } = await pg.query("INSERT INTO tribes (slug,name) VALUES ('pets','Pets') RETURNING id");
+  const { rows: [user] } = await pg.query("INSERT INTO users (tribe_id,username,password_hash,status) VALUES ($1,'Keeper','x','active') RETURNING id",[tribe.id]);
+  const state = JSON.stringify({ v: 1, pet: { species: 'rex', name: 'Rexi' }, dex: {}, hall: [], settings: { shell: 'tek', retro: false } });
+  assert.deepEqual(await savePet(db, user.id, state, 0), { ok: true, revision: 1 });
+  assert.equal((await savePet(db, user.id, state, 0)).ok, false);
+  assert.deepEqual(await savePet(db, user.id, state, 1), { ok: true, revision: 2 });
+  const stale = await savePet(db, user.id, state, 1);
+  assert.equal(stale.ok, false);
+  assert.equal(stale.revision, 2);
+  assert.equal((await loadPet(db, user.id)).doc.pet.name, 'Rexi');
+  assert.equal((await tribePets(db, tribe.id))[0].username, 'Keeper');
+  await assert.rejects(pg.query('INSERT INTO pets (user_id,state,updated_at) VALUES ($1,$2,$3)', [999999, '{}', 'now']));
+  await pg.query('DELETE FROM users WHERE id=$1', [user.id]);
+  assert.equal((await pg.query('SELECT COUNT(*)::int AS n FROM pets')).rows[0].n, 0);
+});

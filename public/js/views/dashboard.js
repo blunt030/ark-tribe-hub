@@ -133,6 +133,13 @@ export async function renderDashboard(mount, ctx) {
     activityPanel(notifications, newsRes.news || [], go)
   );
   mount.append(el('div.dash-main-grid', {}, work, aside));
+
+  // Das Dino-Tamagotchi meldet sich auch hier. Seine Grafik-Module kommen erst,
+  // wenn die Startseite steht – der erste Aufbau bleibt so schnell wie bisher.
+  import('../tamagotchi/widget.js')
+    .then(({ petWidget }) => petWidget({ user, go }))
+    .then((node) => { if (aside.isConnected) aside.prepend(node); })
+    .catch(() => { /* Tamagotchi ist optional */ });
 }
 
 function metric(icon, count, title, detail, onclick, kind) {

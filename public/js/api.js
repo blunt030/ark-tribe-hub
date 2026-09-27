@@ -6,14 +6,16 @@ export function setCsrf(token) { csrfToken = token; }
 export function getCsrf() { return csrfToken; }
 
 export class ApiError extends Error {
-  constructor(status, code, message) {
+  constructor(status, code, message, data = null) {
     super(message);
     this.status = status;
     this.code = code;
+    // Vollständige Fehlerantwort, z. B. der neuere Tamagotchi-Stand bei 409.
+    this.data = data;
   }
 }
 
-async function call(method, path, body) {
+async function call(method, path, body, { keepalive = false } = {}) {
   const headers = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   // Das Backend verlangt bei allen verändernden Anfragen ein CSRF-Token im Header.
@@ -25,6 +27,7 @@ async function call(method, path, body) {
       method,
       headers,
       credentials: 'same-origin',
+      keepalive,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
@@ -38,7 +41,7 @@ async function call(method, path, body) {
 
   if (!res.ok) {
     const err = data?.error || {};
-    throw new ApiError(res.status, err.code || 'ERROR', err.message || t('common.error'));
+    throw new ApiError(res.status, err.code || 'ERROR', err.message || t('common.error'), data);
   }
   return data;
 }
@@ -50,6 +53,10 @@ export const api = {
   createAlliance: b => call('POST', '/api/alliances', b),
   updateAlliance: (id,b) => call('PATCH', '/api/alliances/' + id, b),
   deleteAlliance: id => call('DELETE', '/api/alliances/' + id),
+  // Dino-Tamagotchi
+  pet: () => call('GET', '/api/pet'),
+  savePet: (doc, baseRevision, opts) => call('PUT', '/api/pet', { doc, baseRevision }, opts),
+  tribePets: () => call('GET', '/api/pet/tribe'),
   chatMessages: (q = {}) => call('GET', '/api/chat/messages?' + new URLSearchParams(q)),
   sendChatMessage: body => call('POST', '/api/chat/messages', { body }),
   // Auth

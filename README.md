@@ -83,6 +83,7 @@ versuchen, OaO-Bestellungen zu sehen: muss überall 404 geben).
 | Impressum, Datenschutz und Nutzungsbedingungen technisch eingebunden | ✅ |
 | CSRF-Schutz, Rate-Limiting, Brute-Force-Sperre, Security-Header | ✅ |
 | Weboberfläche im Look des Moodboards, responsive, 4 Sprachen | ✅ |
+| Dino-Tamagotchi mit allen 217 ARK-Kreaturen, Echtzeit-Pflege, Minispielen, Dossier und Tribe-Gehege | ✅ |
 | PWA (Manifest + Service Worker, installierbar) | ✅ |
 | Datenbank-Backend wechselt automatisch: SQLite lokal, Postgres gehostet | ✅ |
 
@@ -141,6 +142,45 @@ public/
 Bequemlichkeit. Die eigentliche Absicherung passiert – wie im ganzen Projekt –
 ausschließlich serverseitig; wer eine URL von Hand aufruft, bekommt vom
 Backend dieselbe 403/404 wie über die API.
+
+### Dino-Tamagotchi („Tek-Gotchi“)
+
+Ein virtuelles Haustier nach dem Vorbild des Tamagotchi von 1996 – mit allen
+217 Kreaturen aus dem Katalog. Erreichbar über den Menüpunkt „Dino-Tamagotchi“
+(`#/tamagotchi`), zusätzlich meldet sich das Tier mit einer Kachel auf der
+Startseite und einem Ruf-Zähler am Menüpunkt.
+
+- **Klassische Regeln:** je vier Herzen für Sättigung und Laune, Mahlzeit oder
+  Snack (Snack macht dick), Häufchen, Krankheit mit teils zwei Medizin-Dosen,
+  Licht aus zur Schlafenszeit, Erziehung über „Fake-Rufe“, Pflegefehler nach
+  15 Minuten, pflegeabhängige Entwicklung (Alpha, Treu, Verwildert und eine
+  geheime Tek-Form), Tod bzw. Ruhestand und Nachwuchs über Generationen.
+- **ARK-Extras:** Prägung über Pflegeanfragen mit Countdown, Reifestufen,
+  Kryopod als Pause (z. B. im Urlaub), Farbmutationen bei der Zucht.
+- **Zwei Modi:** *Entspannt* (langsamer Hunger, Licht automatisch, kein Tod –
+  der Tribe rettet per Kryopod) und *Klassisch (1996)* mit den harten Regeln.
+- **Echtzeit ohne Server-Takt:** `public/js/tamagotchi/engine.js` rechnet die
+  verstrichene Zeit deterministisch in Minutenschritten nach. Ein Rutsch ergibt
+  denselben Stand wie viele kleine Schritte; Geräteuhren gleicht die Serverzeit aus.
+- **Grafik ohne Bilddateien:** Jede Art wird aus einem von 21 Körperbauplänen
+  als SVG gezeichnet (Stufen, Varianten, Mimik, Animation per CSS). Dazu 13
+  Lebensräume mit Tageszeit, drei Minispiele, Retro-LCD-Modus, sechs Gehäuse.
+
+```
+public/js/tamagotchi/
+├── engine.js      Spielregeln (ohne DOM, läuft auch in den Node-Tests)
+├── species.js     alle 217 Arten: Körperbau, Farben, Futter, Lebensraum
+├── art*.js        SVG-Kreaturen · scene.js Lebensräume, Requisiten, Symbole
+├── store.js       Zustand, Zeitlauf, Speichern mit Revisionsprüfung
+├── device.js      Gerät, Animationen, Kacheln · games.js Minispiele
+├── panels.js      Brutstation, Dossier, Ahnen, Gehege, Einstellungen, Anleitung
+└── widget.js      Kachel für die Startseite (wird nachgeladen)
+```
+
+Gespeichert wird ein Spielstand pro Konto (Tabelle `pets`, JSON bis 64 KB). Der
+Server prüft Aufbau und Wertebereiche, Schreibkonflikte zwischen zwei Geräten
+löst eine Revisionsnummer (409 liefert den neueren Stand mit). Im Tribe-Gehege
+sehen Mitglieder nur die Tiere ihres eigenen Tribes, ohne Pflegeprotokoll.
 
 ### Frontend-Tests: echter Browser, nicht nur Behauptung
 
@@ -343,6 +383,11 @@ Developer zusätzlich: `POST/PATCH /categories`, `POST/PATCH /items`, `POST /ite
 ### Benachrichtigungen
 `GET /notifications` · `PATCH /notifications/:id/read` · `POST /notifications/read-all` ·
 `GET/PUT /notifications/preferences`
+
+### Dino-Tamagotchi
+`GET /pet` (eigener Spielstand + Serverzeit) · `PUT /pet` mit `{ doc, baseRevision }`
+(409 bei veralteter Revision, liefert den aktuellen Stand) · `GET /pet/tribe`
+(Tiere des eigenen Tribes, ohne Protokoll und Sammelkatalog)
 
 ### Admin (eigener Tribe)
 `GET /admin/members` · `PATCH /admin/members/:id/approve|reject|disable|roles` ·
