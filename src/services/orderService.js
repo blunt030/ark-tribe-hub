@@ -119,7 +119,7 @@ export async function createOrder(db, { tribeId, memberId, priority = 'normal', 
     const staff = await tx.all(
       `SELECT DISTINCT u.id FROM users u
        JOIN user_roles ur ON ur.user_id = u.id JOIN roles r ON r.id = ur.role_id
-       WHERE u.tribe_id = ? AND r.key IN ('breeder_crafter','admin') AND u.status = 'active' AND u.id != ?`,
+       WHERE u.tribe_id = ? AND r.key IN ('breeder_crafter','breeder','crafter','admin') AND u.status = 'active' AND u.id != ?`,
       [tribeId, memberId]
     );
     for (const s of staff) await notify(tx, { userId: s.id, tribeId, type: 'order_created', payload: { orderId } });

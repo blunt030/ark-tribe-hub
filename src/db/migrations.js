@@ -46,4 +46,23 @@ export async function runMigrations(db) {
     }
   }
   await migrateEmailTokens(db);
+  await migrateVaults(db);
+}
+
+/**
+ * Bisher stand die Vault-Nummer als Freitext am Benutzer. Einmalig (idempotent)
+ * in die Vault-Liste uebernehmen, damit Admins sie dort verwalten koennen.
+ */
+async function migrateVaults(db) {
+  const rows = await db.all(
+    `SELECT u.id, u.tribe_id, u.personal_vault_number FROM users u
+     WHERE u.tribe_id IS NOT NULL AND u.personal_vault_number IS NOT NULL AND u.personal_vault_number <> ''`
+  );
+  for (const u of rows) {
+    const name = String(u.personal_vault_number).trim().slice(0, 50);
+    const existing = await db.get('SELECT id FROM tribe_vaults WHERE tribe_id = ? AND name = ?', [u.tribe_id, name]);
+    if (existing) continue;
+    await db.run('INSERT INTO tribe_vaults (tribe_id, name, assigned_user_id) VALUES (?,?,?)', [u.tribe_id, name, u.id]);
+    console.log(`[MIGRATION] Vault ${name} aus Benutzerprofil uebernommen`);
+  }
 }

@@ -6,8 +6,7 @@ import { getUserRoles } from '../services/authService.js';
 import { serializeUserAdmin, serializeUserPublic } from '../lib/userSerializer.js';
 import { notify } from '../services/notificationService.js';
 import { audit, listAuditLogs } from '../services/auditService.js';
-import { decryptAccessPin, encryptAccessPin, validateAccessPin } from '../services/accessPinService.js';
-import { sendAccessPin } from '../services/mailService.js';
+import { decryptAccessPin } from '../services/accessPinService.js';
 
 /**
  * Ein normaler Admin ist immer an seinen eigenen Tribe gebunden (req.user.tribe_id).
@@ -54,30 +53,23 @@ export function buildAdminRouter(db) {
     const id = parseIdParam(req.params.id);
     const tribeId = effectiveTribeId(req);
     const body = await readJsonBody(req);
-    const member = await scopedMember(db, id, tribeId);
+    await scopedMember(db, id, tribeId);
     const updates = [];
     const values = [];
-    let newPin = null;
     if (body.vaultNumber !== undefined) {
       const vault = String(body.vaultNumber ?? '').trim();
       if (vault.length > 50) throw badRequest('Vault-Nummer ist zu lang');
       updates.push('personal_vault_number = ?');
       values.push(vault || null);
     }
-    if (body.personalPin !== undefined) {
-      newPin = validateAccessPin(body.personalPin);
-      updates.push('personal_pin_encrypted = ?');
-      values.push(encryptAccessPin(newPin));
-    }
-    if (!updates.length) throw badRequest('PIN oder Vault-Nummer fehlt');
+    // Den PIN legt jedes Mitglied selbst fest; Admins sehen ihn nur.
+    if (body.personalPin !== undefined) throw badRequest('Den PIN legt jedes Mitglied im eigenen Profil fest');
+    if (!updates.length) throw badRequest('Vault-Nummer fehlt');
     values.push(new Date().toISOString(), id);
     await db.transaction(async (tx) => {
       await tx.run(`UPDATE users SET ${updates.join(', ')}, updated_at = ? WHERE id = ?`, values);
-      await audit(tx, { tribeId, actorId: req.user.id, action: 'member_access_updated', targetType: 'user', targetId: id, meta: { pinChanged: Boolean(newPin), vaultChanged: body.vaultNumber !== undefined } });
+      await audit(tx, { tribeId, actorId: req.user.id, action: 'member_access_updated', targetType: 'user', targetId: id, meta: { vaultChanged: body.vaultNumber !== undefined } });
     });
-    if (newPin && member.email) {
-      await sendAccessPin({ to: member.email, username: member.username, pin: newPin, vaultNumber: body.vaultNumber ?? member.personal_vault_number });
-    }
     sendJson(res, 200, { ok: true });
   });
 
@@ -132,9 +124,9 @@ export function buildAdminRouter(db) {
     // plattformweite Rolle und darf hier bewusst NICHT gesetzt werden - sonst
     // koennte sich ein Tribe-Admin ueber einen praeparierten Request selbst zum
     // Plattform-Developer machen.
-    const VERGEBBAR = { breederCrafter: 'breeder_crafter', admin: 'admin' };
+    const VERGEBBAR = { breederCrafter: 'breeder_crafter', breeder: 'breeder', crafter: 'crafter', admin: 'admin' };
     const gesetzt = Object.keys(VERGEBBAR).filter((k) => typeof body[k] === 'boolean');
-    if (!gesetzt.length) throw badRequest('Mindestens ein Rollenfeld (breederCrafter, admin) als true/false angeben');
+    if (!gesetzt.length) throw badRequest('Mindestens ein Rollenfeld (breeder, crafter, admin) als true/false angeben');
 
     await db.transaction(async (tx) => {
       await scopedMember(tx, id, tribeId);
@@ -152,6 +144,20 @@ export function buildAdminRouter(db) {
         if (Number(adminZahl.c) <= 1) throw badRequest('Der letzte Admin des Tribes kann die Rolle nicht abgeben');
       }
 
+      // Wer die getrennten Rollen setzt, verlaesst die alte kombinierte Rolle.
+      if (gesetzt.includes('breeder') || gesetzt.includes('crafter')) {
+        const legacy = await tx.get("SELECT id FROM roles WHERE key = 'breeder_crafter'");
+        const had = await tx.get('SELECT 1 AS x FROM user_roles WHERE user_id = ? AND role_id = ?', [id, legacy.id]);
+        if (had) {
+          await tx.run('DELETE FROM user_roles WHERE user_id = ? AND role_id = ?', [id, legacy.id]);
+          // Die jeweils nicht angesprochene Teilrolle bleibt erhalten.
+          for (const [feld, key] of [['breeder', 'breeder'], ['crafter', 'crafter']]) {
+            if (gesetzt.includes(feld)) continue;
+            const r = await tx.get('SELECT id FROM roles WHERE key = ?', [key]);
+            await tx.run('INSERT INTO user_roles (user_id, role_id) VALUES (?,?) ON CONFLICT(user_id, role_id) DO NOTHING', [id, r.id]);
+          }
+        }
+      }
       for (const feld of gesetzt) {
         const role = await tx.get('SELECT id FROM roles WHERE key = ?', [VERGEBBAR[feld]]);
         if (body[feld]) {

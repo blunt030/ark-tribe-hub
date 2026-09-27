@@ -8,7 +8,7 @@ import { audit, listAuditLogs } from '../services/auditService.js';
 import { sendMail } from '../services/mailService.js';
 import { config } from '../config.js';
 
-const ALL_ROLES = ['member', 'breeder_crafter', 'admin', 'developer'];
+const ALL_ROLES = ['member', 'breeder_crafter', 'breeder', 'crafter', 'admin', 'developer'];
 
 export function buildDeveloperRouter(db) {
   const router = new Router();
@@ -75,7 +75,11 @@ export function buildDeveloperRouter(db) {
       const user = await tx.get('SELECT * FROM users WHERE id = ?', [id]);
       if (!user) throw notFound('Benutzer nicht gefunden');
       await tx.run('DELETE FROM user_roles WHERE user_id = ?', [id]);
-      for (const r of new Set(body.roles)) {
+      // breeder_crafter wird bei getrennten Rollen nur als Berechtigung ergaenzt
+      // und darf dann nicht als eigene Zeile zurueckgeschrieben werden.
+      const wanted = new Set(body.roles);
+      if (wanted.has('breeder') || wanted.has('crafter')) wanted.delete('breeder_crafter');
+      for (const r of wanted) {
         const role = await tx.get('SELECT id FROM roles WHERE key = ?', [r]);
         await tx.run('INSERT INTO user_roles (user_id, role_id) VALUES (?,?)', [id, role.id]);
       }

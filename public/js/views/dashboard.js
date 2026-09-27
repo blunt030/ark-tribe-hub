@@ -1,4 +1,5 @@
-import { el, spinner, orderCard, panel, avatar, avatarSrc, emptyBlock } from '../ui.js';
+import { el, spinner, orderCard, panel, avatar, avatarSrc, emptyBlock, preferredServer, rememberServer } from '../ui.js';
+import { presenceBar } from './community.js';
 import { t, timeAgo, fmtStamp, isPastDay } from '../i18n.js';
 import { api } from '../api.js';
 import { mitgeliefertesKartenbild } from '../map-images.js';
@@ -16,7 +17,7 @@ export async function renderDashboard(mount, ctx) {
   mount.append(spinner());
   const isAdmin = user.roles.includes('admin');
   const hasTribe = Boolean(user.tribeId);
-  const [ordersRes, notificationsRes, membersRes, newsRes, tasksRes, serversRes, tribeRes, chatRes, voiceRes] = await Promise.all([
+  const [ordersRes, notificationsRes, membersRes, newsRes, tasksRes, serversRes, tribeRes, chatRes, voiceRes, presenceRes] = await Promise.all([
     api.orders().catch(() => ({ orders: [] })),
     api.notifications().catch(() => ({ notifications: [] })),
     hasTribe ? api.members().catch(() => ({ members: [] })) : Promise.resolve({ members: [] }),
@@ -26,13 +27,14 @@ export async function renderDashboard(mount, ctx) {
     hasTribe ? api.myTribe().catch(() => null) : Promise.resolve(null),
     hasTribe ? api.chatMessages({ limit: 3 }).catch(() => null) : Promise.resolve(null),
     hasTribe ? api.voiceChannels().catch(() => ({ channels: [] })) : Promise.resolve({ channels: [] }),
+    hasTribe ? api.presence().catch(() => null) : Promise.resolve(null),
   ]);
   const all = ordersRes.orders || [];
   const notifications = notificationsRes.notifications || [];
   const members = membersRes.members || [];
   const tasks = tasksRes.tasks || [];
   const servers = serversRes.servers || [];
-  const server = servers.find((s) => s.status === 'active') || servers[0];
+  const server = preferredServer(servers, user);
   const serverDetail = server ? await api.server(server.id).catch(() => ({ server })) : null;
   const markers = serverDetail?.server?.markers || [];
   const channels = voiceRes.channels || [];
@@ -62,8 +64,13 @@ export async function renderDashboard(mount, ctx) {
       el('h1.dash-tribe-name', { text: hasTribe ? tribeName : t('dash.platform') }),
       el('div.dash-eyebrow', { text: t('dash.command') }),
       el('div.dash-hero-meta', {},
-        server ? el('span', {}, uiIcon('map'), el('span', { text: server.name })) : null,
-        server ? el('span', { text: server.map_name }) : null,
+        server ? el('label.hero-server', { title: t('dash.switch_server') },
+          uiIcon('map'),
+          el('span.hero-server-label', { text: t('dash.your_server') + ':' }),
+          servers.length > 1
+            ? el('select', { 'aria-label': t('dash.switch_server'), onchange: (e) => { rememberServer(e.target.value); go('/', true); } },
+                ...servers.map((s) => el('option', { value: String(s.id), selected: Number(s.id) === Number(server.id), text: `${s.name} · ${s.map_name}` })))
+            : el('b', { text: `${server.name} · ${server.map_name}` })) : null,
         server ? el('span.dash-live' + (server.status === 'active' ? '.is-active' : ''), { text: t('srv.status.' + server.status) }) : null,
         !server ? el('span', { text: hasTribe ? t('dash.no_server') : t('dash.welcome_back', { name: user.username }) }) : null
       ),
@@ -74,11 +81,11 @@ export async function renderDashboard(mount, ctx) {
 
   /* ------------------------------------------------------------- Kacheln */
   mount.append(el('section.dash-metrics', { 'aria-label': t('dash.overview') },
-    metric('clipboard-text', openAll.length, t('dash.orders_open'), t('dash.orders_sub'), () => go('/orders'), 'orders'),
-    hasTribe ? metric('check-square', myTasks.length, t('dash.my_tasks'),
+    metric('duo-clipboard-text', openAll.length, t('dash.orders_open'), t('dash.orders_sub'), () => go('/orders'), 'orders'),
+    hasTribe ? metric('duo-check-square', myTasks.length, t('dash.my_tasks'),
       myOverdue.length ? t('dash.overdue_n', { n: myOverdue.length }) : t('dash.none_overdue'), () => go('/tasks'), 'tasks') : null,
-    metric('warning', urgent.length, t('dash.urgent'), t('dash.urgent_sub'), () => go('/orders'), 'urgent'),
-    metric('bell', unread, t('nav.notifications'), unread ? t('notif.unread_n', { n: unread }) : t('dash.alerts_sub'), () => go('/notifications'), 'alerts')
+    metric('duo-warning', urgent.length, t('dash.urgent'), t('dash.urgent_sub'), () => go('/orders'), 'urgent'),
+    metric('duo-bell', unread, t('nav.notifications'), unread ? t('notif.unread_n', { n: unread }) : t('dash.alerts_sub'), () => go('/notifications'), 'alerts')
   ));
 
   /* ----------------------------------------------------------- Links */
@@ -119,7 +126,7 @@ export async function renderDashboard(mount, ctx) {
       pendingMembers.length ? el('button.status-alert', { type: 'button', onclick: () => go('/members') },
         uiIcon('warning'), el('span', { text: t('dash.pending_requests', { n: pendingMembers.length }) }), uiIcon('caret-right')) : null
     ) : null,
-    hasTribe ? chatPanel(chatRes?.messages || [], user, go) : null,
+    hasTribe ? chatPanel(chatRes?.messages || [], user, go, presenceBar(members, presenceRes)) : null,
     activityPanel(notifications, newsRes.news || [], go)
   );
   mount.append(el('div.dash-main-grid', {}, work, aside));
@@ -127,7 +134,7 @@ export async function renderDashboard(mount, ctx) {
 
 function metric(icon, count, title, detail, onclick, kind) {
   return el('button.dash-metric.dash-metric-' + kind + (kind === 'urgent' && count ? '.is-urgent' : ''), { type: 'button', onclick },
-    uiIcon(icon, 'dash-metric-icon'),
+    el('span.dash-metric-badge', {}, uiIcon(icon, 'dash-metric-icon')),
     el('span.dash-metric-copy', {}, el('strong', { text: String(count) }), el('span.dash-metric-label', { text: title }),
       el('span.dash-metric-detail', { text: detail })), uiIcon('caret-right', 'dash-metric-arrow'));
 }
@@ -144,7 +151,7 @@ function dashMap(server, markers, go) {
   const src = server.map_image_path ? '/uploads/' + server.map_image_path : fallback;
   const used = [...new Set(markers.map((m) => markerKind(m.category)))];
   return el('div.dash-map-canvas', {},
-    src ? mapBoard(src, fallback, markers.slice(0, 12), { onPin: () => go('/servers/' + server.id), labels: true })
+    src ? mapBoard(src, fallback, markers.slice(0, 12), { onPin: () => go('/servers/' + server.id), labels: true, cover: true })
       : el('div.map-upload-empty', {}, el('strong', { text: t('srv.map_image_missing') })),
     el('div.map-compass', { 'aria-hidden': 'true' }, uiIcon('compass')),
     used.length ? el('div.map-legend', { 'aria-label': t('dash.legend') },
@@ -153,7 +160,7 @@ function dashMap(server, markers, go) {
   );
 }
 
-function chatPanel(messages, user, go) {
+function chatPanel(messages, user, go, presence) {
   const previewMessages = [...messages];
   const previewLog = el('div.dashboard-chat-log', { role: 'log', 'aria-live': 'polite' });
   const chatStatus = el('p.hint', { role: 'status' });
@@ -191,7 +198,8 @@ function chatPanel(messages, user, go) {
         chatInput.readOnly = false;
         chatInput.focus();
       }
-    } }, chatInput, chatSend, chatStatus)
+    } }, chatInput, chatSend, chatStatus),
+    presence
   );
 }
 

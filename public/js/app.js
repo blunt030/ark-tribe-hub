@@ -14,7 +14,7 @@ import { renderTasks, renderTaskForm, renderTaskDetail } from './views/tasks.js'
 import { renderAlliances, renderChat } from './views/community.js';
 import { renderVoice } from './views/voice.js';
 import { uiIcon } from './ui-icons.js';
-import { avatar, avatarSrc } from './ui.js';
+import { avatar, avatarSrc, visibleRoles } from './ui.js';
 
 const root = document.getElementById('root');
 let user = null;
@@ -92,7 +92,7 @@ function navItems() {
 function buildShell() {
   const { main, tools, tribe, platform } = navItems();
   const collapsed = localStorage.getItem('ath_sidebar_collapsed') === '1';
-  const roleText = (user.roles || []).map((r) => t('role.' + r)).join(' · ');
+  const roleText = visibleRoles(user.roles || []).map((r) => t('role.' + r)).join(' · ');
 
   const navLink = (item) => {
     const a = el('a', { href: '#' + item.path, dataset: { path: item.path }, title: item.label },

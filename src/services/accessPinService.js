@@ -5,12 +5,12 @@ import { badRequest } from '../lib/http.js';
 const key = createHash('sha256').update(config.sessionSecret).digest();
 
 export function generateAccessPin() {
-  return String(randomInt(0, 1_000_000)).padStart(6, '0');
+  return String(randomInt(0, 10_000)).padStart(4, '0');
 }
 
 export function validateAccessPin(pin) {
   const normalized = String(pin ?? '').trim();
-  if (!/^\d{6}$/.test(normalized)) throw badRequest('Der Personal-PIN muss genau 6 Ziffern haben');
+  if (!/^\d{4}$/.test(normalized)) throw badRequest('Der PIN muss genau 4 Ziffern haben');
   return normalized;
 }
 

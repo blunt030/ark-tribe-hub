@@ -387,3 +387,16 @@ CREATE TABLE IF NOT EXISTS tribe_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_tribe_id ON tribe_messages(tribe_id, id);
 CREATE INDEX IF NOT EXISTS idx_messages_rate ON tribe_messages(tribe_id, author_id, created_at);
+
+-- Vaults eines Tribes. Admins legen sie an und weisen sie Mitgliedern zu; den
+-- PIN legt jedes Mitglied selbst im Profil fest (users.personal_pin_encrypted).
+CREATE TABLE IF NOT EXISTS tribe_vaults (
+  id SERIAL PRIMARY KEY,
+  tribe_id INTEGER NOT NULL REFERENCES tribes(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  note TEXT,
+  assigned_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+  UNIQUE(tribe_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_vaults_tribe ON tribe_vaults(tribe_id, name);

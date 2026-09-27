@@ -304,3 +304,27 @@ export function fileToBase64(file) {
     r.readAsDataURL(file);
   });
 }
+
+const ROLE_ORDER = ['developer', 'admin', 'breeder', 'crafter', 'breeder_crafter', 'member'];
+/**
+ * Sichtbare Rollen: breeder_crafter wird nur als alte, kombinierte Rolle
+ * angezeigt - bei getrennten Rollen ist es lediglich die Berechtigung dahinter.
+ */
+export function visibleRoles(roles = []) {
+  const list = roles.includes('breeder') || roles.includes('crafter') ? roles.filter((r) => r !== 'breeder_crafter') : [...roles];
+  return list.sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b));
+}
+
+/** Server, den dieses Geraet als "meinen" Server anzeigt (reine Ansichtswahl). */
+export function preferredServer(servers, user) {
+  let saved = null;
+  try { saved = localStorage.getItem('ath_server'); } catch { /* optional */ }
+  const byId = servers.find((s) => String(s.id) === saved);
+  if (byId) return byId;
+  const norm = (v) => String(v || '').trim().toLowerCase();
+  return servers.find((s) => user?.server && norm(s.name) === norm(user.server))
+    || servers.find((s) => s.status === 'active') || servers[0] || null;
+}
+export function rememberServer(id) {
+  try { localStorage.setItem('ath_server', String(id)); } catch { /* optional */ }
+}

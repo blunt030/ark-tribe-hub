@@ -9,7 +9,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CATALOG_FILE = path.resolve(__dirname, '../../data/catalog/creatures.json');
 const CATEGORY_CODE_MAP = { L: 'land_creatures', W: 'water_creatures', F: 'flying_creatures', M: 'misc' };
 
-const ROLE_KEYS = ['developer', 'admin', 'breeder_crafter', 'member'];
+// breeder_crafter bleibt fuer bestehende Konten erhalten; neu vergeben werden
+// die getrennten Rollen breeder und crafter.
+const ROLE_KEYS = ['developer', 'admin', 'breeder_crafter', 'breeder', 'crafter', 'member'];
 
 const NOTIFICATION_TYPES = [
   'order_created',

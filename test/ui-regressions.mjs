@@ -190,7 +190,7 @@ test('gemeldete Fehler 27.09.: Navigation, Zaehler, Fortschritt und Datumsformat
   assert.match(app, /sort\(\(a, b\) => b\.length - a\.length\)\[0\]/);
   // 3. "Meine Aufgaben" zaehlt ueberall dieselbe Menge.
   assert.match(dashboard, /const myTasks = openTasks\.filter\(\(task\) => Number\(task\.assignee_id\) === Number\(user\.id\)\)/);
-  assert.match(dashboard, /metric\('check-square', myTasks\.length, t\('dash\.my_tasks'\)/);
+  assert.match(dashboard, /metric\('duo-check-square', myTasks\.length, t\('dash\.my_tasks'\)/);
   // 4. Fortschritt in Stueck statt Positionen.
   assert.match(ui, /const total = items\.reduce\(\(sum, it\) => sum \+ \(Number\(it\.quantity\) \|\| 0\), 0\)/);
   // 5. Lokalisierte Datumswerte ohne Sekunden.

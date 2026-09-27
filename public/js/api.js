@@ -64,6 +64,13 @@ export const api = {
   changePassword: (b) => call('POST', '/api/users/me/password', b),
   uploadAvatar: (b) => call('POST', '/api/users/me/avatar', b),
   generateAccessPin: () => call('POST', '/api/users/me/access-pin/generate', {}),
+  setAccessPin: (pin) => call('PUT', '/api/users/me/access-pin', { pin }),
+  accessPin: () => call('GET', '/api/users/me/access-pin'),
+  vaults: () => call('GET', '/api/vaults'),
+  createVault: (b) => call('POST', '/api/vaults', b),
+  updateVault: (id, b) => call('PATCH', `/api/vaults/${id}`, b),
+  deleteVault: (id) => call('DELETE', `/api/vaults/${id}`),
+  presence: () => call('GET', '/api/presence'),
   uploadItemImage: (id, b) => call('POST', `/api/items/${id}/image`, b),
   dinos: (q = {}) => {
     const p = new URLSearchParams();
@@ -162,6 +169,8 @@ export const api = {
   disableMember: (id, tribeId) => call('PATCH', `/api/admin/members/${id}/disable` + (tribeId ? `?tribeId=${tribeId}` : '')),
   setBreeder: (id, on, tribeId) =>
     call('PATCH', `/api/admin/members/${id}/roles` + (tribeId ? `?tribeId=${tribeId}` : ''), { breederCrafter: on }),
+  setRole: (id, role, on, tribeId) =>
+    call('PATCH', `/api/admin/members/${id}/roles` + (tribeId ? `?tribeId=${tribeId}` : ''), { [role]: on }),
   setTribeAdmin: (id, on, tribeId) =>
     call('PATCH', `/api/admin/members/${id}/roles` + (tribeId ? `?tribeId=${tribeId}` : ''), { admin: on }),
   updateMemberAccess: (id, b, tribeId) =>

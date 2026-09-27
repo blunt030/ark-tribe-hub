@@ -11,7 +11,7 @@ import { sendVerificationEmail } from '../services/mailService.js';
 import { validateImage, saveImageToDisk } from '../lib/imageUpload.js';
 import { audit } from '../services/auditService.js';
 import { config } from '../config.js';
-import { generateAccessPin, encryptAccessPin } from '../services/accessPinService.js';
+import { generateAccessPin, encryptAccessPin, decryptAccessPin, validateAccessPin } from '../services/accessPinService.js';
 import { sendAccessPin } from '../services/mailService.js';
 
 /** Server/Map dürfen laut Spezifikation nur der Nutzer selbst sowie Admins/Breeder-Crafter
@@ -166,18 +166,36 @@ export function buildUsersRouter(db) {
     sendJson(res, 200, { avatarPath: relPath });
   });
 
-  router.post('/api/users/me/access-pin/generate', requireActive, requireCsrf, async (req, res) => {
-    const me = await db.get('SELECT id, username, email, personal_vault_number FROM users WHERE id = ?', [req.user.id]);
-    if (!me?.email) throw badRequest('Für den PIN-Versand muss im Profil eine E-Mail-Adresse hinterlegt sein');
-    const pin = generateAccessPin();
+  // Den PIN legt jedes Mitglied selbst fest (genau 4 Ziffern) oder laesst ihn
+  // erzeugen. Gespeichert wird er verschluesselt; anzeigen kann ihn nur das
+  // Mitglied selbst (und Admins in der Vault-Uebersicht).
+  async function savePin(req, pin, action) {
     await db.transaction(async (tx) => {
       await tx.run('UPDATE users SET personal_pin_encrypted = ?, updated_at = ? WHERE id = ?', [
         encryptAccessPin(pin), new Date().toISOString(), req.user.id,
       ]);
-      await audit(tx, { tribeId: req.user.tribe_id, actorId: req.user.id, action: 'personal_pin_generated', targetType: 'user', targetId: req.user.id });
+      await audit(tx, { tribeId: req.user.tribe_id, actorId: req.user.id, action, targetType: 'user', targetId: req.user.id });
     });
-    const delivery = await sendAccessPin({ to: me.email, username: me.username, pin, vaultNumber: me.personal_vault_number });
-    sendJson(res, 200, { ok: true, delivered: Boolean(delivery?.sent) });
+  }
+
+  router.put('/api/users/me/access-pin', requireActive, requireCsrf, async (req, res) => {
+    const body = await readJsonBody(req);
+    const pin = validateAccessPin(body.pin);
+    await savePin(req, pin, 'personal_pin_set');
+    sendJson(res, 200, { ok: true });
+  });
+
+  router.post('/api/users/me/access-pin/generate', requireActive, requireCsrf, async (req, res) => {
+    const pin = generateAccessPin();
+    await savePin(req, pin, 'personal_pin_generated');
+    const me = await db.get('SELECT username, email, personal_vault_number FROM users WHERE id = ?', [req.user.id]);
+    const delivery = me?.email ? await sendAccessPin({ to: me.email, username: me.username, pin, vaultNumber: me.personal_vault_number }) : null;
+    sendJson(res, 200, { ok: true, pin, delivered: Boolean(delivery?.sent) });
+  });
+
+  router.get('/api/users/me/access-pin', requireActive, async (req, res) => {
+    const row = await db.get('SELECT personal_pin_encrypted FROM users WHERE id = ?', [req.user.id]);
+    sendJson(res, 200, { pin: decryptAccessPin(row?.personal_pin_encrypted) });
   });
 
   router.get('/api/users/:id', requireActive, async (req, res) => {

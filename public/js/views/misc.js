@@ -1,4 +1,4 @@
-import { el, spinner, emptyState, toast, confirmDialog, fileToBase64, pageHead, pill, avatar, avatarSrc, kebabMenu, tabBar, panel as arkPanel, emptyBlock } from '../ui.js';
+import { el, spinner, emptyState, toast, confirmDialog, fileToBase64, pageHead, pill, avatar, avatarSrc, kebabMenu, tabBar, panel as arkPanel, emptyBlock, visibleRoles } from '../ui.js';
 import { t, timeAgo, fmtDate, LANGS, getLang, setLang } from '../i18n.js';
 import { api } from '../api.js';
 import { uiIcon } from '../ui-icons.js';
@@ -84,7 +84,7 @@ export async function renderProfile(mount, ctx) {
 
   // Kennzahlen einzeln abgesichert: Developer-Konten haben keinen Tribe,
   // Aufgaben und Bestand antworten dort mit Fehlern.
-  const [{ user: me }, tribe, { preferences }, ordersRes, tasksRes, dinosRes, notifRes] = await Promise.all([
+  const [{ user: me }, tribe, { preferences }, ordersRes, tasksRes, dinosRes, notifRes, vaultRes, pinRes] = await Promise.all([
     api.profile(),
     api.myTribe().catch(() => null),
     api.notifPrefs(),
@@ -92,7 +92,11 @@ export async function renderProfile(mount, ctx) {
     api.tasks().catch(() => ({ tasks: [] })),
     api.dinos().catch(() => ({ dinos: [] })),
     api.notifications().catch(() => ({ notifications: [] })),
+    user.tribeId ? api.vaults().catch(() => ({ vaults: [] })) : Promise.resolve({ vaults: [] }),
+    api.accessPin().catch(() => ({ pin: null })),
   ]);
+  const isAdminUser = user.roles.includes('admin') || user.roles.includes('developer');
+  const myVaults = vaultRes.vaults.filter((v) => Number(v.assigned_user_id) === Number(me.id));
 
   const meineBestellungen = ordersRes.orders.filter((o) => o.member_id === me.id).length;
   const meineAufgaben = tasksRes.tasks.filter((tk) => tk.assignee_id === me.id && !['done', 'cancelled'].includes(tk.status)).length;
@@ -129,10 +133,6 @@ export async function renderProfile(mount, ctx) {
   const editPanel = el('div.profile-form', {},
     el('div.setting-row', {}, uiIcon('hard-drives'), el('label', { for: 'p-server', text: t('profile.server') }), server),
     el('div.setting-row', {}, uiIcon('map'), el('label', { for: 'p-map', text: t('profile.map') }), map),
-    el('div.setting-row', {}, uiIcon('vault'), el('span.setting-label', { text: t('members.vault') }),
-      el('div.readonly-field', {},
-        el('div.readonly-box', {}, uiIcon('lock-simple'), el('span', { text: me.personalVaultNumber || t('profile.vault_unassigned') })),
-        el('span.readonly-tag', { title: t('profile.vault_admin_hint'), text: t('profile.readonly') }))),
     el('p.profile-form-note', { text: t('profile.visibility') }),
     saveBtn
   );
@@ -191,20 +191,54 @@ export async function renderProfile(mount, ctx) {
   }
   setzeSicherheitszustand(Boolean(me.emailVerified));
 
+  /* ------------------------------------------------------ Vault und PIN */
+  // Den 4-stelligen PIN legt nur das Mitglied selbst fest. Er ist maskiert und
+  // kann bei Bedarf angezeigt werden; Admins sehen ihn nur in der Vault-Liste.
+  let currentPin = pinRes.pin || '';
+  let pinVisible = false;
+  const pinInput = el('input.pin-input', { type: 'password', id: 'vault-pin', inputmode: 'numeric', pattern: '[0-9]{4}', maxlength: '4', autocomplete: 'off', placeholder: '••••', value: currentPin, 'aria-label': t('vault.pin') });
+  pinInput.addEventListener('input', () => { pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4); });
+  const eyeBtn = el('button.icon-btn', { type: 'button', title: t('vault.pin_show'), 'aria-label': t('vault.pin_show'), 'aria-pressed': 'false' }, uiIcon('eye'));
+  eyeBtn.addEventListener('click', () => {
+    pinVisible = !pinVisible;
+    pinInput.type = pinVisible ? 'text' : 'password';
+    eyeBtn.setAttribute('aria-pressed', String(pinVisible));
+    eyeBtn.title = pinVisible ? t('vault.pin_hide') : t('vault.pin_show');
+    eyeBtn.replaceChildren(uiIcon(pinVisible ? 'eye-slash' : 'eye'));
+  });
   const pinStatus = el('span.hint', { role: 'status' });
-  const pinButton = el('button.btn.sm', { type: 'button' }, uiIcon('key'), el('span', { text: t('profile.pin_generate') }));
-  pinButton.addEventListener('click', async () => {
-    pinButton.disabled = true;
-    pinStatus.textContent = t('profile.pin_sending');
+  const pinSave = el('button.btn.primary.lux', { type: 'button' }, uiIcon('floppy-disk'), el('span', { text: t('vault.pin_save') }));
+  pinSave.addEventListener('click', async () => {
+    if (!/^\d{4}$/.test(pinInput.value)) { toast(t('vault.pin_invalid'), 'err'); return; }
+    pinSave.disabled = true;
+    try { await api.setAccessPin(pinInput.value); currentPin = pinInput.value; toast(t('vault.pin_saved')); pinStatus.textContent = ''; }
+    catch (err) { toast(err.message, 'err'); }
+    finally { pinSave.disabled = false; }
+  });
+  const pinGen = el('button.btn', { type: 'button' }, uiIcon('shuffle'), el('span', { text: t('vault.pin_generate') }));
+  pinGen.addEventListener('click', async () => {
+    pinGen.disabled = true;
     try {
       const result = await api.generateAccessPin();
-      pinStatus.textContent = result.delivered ? t('profile.pin_sent') : t('profile.pin_saved_mail_failed');
-      toast(pinStatus.textContent, result.delivered ? 'ok' : 'err');
-    } catch (err) {
-      pinStatus.textContent = err.message;
-      toast(err.message, 'err');
-    } finally { pinButton.disabled = false; }
+      currentPin = result.pin; pinInput.value = result.pin;
+      if (!pinVisible) eyeBtn.click();
+      pinStatus.textContent = t('vault.pin_generated', { pin: result.pin });
+      toast(t('vault.pin_saved'));
+    } catch (err) { toast(err.message, 'err'); }
+    finally { pinGen.disabled = false; }
   });
+  const vaultPanel = el('div.vault-profile', {},
+    el('div.vault-chips', {}, ...(myVaults.length
+      ? myVaults.map((v) => el('div.vault-chip', {}, uiIcon('duo-vault', 'vault-chip-icon'),
+          el('span', {}, el('b', { text: v.name }), v.note ? el('small', { text: v.note }) : null)))
+      : [el('p.chosen-empty', {}, uiIcon('vault'), el('span', { text: t('vault.none') }))])),
+    el('label.setting-label', { for: 'vault-pin', text: t('vault.pin') }),
+    el('div.pin-row', {}, pinInput, eyeBtn, pinSave),
+    el('div.pin-row-2', {}, pinGen, el('span.hint', { text: currentPin ? '' : t('vault.pin_none') })),
+    pinStatus,
+    el('p.profile-form-note', { text: t('vault.pin_hint') }),
+    isAdminUser ? el('button.ark-panel-link', { type: 'button', onclick: () => { try { sessionStorage.setItem('ath_members_mode', 'access'); } catch { /* optional */ } go('/members'); } },
+      el('span', { text: t('vault.title') + ' · ' + t('members.access') }), uiIcon('arrow-right')) : null);
 
   /* ------------------------------------------------ Benachrichtigungen */
   const prefChanged = new Map();
@@ -239,7 +273,7 @@ export async function renderProfile(mount, ctx) {
     ...LANGS.map((l) => el('option', { value: l.code, text: l.label, selected: getLang() === l.code })));
 
   const letzteMeldungen = notifRes.notifications.slice(0, 5);
-  const roleTone = (r) => r === 'admin' ? 'admin' : r === 'breeder_crafter' ? 'breeder' : r === 'developer' ? 'dev' : 'role';
+  const roleTone = (r) => r === 'admin' ? 'admin' : ['breeder', 'breeder_crafter'].includes(r) ? 'breeder' : r === 'crafter' ? 'crafter' : r === 'developer' ? 'dev' : 'role';
 
   mount.replaceChildren(
     el('section.profile-hero', {},
@@ -247,7 +281,7 @@ export async function renderProfile(mount, ctx) {
         el('button.profile-avatar-edit', { type: 'button', title: t('profile.change_image'), 'aria-label': t('profile.change_image'), onclick: () => fileInput.click() }, uiIcon('pencil-simple'))),
       el('div.profile-id', {},
         el('h1', { text: me.username }),
-        el('div.profile-id-meta', {}, ...me.roles.map((r) => pill(t('role.' + r), roleTone(r)))),
+        el('div.profile-id-meta', {}, ...visibleRoles(me.roles).map((r) => pill(t('role.' + r), roleTone(r)))),
         el('div.profile-id-meta', {}, uiIcon('users'), el('span', { text: tribe?.tribe?.name || t('nav.group.platform') }))),
       el('div.profile-hero-action', {},
         el('button.btn.primary.lux', { type: 'button', onclick: () => fileInput.click() }, uiIcon('image'), el('span', { text: t('profile.change_image') })),
@@ -255,6 +289,7 @@ export async function renderProfile(mount, ctx) {
     el('div.profile-grid', {},
       el('div.profile-col', {},
         profileSection(t('profile.settings'), 'user', editPanel),
+        user.tribeId ? profileSection(t('vault.my'), 'vault', vaultPanel) : null,
         profileSection(t('profile.overview'), 'chart-bar', el('div.profile-tiles', {},
           uebersichtKachel(meineBestellungen, t('profile.cnt.orders')),
           uebersichtKachel(meineAufgaben, t('profile.cnt.tasks')),
@@ -272,10 +307,6 @@ export async function renderProfile(mount, ctx) {
           disclosure(t('pw.title'), 'key', pwPanel),
           disclosure(t('profile.email_change'), 'envelope', emailPanel),
           el('div.sec-status', {}, uiIcon('envelope'), secLabel, secState),
-          el('div.pin-block', {},
-            el('div', {}, el('b', { text: t('profile.pin_title') }), el('p', { text: t('profile.pin_hint') })),
-            pinButton),
-          pinStatus,
           el('div.pref-head', {}, uiIcon('bell'), el('h3', { text: t('profile.notify_types') }),
             el('div.chips', {},
               el('button.chip', { type: 'button', text: t('notif.enable_all'), onclick: () => setAll(true) }),
@@ -319,72 +350,96 @@ function adminLinks(user, go) {
 /* Mitglieder                                                                 */
 /* ========================================================================== */
 
-const ROLE_ORDER = ['developer', 'admin', 'breeder_crafter', 'member'];
+const ROLE_TONE = { admin: 'admin', breeder: 'breeder', crafter: 'crafter', breeder_crafter: 'breeder', developer: 'dev', member: 'role' };
+const ROLE_ICON = { admin: 'crown', breeder: 'leaf', crafter: 'wrench', breeder_crafter: 'leaf', developer: 'wrench' };
 function rolePill(role) {
-  const tone = role === 'admin' ? 'admin' : role === 'breeder_crafter' ? 'breeder' : role === 'developer' ? 'dev' : 'role';
-  const icon = role === 'admin' ? 'crown' : role === 'breeder_crafter' ? 'leaf' : role === 'developer' ? 'wrench' : null;
-  return pill(t('role.' + role), tone, icon);
+  return pill(t('role.' + role), ROLE_TONE[role] || 'role', ROLE_ICON[role] || null);
 }
 
 export async function renderMembers(mount, ctx) {
   const canManage = ctx.user.roles.includes('admin') || ctx.user.roles.includes('developer');
   let mode = 'overview';
+  try { if (sessionStorage.getItem('ath_members_mode') === 'access' && canManage) mode = 'access'; sessionStorage.removeItem('ath_members_mode'); } catch { /* optional */ }
   mount.append(spinner());
-  let members;
+  let members, vaults = [], presence = { online: [] };
   try {
-    members = (await api.members()).members;
+    [members, vaults, presence] = await Promise.all([
+      api.members().then((r) => r.members),
+      canManage ? api.vaults().then((r) => r.vaults).catch(() => []) : Promise.resolve([]),
+      api.presence().catch(() => ({ online: [] })),
+    ]);
   } catch (err) {
     mount.replaceChildren(pageHead({ title: t('admin.members'), icon: 'users' }), emptyState(err.message));
     return;
   }
   let query = '';
+  const online = () => new Set((presence.online || []).map(Number));
 
   function draw() {
     const pending = members.filter((m) => m.status === 'pending_approval');
     const active = members.filter((m) => m.status !== 'pending_approval');
+    const on = online();
     const head = pageHead({
       title: t('admin.members'), sub: t('page.members.sub'), icon: 'users',
-      extra: el('div.banner-row', {}, pill(t('members.count', { n: active.length }), 'role', 'users')),
+      extra: el('div.banner-row', {},
+        pill(t('members.count', { n: active.length }), 'role', 'users'),
+        pill(t('chat.online_n', { n: active.filter((m) => on.has(Number(m.id))).length }), 'done')),
     });
     const modeSwitch = canManage ? tabBar([
       { key: 'overview', label: t('members.overview') },
-      { key: 'access', label: t('members.access') },
+      { key: 'access', label: t('members.access'), count: vaults.length },
     ], mode, (key) => { mode = key; draw(); }) : null;
 
     if (mode === 'access') {
-      mount.replaceChildren(head, el('div.task-toolbar', {}, modeSwitch),
-        el('div.notice.note', { text: t('members.access_hint') }),
-        el('div.list.member-access-list', {}, ...active.map(accessRow)));
+      mount.replaceChildren(head, el('div.task-toolbar', {}, modeSwitch), vaultManager(active));
       return;
     }
 
-    const roster = el('div.member-list');
+    const groupsBox = el('div.member-groups');
     const noMatches = el('p.hint', { text: t('common.no_results'), hidden: true, role: 'status' });
-    const drawRoster = () => {
+    const drawGroups = () => {
       const q = query.trim().toLocaleLowerCase();
       const rows = active.filter((m) => !q || m.username.toLocaleLowerCase().includes(q)
-        || (m.roles || []).some((r) => t('role.' + r).toLocaleLowerCase().includes(q)));
-      roster.replaceChildren(...rows.map(memberRow));
+        || visibleRoles(m.roles || []).some((r) => t('role.' + r).toLocaleLowerCase().includes(q)));
+      // Jede Person steht in genau einer Gruppe: der hoechsten Rolle.
+      const groupOf = (m) => {
+        const r = m.roles || [];
+        if (r.includes('admin') || r.includes('developer')) return 'admins';
+        if (r.includes('breeder') || (r.includes('breeder_crafter') && !r.includes('crafter'))) return 'breeders';
+        if (r.includes('crafter')) return 'crafters';
+        return 'members_group';
+      };
+      const GROUPS = [['admins', 'crown', 'admin'], ['breeders', 'leaf', 'breeder'], ['crafters', 'wrench', 'crafter'], ['members_group', 'users', 'member']];
+      groupsBox.replaceChildren(...GROUPS.map(([key, icon, tone]) => {
+        const list = rows.filter((m) => groupOf(m) === key)
+          .sort((a, b) => (on.has(Number(b.id)) - on.has(Number(a.id))) || a.username.localeCompare(b.username));
+        if (!list.length) return null;
+        return el('section.ark-panel.member-group.g-' + tone, {},
+          el('header.ark-panel-head', {}, uiIcon(icon, 'ark-panel-icon'), el('h2', { text: t('members.' + key) }),
+            el('span.member-group-online', { text: t('chat.online_n', { n: list.filter((m) => on.has(Number(m.id))).length }) }),
+            el('span.ark-count', { text: String(list.length) })),
+          el('div.member-list', {}, ...list.map(memberRow)));
+      }).filter(Boolean));
       noMatches.hidden = rows.length !== 0;
     };
     const search = el('input', { type: 'search', value: query, placeholder: t('common.search'), 'aria-label': t('common.search'),
-      oninput: (e) => { query = e.target.value; drawRoster(); } });
+      oninput: (e) => { query = e.target.value; drawGroups(); } });
 
     mount.replaceChildren(...[
       head,
-      modeSwitch ? el('div.task-toolbar', {}, modeSwitch) : null,
-      el('div.members-layout', {},
-        canManage && pending.length ? arkPanel({ title: t('admin.pending'), icon: 'warning', count: pending.length },
-          ...pending.map(pendingRow)) : null,
-        arkPanel({ title: t('admin.members'), icon: 'users', count: active.length },
-          el('div.search-field.member-search', {}, uiIcon('magnifying-glass'), search),
-          roster, noMatches)),
+      el('div.task-toolbar', {}, modeSwitch || el('span'), el('div.search-field', {}, uiIcon('magnifying-glass'), search)),
+      canManage && pending.length ? arkPanel({ title: t('admin.pending'), icon: 'warning', count: pending.length, className: 'pending-panel' },
+        ...pending.map(pendingRow)) : null,
+      groupsBox, noMatches,
     ].filter(Boolean));
-    drawRoster();
+    drawGroups();
   }
 
   async function reload() {
-    members = (await api.members()).members;
+    [members, vaults] = await Promise.all([
+      api.members().then((r) => r.members),
+      canManage ? api.vaults().then((r) => r.vaults).catch(() => []) : Promise.resolve([]),
+    ]);
     draw();
   }
 
@@ -413,17 +468,22 @@ export async function renderMembers(mount, ctx) {
   }
 
   function memberRow(m) {
-    const roles = [...(m.roles || [])].sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b));
-    const isBreeder = roles.includes('breeder_crafter');
+    const roles = m.roles || [];
+    const legacy = roles.includes('breeder_crafter') && !roles.includes('breeder') && !roles.includes('crafter');
+    const isBreeder = roles.includes('breeder') || legacy;
+    const isCrafter = roles.includes('crafter') || legacy;
     const istAdmin = roles.includes('admin');
     const isSelf = Number(m.id) === Number(ctx.user.id);
+    const isOnline = online().has(Number(m.id));
+    const memberVaults = vaults.filter((v) => Number(v.assigned_user_id) === Number(m.id));
     const run = (fn, ok) => async () => {
       try { await fn(); toast(ok); await reload(); }
       catch (err) { toast(err.message, 'err'); }
     };
     // Rollenaenderungen prueft der Server zusaetzlich (z. B. letzter Admin).
     const menu = canManage ? kebabMenu([
-      { label: isBreeder ? t('members.revoke_breeder') : t('members.grant_breeder'), icon: 'leaf', onclick: run(() => api.setBreeder(m.id, !isBreeder), t('admin.role_saved')) },
+      { label: isBreeder && !legacy ? t('members.revoke_breeder') : t('members.grant_breeder'), icon: 'leaf', onclick: run(() => api.setRole(m.id, 'breeder', legacy ? true : !isBreeder), t('admin.role_saved')) },
+      { label: isCrafter && !legacy ? t('members.revoke_crafter') : t('members.grant_crafter'), icon: 'wrench', onclick: run(() => api.setRole(m.id, 'crafter', legacy ? true : !isCrafter), t('admin.role_saved')) },
       { label: istAdmin ? t('members.revoke_admin') : t('members.grant_admin'), icon: 'crown', onclick: run(() => api.setTribeAdmin(m.id, !istAdmin), t('admin.role_saved')) },
       m.status === 'active' && !isSelf ? { label: t('admin.disable'), icon: 'x-circle', danger: true, onclick: async () => {
         const ok = await confirmDialog({ title: t('admin.disable') + ' – ' + m.username, danger: true });
@@ -432,45 +492,83 @@ export async function renderMembers(mount, ctx) {
         catch (err) { toast(err.message, 'err'); }
       } } : null,
     ], t('members.more')) : null;
-    return el('article.member-line' + (isSelf ? '.is-self' : ''), {},
-      avatar(m.username, { src: avatarSrc(m) }),
+    return el('article.member-line' + (isSelf ? '.is-self' : '') + (isOnline ? '.is-online' : ''), {},
+      avatar(m.username, { src: avatarSrc(m), online: isOnline }),
       el('div.member-name', {}, el('strong', { text: m.username }),
-        isSelf ? el('small', { text: t('members.you') }) : canManage && m.created_at ? el('small', { text: t('members.joined', { date: fmtDate(m.created_at) }) }) : null),
-      el('div.member-roles', {}, ...roles.map(rolePill)),
-      el('span.member-meta', {}, canManage && m.status && m.status !== 'active' ? pill(t('ustatus.' + m.status), 'muted') : null),
+        el('small', {}, el('span.presence-label' + (isOnline ? '.on' : ''), { text: isOnline ? t('members.online') : t('members.offline') }),
+          isSelf ? ' · ' + t('members.you') : canManage && m.created_at ? ' · ' + t('members.joined', { date: fmtDate(m.created_at) }) : '')),
+      el('div.member-roles', {},
+        ...visibleRoles(roles).filter((r) => r !== 'member' || roles.length === 1).map(rolePill),
+        legacy && canManage ? el('span.legacy-hint', { title: t('members.legacy_role') }, uiIcon('info')) : null),
+      el('span.member-meta', {}, canManage && memberVaults.length
+        ? el('span.vault-tag', {}, uiIcon('vault'), el('span', { text: memberVaults.map((v) => v.name).join(', ') })) : null,
+        canManage && m.status && m.status !== 'active' ? pill(t('ustatus.' + m.status), 'muted') : null),
       menu || el('span'));
   }
 
-  function accessRow(m) {
-    const pin = el('input', { type: 'text', inputmode: 'numeric', maxlength: '6', value: m.personalPin || '', placeholder: '000000', 'aria-label': t('members.pin') });
-    const vault = el('input', { type: 'text', maxlength: '50', value: m.personal_vault_number || '', placeholder: t('members.vault'), 'aria-label': t('members.vault') });
-    const save = el('button.btn.sm.primary', { type: 'button', text: t('profile.save') });
-    const random = el('button.btn.sm', {
-      type: 'button', text: t('members.pin_random'), onclick: () => {
-        const values = new Uint32Array(1);
-        crypto.getRandomValues(values);
-        pin.value = String(values[0] % 1_000_000).padStart(6, '0');
-      },
-    });
-    save.addEventListener('click', async () => {
-      save.disabled = true;
+  // Vault-Verwaltung: Admins legen Vaults an und vergeben sie. Den PIN setzt
+  // jedes Mitglied selbst; hier ist er nur maskiert einsehbar.
+  function vaultManager(active) {
+    const name = el('input', { type: 'text', maxlength: 50, placeholder: 'PV-015', id: 'vault-name', required: true });
+    const note = el('input', { type: 'text', maxlength: 200, id: 'vault-note' });
+    const assign = el('select', { id: 'vault-assign' }, el('option', { value: '', text: t('vault.unassigned') }),
+      ...active.map((m) => el('option', { value: m.id, text: m.username })));
+    const createBtn = el('button.btn.primary.lux', { type: 'submit' }, uiIcon('plus'), el('span', { text: t('vault.create') }));
+    const form = el('form.ark-panel.vault-form', { onsubmit: async (e) => {
+      e.preventDefault();
+      if (!name.value.trim()) return;
+      createBtn.disabled = true;
       try {
-        await api.updateMemberAccess(m.id, { personalPin: pin.value.trim() || undefined, vaultNumber: vault.value.trim() });
-        toast(t('members.access_saved'));
+        await api.createVault({ name: name.value.trim(), note: note.value.trim() || undefined, assignedUserId: assign.value || null });
+        toast(t('vault.created'));
         await reload();
-      } catch (err) { toast(err.message, 'err'); save.disabled = false; }
+      } catch (err) { toast(err.message, 'err'); createBtn.disabled = false; }
+    } },
+      el('header.ark-panel-head', {}, uiIcon('plus-circle', 'ark-panel-icon'), el('h2', { text: t('vault.new') })),
+      el('p.profile-form-note', { text: t('vault.admin_hint') }),
+      el('div.vault-form-grid', {},
+        el('div.field', {}, el('label', { for: 'vault-name', text: t('vault.name') }), name),
+        el('div.field', {}, el('label', { for: 'vault-note', text: t('vault.note') }), note),
+        el('div.field', {}, el('label', { for: 'vault-assign', text: t('vault.assign') }), assign),
+        el('div.field.vault-form-submit', {}, createBtn)));
+
+    const assigned = vaults.filter((v) => v.assigned_user_id).length;
+    const rows = vaults.map((v) => {
+      const select = el('select', { 'aria-label': t('vault.assign') + ' ' + v.name },
+        el('option', { value: '', text: t('vault.unassigned') }),
+        ...active.map((m) => el('option', { value: m.id, text: m.username, selected: Number(v.assigned_user_id) === Number(m.id) })));
+      select.addEventListener('change', async () => {
+        select.disabled = true;
+        try { await api.updateVault(v.id, { assignedUserId: select.value || null }); toast(t('vault.saved')); await reload(); }
+        catch (err) { toast(err.message, 'err'); select.disabled = false; }
+      });
+      let shown = false;
+      const pinText = el('span.pin-mask', { text: v.pin ? '••••' : t('vault.pin_missing') });
+      const eye = v.pin ? el('button.icon-btn', { type: 'button', title: t('vault.pin_show'), 'aria-label': t('vault.pin_show') }, uiIcon('eye')) : null;
+      eye?.addEventListener('click', () => {
+        shown = !shown;
+        pinText.textContent = shown ? v.pin : '••••';
+        eye.replaceChildren(uiIcon(shown ? 'eye-slash' : 'eye'));
+      });
+      return el('div.vault-row' + (v.assigned_user_id ? '' : '.is-free'), {},
+        el('span.vault-icon', {}, uiIcon('duo-vault')),
+        el('div.vault-copy', {}, el('strong', { text: v.name }), v.note ? el('small', { text: v.note }) : null),
+        el('div.vault-assign', {}, v.assigned_username ? avatar(v.assigned_username, { size: 'sm' }) : el('span.ark-avatar.av-sm.av-tone-0', { text: '–', 'aria-hidden': 'true' }), select),
+        el('div.vault-pin', {}, uiIcon('key'), pinText, eye),
+        kebabMenu([{ label: t('common.delete'), icon: 'trash', danger: true, onclick: async () => {
+          if (!await confirmDialog({ title: t('vault.delete_confirm', { name: v.name }), danger: true })) return;
+          try { await api.deleteVault(v.id); toast(t('vault.deleted')); await reload(); }
+          catch (err) { toast(err.message, 'err'); }
+        } }]));
     });
-    return el('div.card.member-access-card', {},
-      el('div.member-access-head', {},
-        avatar(m.username, { src: avatarSrc(m) }),
-        el('div.member-name', {}, el('strong', { text: m.username }), el('small', { text: (m.roles || []).map((r) => t('role.' + r)).join(' · ') })),
-        save
-      ),
-      el('div.member-access-fields', {},
-        el('div.field', {}, el('label', { text: t('members.pin') }), el('div.inline-field', {}, pin, random)),
-        el('div.field', {}, el('label', { text: t('members.vault') }), vault)
-      )
-    );
+    return el('div.vault-manager', {},
+      el('div.vault-summary', {},
+        el('div.vault-stat', {}, uiIcon('duo-vault'), el('span', {}, el('strong', { text: String(vaults.length) }), el('small', { text: t('vault.title') }))),
+        el('div.vault-stat.is-ok', {}, uiIcon('check-circle'), el('span', {}, el('strong', { text: String(assigned) }), el('small', { text: t('vault.assigned', { n: '' }).trim() }))),
+        el('div.vault-stat.is-free', {}, uiIcon('lock-simple'), el('span', {}, el('strong', { text: String(vaults.length - assigned) }), el('small', { text: t('vault.free', { n: '' }).trim() })))),
+      form,
+      arkPanel({ title: t('vault.title'), icon: 'vault', count: vaults.length },
+        vaults.length ? el('div.vault-list', {}, ...rows) : emptyBlock('vault', t('vault.empty'))));
   }
 
   draw();

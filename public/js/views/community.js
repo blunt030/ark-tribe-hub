@@ -28,15 +28,16 @@ export async function renderAlliances(mount, { user }) {
         } },
       ]) : null);
     list.replaceChildren(
-      el('div.alliance-summary', {}, ...RELATIONS.map((rel) => el('div.alliance-stat.' + rel, {},
-        el('span.alliance-icon', {}, uiIcon(RELATION_ICON[rel])),
-        el('span.alliance-stat-copy', {}, el('strong', { text: String(alliances.filter((a) => a.relationship === rel).length) }), el('span', { text: t('alliance.' + rel) }))))),
       el('div.alliance-columns', {}, ...RELATIONS.map((rel) => {
         const rows = alliances.filter((a) => a.relationship === rel);
-        return el('section.ark-panel.alliance-column.' + rel, {},
-          el('header.ark-panel-head', {}, uiIcon(RELATION_ICON[rel], 'ark-panel-icon'), el('h2', { text: t('alliance.' + rel) }), el('span.ark-count', { text: String(rows.length) })),
-          rows.length ? el('div.alliance-list', {}, ...rows.map(card))
-            : el('p.alliance-empty', {}, uiIcon(RELATION_ICON[rel]), el('span', { text: t('alliance.empty') })));
+        return el('section.alliance-column.' + rel, {},
+          el('header.alliance-hero', { style: `--rel-art:url('/assets/banners/rel-${rel}.webp')` },
+            el('span.alliance-hero-icon', {}, uiIcon(RELATION_ICON[rel])),
+            el('div.alliance-hero-copy', {}, el('h2', { text: t('alliance.' + rel) }), el('small', { text: t('alliance.relations') })),
+            el('strong.alliance-hero-count', { text: String(rows.length) })),
+          el('div.alliance-list', {}, ...(rows.length ? rows.map(card)
+            : [el('p.alliance-empty', {}, uiIcon(RELATION_ICON[rel]), el('span', { text: t('alliance.list_empty') }))])),
+          canEdit ? el('button.alliance-add', { type: 'button', onclick: () => form({ relationship: rel }) }, uiIcon('plus'), el('span', { text: t('alliance.new') })) : null);
       })));
   };
   function form(a = {}) {
@@ -71,6 +72,22 @@ export async function renderAlliances(mount, { user }) {
   draw();
 }
 
+/** Leiste "4 online · 20 offline" mit den Avataren der aktiven Mitglieder. */
+export function presenceBar(members, presence) {
+  const on = new Set((presence?.online || []).map(Number));
+  const active = members.filter((m) => !m.status || m.status === 'active');
+  const onlineMembers = active.filter((m) => on.has(Number(m.id)));
+  const offline = Math.max(0, (presence?.total ?? active.length) - onlineMembers.length);
+  return el('div.presence-bar', { role: 'status' },
+    el('span.presence-count.on', {}, el('i.presence-dot.on'), el('b', { text: t('chat.online_n', { n: onlineMembers.length }) })),
+    el('span.presence-count', {}, el('i.presence-dot'), el('span', { text: t('chat.offline_n', { n: offline }) })),
+    el('div.presence-avatars', {}, ...onlineMembers.slice(0, 12).map((m) => {
+      const a = avatar(m.username, { size: 'sm', online: true });
+      a.title = m.username;
+      return a;
+    })));
+}
+
 export function chatMessage(m, currentUserId = null) {
   const mine = currentUserId != null && Number(m.author_id) === Number(currentUserId);
   const colorIndex = Math.abs(Number(m.author_id) || 0) % 6;
@@ -84,7 +101,12 @@ export function chatMessage(m, currentUserId = null) {
 
 export async function renderChat(mount, { user }) {
   mount.append(spinner());
-  const initial = await api.chatMessages();
+  const [initial, membersRes, presenceRes] = await Promise.all([
+    api.chatMessages(),
+    api.members().catch(() => ({ members: [] })),
+    api.presence().catch(() => null),
+  ]);
+  const presenceSlot = el('div.presence-slot', {}, presenceBar(membersRes.members, presenceRes));
   const messages = new Map(initial.messages.map(m => [m.id, m]));
   let latest = initial.messages.at(-1)?.id || 0;
   let olderAvailable = initial.hasMore;
@@ -137,7 +159,7 @@ export async function renderChat(mount, { user }) {
   } }, uiIcon('chat-circle-dots', 'composer-icon'), input, send);
   mount.replaceChildren(
     pageHead({ title: t('nav.chat'), sub: t('page.chat.sub'), icon: 'chat-circle-dots' }),
-    el('div.chat-page', {}, chatWindow, composer,
+    el('div.chat-page', {}, chatWindow, composer, presenceSlot,
       el('p.chat-foot', {}, el('span', { text: t('chat.scope') }), el('span', { text: t('chat.limits') }))));
   older.hidden = !olderAvailable;
   merge(initial.messages);
@@ -159,4 +181,10 @@ export async function renderChat(mount, { user }) {
     if (mount.isConnected) setTimeout(poll, 5000);
   }
   if (mount.isConnected) setTimeout(poll, 5000);
+  const presenceTimer = setInterval(async () => {
+    if (!mount.isConnected) { clearInterval(presenceTimer); return; }
+    if (document.visibilityState !== 'visible') return;
+    const fresh = await api.presence().catch(() => null);
+    if (fresh) presenceSlot.replaceChildren(presenceBar(membersRes.members, fresh));
+  }, 30000);
 }

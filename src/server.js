@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { buildCommunityRouter } from './routes/community.routes.js';
+import { buildVaultRouter } from './routes/vaults.routes.js';
 import path from 'node:path';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 
@@ -184,6 +185,7 @@ export async function createApp(dbPath, options = {}) {
     buildInventoryRouter(db),
     buildVoiceRouter(db),
     buildCommunityRouter(db),
+    buildVaultRouter(db),
     buildUploadsRouter(db),
   ];
   for (const sub of subRouters) router.routes.push(...sub.routes);

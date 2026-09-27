@@ -1,4 +1,4 @@
-import { el, spinner, emptyState, toast, confirmDialog, fileToBase64, pageHead, pill, kebabMenu, tabBar, emptyBlock } from '../ui.js';
+import { el, spinner, emptyState, toast, confirmDialog, fileToBase64, pageHead, pill, kebabMenu, tabBar, emptyBlock, preferredServer, rememberServer } from '../ui.js';
 import { t } from '../i18n.js';
 import { api } from '../api.js';
 import { STANDARD_MAPS, mitgeliefertesKartenbild } from '../map-images.js';
@@ -50,7 +50,7 @@ export function coordText(m) {
  * Seitenverhaeltnis der Bilddatei, Marker liegen prozentual darin. Der Rest der
  * Buehne zeigt eine unscharfe Kopie der Karte statt grauer Raender.
  */
-export function mapBoard(src, fallback, markers, { onPin, activeId = null, labels = false, onPlace = null } = {}) {
+export function mapBoard(src, fallback, markers, { onPin, activeId = null, labels = false, onPlace = null, cover = false } = {}) {
   const frame = el('div.map-frame' + (onPlace ? '.is-placeable' : ''));
   const img = el('img.map-image', { src, alt: '', decoding: 'async', draggable: 'false' });
   const setRatio = () => {
@@ -78,7 +78,9 @@ export function mapBoard(src, fallback, markers, { onPin, activeId = null, label
       onPlace({ coord_x: x, coord_y: y });
     });
   }
-  const stage = el('div.map-stage', { style: `--map-bg:url("${src}")` }, frame);
+  // cover: Vorschau fuellt das Fenster (Rand wird abgeschnitten); Marker bleiben
+  // relativ zum unverzerrten Kartenbild und damit korrekt positioniert.
+  const stage = el('div.map-stage' + (cover ? '.is-cover' : ''), { style: `--map-bg:url("${src}")` }, frame);
   if (img.complete) setRatio();
   return stage;
 }
@@ -88,31 +90,75 @@ export function mapBoard(src, fallback, markers, { onPin, activeId = null, label
 /* ========================================================================== */
 
 export async function renderServers(mount, ctx) {
-  const { go } = ctx;
+  const { go, user } = ctx;
   mount.append(spinner());
   const { servers } = await api.servers();
+  let current = preferredServer(servers, user);
+  const featured = el('section.server-featured');
+  const grid = el('div.server-grid');
 
+  async function drawFeatured() {
+    if (!current) { featured.replaceChildren(); return; }
+    const detail = await api.server(current.id).then((r) => r.server).catch(() => ({ ...current, markers: [] }));
+    const src = serverKartenbild(detail);
+    const kinds = Object.keys(MARKER_KINDS).map((k) => [k, detail.markers.filter((m) => markerKind(m.category) === k).length]).filter(([, n]) => n);
+    featured.replaceChildren(
+      el('div.server-featured-map', {},
+        src ? mapBoard(src, mitgeliefertesKartenbild(detail.map_name), detail.markers, { labels: true, onPin: () => go('/servers/' + detail.id) })
+          : el('div.map-upload-empty', {}, uiIcon('map'), el('strong', { text: t('srv.map_image_missing') })),
+        el('div.map-compass', { 'aria-hidden': 'true' }, uiIcon('compass'))),
+      el('div.server-featured-info', {},
+        el('span.eyebrow', { text: t('dash.your_server') }),
+        el('h2', { text: detail.name }),
+        el('div.server-featured-meta', {}, uiIcon('map'), el('span', { text: detail.map_name }),
+          pill(t('srv.status.' + detail.status), detail.status === 'active' ? 'done' : 'muted')),
+        el('div.server-kpis', {},
+          el('div.server-kpi', {}, el('strong', { text: String(detail.markers.length) }), el('span', { text: t('srv.markers') })),
+          el('div.server-kpi', {}, el('strong', { text: String(kinds.find(([k]) => k === 'base')?.[1] || 0) }), el('span', { text: t('srv.filter.base') })),
+          el('div.server-kpi', {}, el('strong', { text: String(kinds.find(([k]) => k === 'danger')?.[1] || 0) }), el('span', { text: t('srv.filter.danger') }))),
+        kinds.length ? el('div.map-legend.is-inline', {}, ...kinds.map(([k, n]) =>
+          el('span', {}, el('i.marker-dot.mk-' + k, {}, uiIcon(MARKER_KINDS[k].icon)), el('span', { text: `${t(MARKER_KINDS[k].label)} · ${n}` }))))
+          : el('p.hint', { text: t('dash.no_markers') }),
+        el('p.server-notes', { text: detail.notes || t('srv.no_notes') }),
+        el('button.btn.primary.lux', { type: 'button', onclick: () => go('/servers/' + detail.id) }, uiIcon('map-pin'), el('span', { text: t('srv.open_map') }))));
+  }
+
+  function drawGrid() {
+    grid.replaceChildren(...servers.map((s) => {
+      const src = serverKartenbild(s);
+      const selected = current && Number(current.id) === Number(s.id);
+      return el('button.server-tile' + (s.status === 'active' ? '.is-active' : '') + (selected ? '.is-selected' : ''), {
+        type: 'button', 'aria-pressed': selected ? 'true' : 'false', 'aria-label': `${s.name} · ${s.map_name}`,
+        onclick: () => { current = s; rememberServer(s.id); drawGrid(); drawFeatured(); featured.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); },
+        ondblclick: () => go('/servers/' + s.id),
+      },
+        src ? el('img.server-tile-map', { src, alt: '', loading: 'lazy' })
+          : el('span.server-tile-missing', {}, uiIcon('map'), el('small', { text: t('srv.map_image_missing') })),
+        el('span.server-tile-shade', { 'aria-hidden': 'true' }),
+        pill(t('srv.status.' + s.status), s.status === 'active' ? 'done' : 'muted'),
+        selected ? el('span.server-tile-check', {}, uiIcon('check-circle')) : null,
+        el('span.server-tile-copy', {},
+          el('strong', { text: s.name }),
+          el('span', {}, uiIcon('map'), el('span', { text: s.map_name }))));
+    }));
+  }
+
+  const activeCount = servers.filter((s) => s.status === 'active').length;
   mount.replaceChildren(
     pageHead({
       title: t('srv.title'), sub: t('page.servers.sub'), icon: 'map',
+      extra: servers.length ? el('div.banner-row', {},
+        pill(t('srv.maps_n', { n: servers.length }), 'role', 'map'),
+        pill(t('srv.active_n', { n: activeCount }), 'done'),
+        servers.length - activeCount ? pill(t('srv.inactive_n', { n: servers.length - activeCount }), 'muted') : null) : null,
       actions: [el('button.btn.primary.lux', { type: 'button', onclick: () => openServerDialog(null, () => go('/servers', true)) }, uiIcon('plus'), el('span', { text: t('srv.new') }))],
     }),
-    servers.length
-      ? el('div.server-grid', {},
-          ...servers.map((s) => {
-            const src = serverKartenbild(s);
-            return el('button.server-tile' + (s.status === 'active' ? '.is-active' : ''), { type: 'button', onclick: () => go('/servers/' + s.id), 'aria-label': `${s.name} · ${s.map_name}` },
-              src ? el('img.server-tile-map', { src, alt: '', loading: 'lazy' })
-                : el('span.server-tile-missing', {}, uiIcon('map'), el('small', { text: t('srv.map_image_missing') })),
-              el('span.server-tile-shade', { 'aria-hidden': 'true' }),
-              pill(t('srv.status.' + s.status), s.status === 'active' ? 'done' : 'muted'),
-              el('span.server-tile-copy', {},
-                el('strong', { text: s.name }),
-                el('span', {}, uiIcon('map'), el('span', { text: s.map_name }))),
-              el('span.server-tile-open', {}, el('span', { text: t('common.open') }), uiIcon('arrow-right')));
-          }))
-      : emptyBlock('map', t('srv.none'), t('srv.map_image_hint'))
+    ...(servers.length
+      ? [featured, el('div.server-grid-head', {}, uiIcon('map', 'ark-panel-icon'), el('h2', { text: t('srv.all') }), el('span.ark-count', { text: String(servers.length) })), grid]
+      : [emptyBlock('map', t('srv.none'), t('srv.map_image_hint'))])
   );
+  drawGrid();
+  await drawFeatured();
 }
 
 function openServerDialog(existing, onDone) {
