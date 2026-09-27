@@ -238,6 +238,9 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
     assert.equal((await developer.delete(`/api/developer/users/${adminId}/2fa`)).status, 200);
     const plain = await client(base).post('/api/auth/login', { identifier: 'OaO Admin', password: 'ChangeMe123!', tribeSlug: 'oao' });
     assert.ok(plain.json.csrfToken, 'nach Zuruecksetzen wieder normale Anmeldung');
+    // Das Zuruecksetzen beendet alle Sitzungen des Kontos (gewollt).
+    assert.equal((await admin.get('/api/auth/me')).status, 401);
+    assert.equal((await admin.login('OaO Admin', 'oao')).status, 200);
   });
 
   await t.test('Sitzungen enden serverseitig nach 30 Minuten Inaktivität', async () => {
@@ -248,10 +251,46 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
     const memberId = (await app.db.get("SELECT id FROM users WHERE username='Blunt OaO'")).id;
     await app.db.run('UPDATE sessions SET last_seen_at = ? WHERE user_id = ?', [old, memberId]);
     assert.equal((await idle.get('/api/auth/me')).status, 401);
+    // Die Aenderung betraf alle Sitzungen des Kontos - Test-Mitglied neu anmelden.
+    assert.equal((await member.login('Blunt OaO', 'oao')).status, 200);
   });
 
   await t.test('Passwörter brauchen mindestens 10 Zeichen', async () => {
     const r = await client(base).post('/api/auth/register', { tribeSlug: 'oao', username: 'Kurz', email: 'kurz@example.test', password: 'Kurz12345' });
     assert.equal(r.status, 400);
   });
+
+  await t.test('Discord: Breeder- und Crafter-Kanal getrennt, Webhooks bleiben geheim', async () => {
+    const hook = (n) => `https://discord.com/api/webhooks/123456789012345678/${'x'.repeat(40)}${n}`;
+    assert.equal((await member.put('/api/tribes/me/discord', { breederWebhook: hook('B') })).status, 403);
+    assert.equal((await admin.put('/api/tribes/me/discord', { breederWebhook: 'https://evil.example/api/webhooks/1/abc' })).status, 400, 'nur discord.com erlaubt');
+    const saved = await admin.put('/api/tribes/me/discord', { breederWebhook: hook('B'), crafterWebhook: hook('C') });
+    assert.equal(saved.status, 200);
+    assert.equal(saved.json.breeder.configured, true);
+    assert.ok(!JSON.stringify(saved.json).includes('xxxxxxxxxx'), 'volle URL wird nie zurückgegeben');
+    const tribeJson = JSON.stringify((await member.get('/api/tribes/me')).json);
+    assert.ok(!tribeJson.includes('discord_'), 'Mitglieder sehen keine Webhook-Spalten');
+
+    const sent = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (url, opts) => {
+      if (String(url).startsWith('https://discord.com/')) { sent.push({ url: String(url), body: JSON.parse(opts.body) }); return new Response(null, { status: 204 }); }
+      return realFetch(url, opts);
+    };
+    try {
+      const egg = (await member.get('/api/items?productType=egg')).json.items[0];
+      const saddle = (await member.get('/api/items?productType=saddle')).json.items[0];
+      assert.equal((await member.post('/api/orders', { items: [{ itemId: egg.id, quantity: 2 }, { itemId: saddle.id, quantity: 1 }], note: '@everyone schnell' })).status, 201);
+      for (let i = 0; i < 20 && sent.length < 2; i++) await new Promise((r) => setTimeout(r, 20));
+    } finally { globalThis.fetch = realFetch; }
+    assert.equal(sent.length, 2);
+    const breederMsg = sent.find((m) => m.url.endsWith('B'));
+    const crafterMsg = sent.find((m) => m.url.endsWith('C'));
+    assert.match(breederMsg.body.embeds[0].description, /× 2/);
+    assert.doesNotMatch(breederMsg.body.embeds[0].description, /Sattel|Saddle/i);
+    assert.match(crafterMsg.body.embeds[0].title, /Crafter/);
+    assert.deepEqual(breederMsg.body.allowed_mentions, { parse: [] }, 'keine @everyone-Pings');
+    assert.equal((await admin.put('/api/tribes/me/discord', { breederWebhook: '', crafterWebhook: '' })).json.breeder.configured, false);
+  });
 });
+

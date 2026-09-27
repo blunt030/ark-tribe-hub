@@ -186,6 +186,13 @@ export async function renderDinoDetail(mount, ctx, idParam) {
   let data;
   try {
     data = (await api.dino(id)).dino;
+    // Fuer den Stammbaum die Eltern vollstaendig laden (liefert die Grosseltern).
+    const [fatherFull, motherFull] = await Promise.all([
+      data.father ? api.dino(data.father.id).then((r) => r.dino).catch(() => null) : null,
+      data.mother ? api.dino(data.mother.id).then((r) => r.dino).catch(() => null) : null,
+    ]);
+    data.fatherFull = fatherFull;
+    data.motherFull = motherFull;
   } catch (err) {
     mount.replaceChildren(emptyState(err.message));
     return;
@@ -236,13 +243,7 @@ export async function renderDinoDetail(mount, ctx, idParam) {
           el('div.dino-stat-grid', {}, ...(statEntries.length
             ? statEntries.map((k) => el('div.dino-stat', {}, el('span', { text: t('dino.stat.' + k) }), el('strong', { text: String(data.stats[k]) })))
             : [el('p.hint', { text: t('dino.stats') + ': —' })]))),
-        (data.father || data.mother || data.children?.length) ? panel({ title: t('dino.breeding'), icon: 'egg' },
-          el('dl.fact-list', {},
-            ...[
-              data.father ? fact(t('dino.father'), linkTo(data.father, go)) : null,
-              data.mother ? fact(t('dino.mother'), linkTo(data.mother, go)) : null,
-              data.children?.length ? fact(t('dino.children'), el('div.chips', {}, ...data.children.map((c) => el('button.btn.sm', { type: 'button', text: c.name, onclick: () => go('/dinos/' + c.id) })))) : null,
-            ].filter(Boolean))) : el('span', { hidden: true }),
+        panel({ title: t('dino.pedigree'), icon: 'egg', className: 'pedigree-panel' }, pedigree(data, go)),
         data.notes ? panel({ title: t('dino.notes'), icon: 'clipboard-text' }, el('p', { text: data.notes })) : el('span', { hidden: true })),
       el('aside.task-detail-side', {},
         panel({ title: t('dino.title'), icon: 'info' },
@@ -267,3 +268,37 @@ function statsSummary(dino) {
 function linkTo(ref, go) {
   return el('button.btn.sm', { type: 'button', text: `${ref.name} (${ref.species})`, onclick: () => go('/dinos/' + ref.id) });
 }
+
+/**
+ * Zucht-Stammbaum: Grosseltern -> Eltern -> dieses Tier -> Nachkommen.
+ * Leere Plaetze bleiben sichtbar, damit die Struktur immer gleich lesbar ist.
+ */
+function pedigree(d, go) {
+  const node = (ref, role, { self = false } = {}) => {
+    if (!ref) return el('div.ped-node.is-empty', {}, el('small', { text: role }), el('span', { text: t('dino.unknown') }));
+    const sexIcon = ref.sex === 'male' ? '♂' : ref.sex === 'female' ? '♀' : '';
+    return el('button.ped-node' + (self ? '.is-self' : '') + (ref.sex ? '.sex-' + ref.sex : ''), {
+      type: 'button', disabled: self, onclick: self ? undefined : () => go('/dinos/' + ref.id), title: ref.name,
+    },
+      el('span.ped-art', {}, dinoArt(ref)),
+      el('span.ped-copy', {},
+        el('small', { text: role }),
+        el('b', {}, el('span', { text: ref.name }), sexIcon ? el('i', { text: ' ' + sexIcon }) : null),
+        el('span', { text: [ref.species, ref.level ? 'Lvl ' + ref.level : null, ref.generation != null ? 'Gen ' + ref.generation : null].filter(Boolean).join(' · ') })));
+  };
+  const f = d.fatherFull || d.father, m = d.motherFull || d.mother;
+  const gp = [d.fatherFull?.father, d.fatherFull?.mother, d.motherFull?.father, d.motherFull?.mother];
+  const hasAny = f || m || d.children?.length;
+  return el('div.pedigree', {},
+    hasAny ? null : el('p.hint', { text: t('dino.pedigree_empty') }),
+    el('div.ped-row.ped-gp', {},
+      node(gp[0], t('dino.grandfather') + ' · ' + t('dino.paternal')), node(gp[1], t('dino.grandmother') + ' · ' + t('dino.paternal')),
+      node(gp[2], t('dino.grandfather') + ' · ' + t('dino.maternal')), node(gp[3], t('dino.grandmother') + ' · ' + t('dino.maternal'))),
+    el('div.ped-link', { 'aria-hidden': 'true' }),
+    el('div.ped-row.ped-parents', {}, node(f, t('dino.father')), node(m, t('dino.mother'))),
+    el('div.ped-link', { 'aria-hidden': 'true' }),
+    el('div.ped-row.ped-self', {}, node(d, t('dino.this_animal'), { self: true })),
+    d.children?.length ? el('div.ped-link', { 'aria-hidden': 'true' }) : null,
+    d.children?.length ? el('div.ped-row.ped-children', {}, ...d.children.map((c) => node(c, t('dino.child')))) : null);
+}
+

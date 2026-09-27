@@ -1,3 +1,4 @@
+import { notifyOrderCreated } from '../services/discordService.js';
 import { Router } from '../lib/router.js';
 import { readJsonBody, sendJson, badRequest } from '../lib/http.js';
 import { parseIdParam, requireOneOf, requirePositiveInt, optionalString } from '../lib/validate.js';
@@ -30,6 +31,8 @@ export function buildOrdersRouter(db) {
       note,
       items,
     });
+    // Discord-Kanaele informieren - bewusst ohne auf Discord zu warten.
+    notifyOrderCreated(db, order).catch((err) => console.error('[DISCORD]', err.message));
     sendJson(res, 201, { order });
   });
 

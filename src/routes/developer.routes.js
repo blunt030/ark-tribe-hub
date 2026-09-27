@@ -5,6 +5,7 @@ import { requireRole, requireCsrf } from '../middleware/auth.js';
 import { getUserRoles } from '../services/authService.js';
 import { serializeUserAdmin } from '../lib/userSerializer.js';
 import { audit, listAuditLogs } from '../services/auditService.js';
+import { publicTribe } from '../services/discordService.js';
 import { sendMail } from '../services/mailService.js';
 import { config } from '../config.js';
 
@@ -14,7 +15,7 @@ export function buildDeveloperRouter(db) {
   const router = new Router();
 
   router.get('/api/developer/tribes', requireRole('developer'), async (req, res) => {
-    sendJson(res, 200, { tribes: await db.all('SELECT * FROM tribes ORDER BY name') });
+    sendJson(res, 200, { tribes: (await db.all('SELECT * FROM tribes ORDER BY name')).map(publicTribe) });
   });
 
   router.post('/api/developer/tribes', requireRole('developer'), requireCsrf, async (req, res) => {
@@ -28,7 +29,7 @@ export function buildDeveloperRouter(db) {
       if (existing) throw conflict('Tribe-Slug existiert bereits');
       const inserted = await tx.get('INSERT INTO tribes (slug, name) VALUES (?,?) RETURNING id', [slug, name]);
       await audit(tx, { actorId: req.user.id, action: 'tribe_created', targetType: 'tribe', targetId: inserted.id });
-      return tx.get('SELECT * FROM tribes WHERE id = ?', [inserted.id]);
+      return publicTribe(await tx.get('SELECT * FROM tribes WHERE id = ?', [inserted.id]));
     });
     sendJson(res, 201, { tribe: result });
   });
@@ -49,7 +50,7 @@ export function buildDeveloperRouter(db) {
       await tx.run(`UPDATE tribes SET updated_at = ? WHERE id = ?`, [new Date().toISOString(), id]);
       await audit(tx, { actorId: req.user.id, action: 'tribe_updated', targetType: 'tribe', targetId: id, meta: body });
     });
-    sendJson(res, 200, { tribe: await db.get('SELECT * FROM tribes WHERE id = ?', [id]) });
+    sendJson(res, 200, { tribe: publicTribe(await db.get('SELECT * FROM tribes WHERE id = ?', [id])) });
   });
 
   router.get('/api/developer/users', requireRole('developer'), async (req, res) => {

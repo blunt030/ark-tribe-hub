@@ -1376,6 +1376,51 @@ const SECURITY = {
   },
 };
 for (const [code, values] of Object.entries(SECURITY)) Object.assign(STRINGS[code], values);
+const DISCORD = {
+  de: { 'discord.channel_breeder': 'Breeder-Kanal', 'discord.channel_crafter': 'Crafter-Kanal',
+    'discord.hint_breeder': 'Neue Bestellungen mit Eiern und Embryos werden hierhin geschickt.',
+    'discord.hint_crafter': 'Neue Bestellungen mit Sätteln, Strukturen und Ressourcen werden hierhin geschickt.',
+    'discord.webhook_breeder': 'Webhook-Adresse für Breeder', 'discord.webhook_crafter': 'Webhook-Adresse für Crafter',
+    'discord.status': 'Status', 'discord.connected': 'Verbunden', 'discord.not_connected': 'Nicht verbunden',
+    'discord.enter_url': 'Bitte die Webhook-Adresse aus Discord einfügen.', 'discord.saved': 'Discord-Einstellung gespeichert.',
+    'discord.test': 'Testnachricht senden', 'discord.test_ok': 'Testnachricht wurde gesendet.', 'discord.test_fail': 'Discord hat die Nachricht nicht angenommen. Webhook prüfen.',
+    'discord.remove': 'Entfernen', 'discord.remove_confirm': 'Discord-Verbindung für diesen Kanal entfernen?',
+    'discord.howto': 'In Discord: Kanal-Einstellungen → Integrationen → Webhooks → Neuer Webhook → „Webhook-URL kopieren“ und hier einfügen. Die Adresse wird verschlüsselt gespeichert und danach nicht mehr angezeigt.' },
+  en: { 'discord.channel_breeder': 'Breeder channel', 'discord.channel_crafter': 'Crafter channel',
+    'discord.hint_breeder': 'New orders with eggs and embryos are sent here.', 'discord.hint_crafter': 'New orders with saddles, structures and resources are sent here.',
+    'discord.webhook_breeder': 'Webhook URL for breeders', 'discord.webhook_crafter': 'Webhook URL for crafters',
+    'discord.status': 'Status', 'discord.connected': 'Connected', 'discord.not_connected': 'Not connected',
+    'discord.enter_url': 'Please paste the webhook URL from Discord.', 'discord.saved': 'Discord setting saved.',
+    'discord.test': 'Send test message', 'discord.test_ok': 'Test message sent.', 'discord.test_fail': 'Discord rejected the message. Check the webhook.',
+    'discord.remove': 'Remove', 'discord.remove_confirm': 'Remove the Discord connection for this channel?',
+    'discord.howto': 'In Discord: channel settings → Integrations → Webhooks → New webhook → "Copy webhook URL" and paste it here. The URL is stored encrypted and never shown again.' },
+  fr: { 'discord.channel_breeder': 'Salon breeders', 'discord.channel_crafter': 'Salon crafters',
+    'discord.hint_breeder': 'Les nouvelles commandes d’œufs et d’embryons arrivent ici.', 'discord.hint_crafter': 'Les nouvelles commandes de selles, structures et ressources arrivent ici.',
+    'discord.webhook_breeder': 'URL du webhook breeders', 'discord.webhook_crafter': 'URL du webhook crafters',
+    'discord.status': 'Statut', 'discord.connected': 'Connecté', 'discord.not_connected': 'Non connecté',
+    'discord.enter_url': 'Collez l’URL du webhook Discord.', 'discord.saved': 'Réglage Discord enregistré.',
+    'discord.test': 'Envoyer un test', 'discord.test_ok': 'Message de test envoyé.', 'discord.test_fail': 'Discord a refusé le message. Vérifiez le webhook.',
+    'discord.remove': 'Retirer', 'discord.remove_confirm': 'Retirer la connexion Discord de ce salon ?',
+    'discord.howto': 'Dans Discord : paramètres du salon → Intégrations → Webhooks → Nouveau webhook → « Copier l’URL » puis collez-la ici. Elle est chiffrée et ne sera plus affichée.' },
+  es: { 'discord.channel_breeder': 'Canal breeders', 'discord.channel_crafter': 'Canal crafters',
+    'discord.hint_breeder': 'Aquí llegan los pedidos nuevos de huevos y embriones.', 'discord.hint_crafter': 'Aquí llegan los pedidos nuevos de sillas, estructuras y recursos.',
+    'discord.webhook_breeder': 'URL del webhook breeders', 'discord.webhook_crafter': 'URL del webhook crafters',
+    'discord.status': 'Estado', 'discord.connected': 'Conectado', 'discord.not_connected': 'No conectado',
+    'discord.enter_url': 'Pega la URL del webhook de Discord.', 'discord.saved': 'Ajuste de Discord guardado.',
+    'discord.test': 'Enviar prueba', 'discord.test_ok': 'Mensaje de prueba enviado.', 'discord.test_fail': 'Discord rechazó el mensaje. Revisa el webhook.',
+    'discord.remove': 'Quitar', 'discord.remove_confirm': '¿Quitar la conexión de Discord de este canal?',
+    'discord.howto': 'En Discord: ajustes del canal → Integraciones → Webhooks → Nuevo webhook → «Copiar URL» y pégala aquí. Se guarda cifrada y no se vuelve a mostrar.' },
+};
+for (const [code, values] of Object.entries(DISCORD)) Object.assign(STRINGS[code], values);
+const PEDIGREE = {
+  de: { 'dino.pedigree': 'Stammbaum', 'dino.pedigree_empty': 'Noch keine Eltern oder Nachkommen eingetragen. Eltern lassen sich beim Bearbeiten auswählen.', 'dino.unknown': 'Unbekannt', 'dino.grandfather': 'Großvater', 'dino.grandmother': 'Großmutter', 'dino.this_animal': 'Dieses Tier', 'dino.child': 'Nachkomme', 'dino.paternal': 'väterl.', 'dino.maternal': 'mütterl.' },
+  en: { 'dino.pedigree': 'Pedigree', 'dino.pedigree_empty': 'No parents or offspring yet. Parents can be chosen when editing.', 'dino.unknown': 'Unknown', 'dino.grandfather': 'Grandfather', 'dino.grandmother': 'Grandmother', 'dino.this_animal': 'This animal', 'dino.child': 'Offspring', 'dino.paternal': 'paternal', 'dino.maternal': 'maternal' },
+  fr: { 'dino.pedigree': 'Arbre généalogique', 'dino.pedigree_empty': 'Aucun parent ni descendant. Les parents se choisissent en modifiant.', 'dino.unknown': 'Inconnu', 'dino.grandfather': 'Grand-père', 'dino.grandmother': 'Grand-mère', 'dino.this_animal': 'Cet animal', 'dino.child': 'Descendant', 'dino.paternal': 'paternel', 'dino.maternal': 'maternel' },
+  es: { 'dino.pedigree': 'Árbol genealógico', 'dino.pedigree_empty': 'Aún no hay padres ni crías. Los padres se eligen al editar.', 'dino.unknown': 'Desconocido', 'dino.grandfather': 'Abuelo', 'dino.grandmother': 'Abuela', 'dino.this_animal': 'Este animal', 'dino.child': 'Cría', 'dino.paternal': 'paterno', 'dino.maternal': 'materno' },
+};
+for (const [code, values] of Object.entries(PEDIGREE)) Object.assign(STRINGS[code], values);
+
+
 
 
 

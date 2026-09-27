@@ -469,10 +469,17 @@ export async function renderMembers(mount, ctx) {
     const modeSwitch = canManage ? tabBar([
       { key: 'overview', label: t('members.overview') },
       { key: 'access', label: t('members.access'), count: vaults.length },
-    ], mode, (key) => { mode = key; draw(); }) : null;
+      ctx.user.tribeId ? { key: 'discord', label: 'Discord' } : null,
+    ].filter(Boolean), mode, (key) => { mode = key; draw(); }) : null;
 
     if (mode === 'access') {
       mount.replaceChildren(head, el('div.task-toolbar', {}, modeSwitch), vaultManager(active));
+      return;
+    }
+    if (mode === 'discord') {
+      const box = el('div.discord-settings', {}, spinner());
+      mount.replaceChildren(head, el('div.task-toolbar', {}, modeSwitch), box);
+      discordSettings(box);
       return;
     }
 
@@ -585,6 +592,49 @@ export async function renderMembers(mount, ctx) {
         ? el('span.vault-tag', {}, uiIcon('vault'), el('span', { text: memberVaults.map((v) => v.name).join(', ') })) : null,
         canManage && m.status && m.status !== 'active' ? pill(t('ustatus.' + m.status), 'muted') : null),
       menu || el('span'));
+  }
+
+  // Discord: je ein Webhook fuer Breeder- und Crafter-Bestellungen. Die
+  // gespeicherte Adresse wird nie wieder angezeigt, nur ob sie gesetzt ist.
+  async function discordSettings(box) {
+    let info;
+    try { info = await api.discordSettings(); }
+    catch (err) { box.replaceChildren(emptyState(err.message)); return; }
+    const card = (target, icon, tone) => {
+      const input = el('input', { type: 'url', placeholder: 'https://discord.com/api/webhooks/…', 'aria-label': t('discord.webhook_' + target), autocomplete: 'off' });
+      const state = info[target].configured
+        ? pill(t('discord.connected') + ' ' + info[target].hint, 'done', 'check-circle')
+        : pill(t('discord.not_connected'), 'muted');
+      const save = el('button.btn.primary', { type: 'button' }, uiIcon('floppy-disk'), el('span', { text: t('profile.save') }));
+      save.addEventListener('click', async () => {
+        if (!input.value.trim()) { toast(t('discord.enter_url'), 'err'); return; }
+        save.disabled = true;
+        try { info = await api.saveDiscord({ [target + 'Webhook']: input.value.trim() }); toast(t('discord.saved')); discordSettingsRender(); }
+        catch (err) { toast(err.message, 'err'); save.disabled = false; }
+      });
+      return arkPanel({ title: t('discord.channel_' + target), icon, className: 'discord-card g-' + tone },
+        el('p.profile-form-note', { text: t('discord.hint_' + target) }),
+        el('div.sec-status', {}, uiIcon('chat-circle-dots'), el('span', { text: t('discord.status') }), state),
+        el('div.pin-row', {}, input, save),
+        info[target].configured ? el('div.pin-row-2', {},
+          el('button.btn.sm', { type: 'button', onclick: async (e) => {
+            e.currentTarget.disabled = true;
+            try { const r = await api.testDiscord(target); toast(r.ok ? t('discord.test_ok') : t('discord.test_fail'), r.ok ? 'ok' : 'err'); }
+            catch (err) { toast(err.message, 'err'); }
+            finally { e.currentTarget.disabled = false; }
+          } }, uiIcon('paper-plane-tilt'), el('span', { text: t('discord.test') })),
+          el('button.btn.sm.danger', { type: 'button', onclick: async () => {
+            if (!await confirmDialog({ title: t('discord.remove_confirm'), danger: true })) return;
+            try { info = await api.saveDiscord({ [target + 'Webhook']: '' }); toast(t('discord.saved')); discordSettingsRender(); }
+            catch (err) { toast(err.message, 'err'); }
+          } }, uiIcon('trash'), el('span', { text: t('discord.remove') }))) : null);
+    };
+    function discordSettingsRender() {
+      box.replaceChildren(
+        el('div.notice.note', { text: t('discord.howto') }),
+        el('div.member-groups', {}, card('breeder', 'leaf', 'breeder'), card('crafter', 'wrench', 'crafter')));
+    }
+    discordSettingsRender();
   }
 
   // Vault-Verwaltung: Admins legen Vaults an und vergeben sie. Den PIN setzt

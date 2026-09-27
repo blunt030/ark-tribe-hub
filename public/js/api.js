@@ -85,6 +85,9 @@ export const api = {
   updateVault: (id, b) => call('PATCH', `/api/vaults/${id}`, b),
   deleteVault: (id) => call('DELETE', `/api/vaults/${id}`),
   presence: () => call('GET', '/api/presence'),
+  discordSettings: () => call('GET', '/api/tribes/me/discord'),
+  saveDiscord: (b) => call('PUT', '/api/tribes/me/discord', b),
+  testDiscord: (target) => call('POST', '/api/tribes/me/discord/test', { target }),
   uploadItemImage: (id, b) => call('POST', `/api/items/${id}/image`, b),
   dinos: (q = {}) => {
     const p = new URLSearchParams();

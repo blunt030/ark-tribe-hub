@@ -1434,3 +1434,27 @@ body:has(.ark-theme) { background: var(--ink-0, #05090c); }
 @media (max-width: 899px) {
   .twofa-setup { grid-template-columns: minmax(0, 1fr); justify-items: center; }
 }
+
+/* ---------- Zucht-Stammbaum ------------------------------------------------ */
+.pedigree { display: grid; gap: 0; justify-items: center; padding: 4px 0 6px; overflow-x: auto; }
+.ped-row { display: flex; justify-content: center; gap: 10px; width: 100%; flex-wrap: wrap; }
+.ped-link { width: 2px; height: 18px; background: linear-gradient(180deg, rgba(232, 185, 109, .7), rgba(232, 185, 109, .25)); }
+.ped-parents, .ped-self { position: relative; }
+.ped-node { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 10px; width: 210px; min-height: 64px; padding: 6px 10px 6px 6px; border: 1px solid var(--panel-line); border-radius: 10px; background: rgba(8, 13, 17, .8); color: var(--text); text-align: left; cursor: pointer; }
+.ped-node:hover:not(:disabled) { border-color: var(--panel-line-strong); }
+.ped-node.sex-male { border-left: 3px solid #5aa9ff; }
+.ped-node.sex-female { border-left: 3px solid #f472b6; }
+.ped-node.is-self { width: 250px; border: 2px solid #f1c27a; box-shadow: 0 0 16px rgba(255, 170, 70, .3); cursor: default; }
+.ped-node.is-empty { display: grid; grid-template-columns: 1fr; place-items: center; border-style: dashed; color: var(--faint); cursor: default; background: transparent; }
+.ped-art { width: 52px; height: 52px; border-radius: 8px; overflow: hidden; }
+.ped-art .item-art { width: 52px; height: 52px; }
+.ped-copy { display: grid; min-width: 0; line-height: 1.2; }
+.ped-copy small { color: var(--gold); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+.ped-copy b { font: 700 .98rem var(--ff-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ped-copy b i { font-style: normal; color: var(--muted); }
+.ped-copy > span { color: var(--muted); font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ped-gp .ped-node { width: 180px; min-height: 56px; }
+@media (max-width: 899px) {
+  .ped-gp .ped-node, .ped-node { width: calc(50% - 5px); }
+  .ped-node.is-self { width: 100%; }
+}
