@@ -677,7 +677,7 @@ export async function renderTribes(mount, ctx) {
   draw();
 }
 
-const ASSIGNABLE_ROLES = ['member', 'breeder_crafter', 'admin', 'developer'];
+const ASSIGNABLE_ROLES = ['member', 'breeder', 'crafter', 'admin', 'developer'];
 
 export async function renderUsers(mount, ctx) {
   mount.append(spinner());
@@ -725,7 +725,9 @@ export async function renderUsers(mount, ctx) {
             text: t('role.' + r),
             onclick: async (e) => {
               e.target.disabled = true;
-              const next = u.roles.includes(r) ? u.roles.filter((x) => x !== r) : [...u.roles, r];
+              // breeder_crafter ist nur die abgeleitete Berechtigung - nie zurueckschreiben.
+              const own = u.roles.filter((x) => x !== 'breeder_crafter');
+              const next = own.includes(r) ? own.filter((x) => x !== r) : [...own, r];
               if (next.length === 0) next.push('member');
               try {
                 await api.setRoles(u.id, next);

@@ -1,4 +1,4 @@
-import { el, spinner, toast, confirmDialog, pageHead, avatar, kebabMenu, emptyBlock } from '../ui.js';
+import { el, spinner, toast, confirmDialog, pageHead, avatar, kebabMenu, emptyBlock, roleOf } from '../ui.js';
 import { api } from '../api.js';
 import { t, fmtStamp } from '../i18n.js';
 import { uiIcon } from '../ui-icons.js';
@@ -88,12 +88,14 @@ export function presenceBar(members, presence) {
     })));
 }
 
-export function chatMessage(m, currentUserId = null) {
+export function chatMessage(m, currentUserId = null, members = []) {
   const mine = currentUserId != null && Number(m.author_id) === Number(currentUserId);
-  const colorIndex = Math.abs(Number(m.author_id) || 0) % 6;
-  return el(`article.chat-message.author-color-${colorIndex}${mine ? '.mine' : ''}`, { dataset: { messageId: m.id } },
+  // Farbe nach Rolle: Admin rot, Breeder gruen, Crafter blau, Mitglied gold.
+  const role = roleOf(members.find((x) => Number(x.id) === Number(m.author_id)));
+  return el(`article.chat-message.role-${role}${mine ? '.mine' : ''}`, { dataset: { messageId: m.id } },
     avatar(m.author_name, { size: 'md' }),
     el('div.chat-meta', {}, el('strong', { text: m.author_name }),
+      el('span.role-tag', { text: t('role.' + role) }),
       mine ? el('span.chat-me', { text: t('chat.me') }) : null,
       el('time', { datetime: m.created_at, text: fmtStamp(m.created_at) })),
     el('p', { text: m.body })); // User content is always textContent, never HTML.
@@ -137,7 +139,7 @@ export async function renderChat(mount, { user }) {
     for (const m of rows) {
       if (messages.has(m.id) && log.querySelector(`[data-message-id="${m.id}"]`)) continue;
       messages.set(m.id, m);
-      const node = chatMessage(m, user.id);
+      const node = chatMessage(m, user.id, membersRes.members);
       const next = [...log.children].find(n => Number(n.dataset.messageId) > m.id);
       log.insertBefore(node, next || null);
     }

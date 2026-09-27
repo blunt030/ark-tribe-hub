@@ -102,7 +102,8 @@ export async function renderDinoForm(mount, ctx, idParam) {
   const speciesList = el('datalist', { id: 'species-list' }, ...[...new Set(allDinos.map((x) => x.species))].map((s) => el('option', { value: s })));
   const sex = el('select', {}, ...['unknown', 'male', 'female'].map((s) => el('option', { value: s, text: t('dino.sex.' + s), selected: (d.sex || 'unknown') === s })));
   const level = el('input', { type: 'number', min: '1', value: d.level || '' });
-  const breeders = members.filter((m) => (m.roles || []).includes('breeder_crafter'));
+  // Zuchttiere gehoeren Breedern (bzw. Konten mit der alten kombinierten Rolle).
+  const breeders = members.filter((m) => { const r = m.roles || []; return r.includes('breeder') || (r.includes('breeder_crafter') && !r.includes('crafter')); });
   const owner = el('select', {}, el('option', { value: '', text: '—' }), ...breeders.map((m) => el('option', { value: m.id, text: m.username, selected: d.owner_id === m.id })));
   const server = el('input', { type: 'text', value: d.server || '' });
   const map = el('input', { type: 'text', value: d.map || '' });

@@ -1,4 +1,4 @@
-import { el, spinner, orderCard, panel, avatar, avatarSrc, emptyBlock, preferredServer, rememberServer } from '../ui.js';
+import { el, spinner, orderCard, panel, avatar, avatarSrc, emptyBlock, preferredServer, roleOf } from '../ui.js';
 import { presenceBar } from './community.js';
 import { t, timeAgo, fmtStamp, isPastDay } from '../i18n.js';
 import { api } from '../api.js';
@@ -35,6 +35,8 @@ export async function renderDashboard(mount, ctx) {
   const tasks = tasksRes.tasks || [];
   const servers = serversRes.servers || [];
   const server = preferredServer(servers, user);
+  // Im Hero stehen alle Server, die der Tribe als aktiv gefuehrt hat.
+  const activeServers = servers.filter((s) => s.status === 'active');
   const serverDetail = server ? await api.server(server.id).catch(() => ({ server })) : null;
   const markers = serverDetail?.server?.markers || [];
   const channels = voiceRes.channels || [];
@@ -64,14 +66,11 @@ export async function renderDashboard(mount, ctx) {
       el('h1.dash-tribe-name', { text: hasTribe ? tribeName : t('dash.platform') }),
       el('div.dash-eyebrow', { text: t('dash.command') }),
       el('div.dash-hero-meta', {},
-        server ? el('label.hero-server', { title: t('dash.switch_server') },
-          uiIcon('map'),
-          el('span.hero-server-label', { text: t('dash.your_server') + ':' }),
-          servers.length > 1
-            ? el('select', { 'aria-label': t('dash.switch_server'), onchange: (e) => { rememberServer(e.target.value); go('/', true); } },
-                ...servers.map((s) => el('option', { value: String(s.id), selected: Number(s.id) === Number(server.id), text: `${s.name} · ${s.map_name}` })))
-            : el('b', { text: `${server.name} · ${server.map_name}` })) : null,
-        server ? el('span.dash-live' + (server.status === 'active' ? '.is-active' : ''), { text: t('srv.status.' + server.status) }) : null,
+        activeServers.length ? el('div.hero-servers', {},
+          el('span.hero-server-label', {}, uiIcon('map'), el('span', { text: t('dash.active_servers') })),
+          ...activeServers.map((s, i) => el('a.hero-server-chip' + (i >= 3 ? '.is-extra' : ''), { href: '#/servers/' + s.id, title: s.map_name },
+            el('b', { text: s.name }), el('small', { text: s.map_name }))),
+          activeServers.length > 3 ? el('a.hero-server-chip.is-more', { href: '#/servers' }, el('b', { text: '+' + (activeServers.length - 3) })) : null) : null,
         !server ? el('span', { text: hasTribe ? t('dash.no_server') : t('dash.welcome_back', { name: user.username }) }) : null
       ),
       el('button.btn.primary.lux.dash-hero-cta', { type: 'button', onclick: () => go('/orders/new') }, uiIcon('plus'), el('span', { text: t('order.new') }))
@@ -126,7 +125,7 @@ export async function renderDashboard(mount, ctx) {
       pendingMembers.length ? el('button.status-alert', { type: 'button', onclick: () => go('/members') },
         uiIcon('warning'), el('span', { text: t('dash.pending_requests', { n: pendingMembers.length }) }), uiIcon('caret-right')) : null
     ) : null,
-    hasTribe ? chatPanel(chatRes?.messages || [], user, go, presenceBar(members, presenceRes)) : null,
+    hasTribe ? chatPanel(chatRes?.messages || [], user, go, presenceBar(members, presenceRes), members) : null,
     activityPanel(notifications, newsRes.news || [], go)
   );
   mount.append(el('div.dash-main-grid', {}, work, aside));
@@ -160,7 +159,7 @@ function dashMap(server, markers, go) {
   );
 }
 
-function chatPanel(messages, user, go, presence) {
+function chatPanel(messages, user, go, presence, members = []) {
   const previewMessages = [...messages];
   const previewLog = el('div.dashboard-chat-log', { role: 'log', 'aria-live': 'polite' });
   const chatStatus = el('p.hint', { role: 'status' });
@@ -168,11 +167,13 @@ function chatPanel(messages, user, go, presence) {
   const chatSend = el('button.send-btn', { type: 'submit', 'aria-label': t('chat.send'), title: t('chat.send') }, uiIcon('paper-plane-tilt'));
   function drawChatPreview() {
     previewLog.replaceChildren(...(previewMessages.length
-      ? previewMessages.slice(-3).map((message) => el('div.dash-chat-row', {},
+      ? previewMessages.slice(-3).map((message) => {
+        const role = roleOf(members.find((m) => Number(m.id) === Number(message.author_id)));
+        return el('div.dash-chat-row.role-' + role, {},
         avatar(message.author_name, { size: 'sm' }),
-        el('span.dash-chat-copy', {}, el('span.dash-chat-meta', {}, el('strong', { text: message.author_name }),
+        el('span.dash-chat-copy', {}, el('span.dash-chat-meta', {}, el('strong', { text: message.author_name }), el('span.role-tag', { text: t('role.' + role) }),
           el('small', { text: fmtStamp(message.created_at) })), el('span', { text: message.body }))
-      )) : [el('p.dash-empty-note', { text: t('chat.empty') })]));
+      ); }) : [el('p.dash-empty-note', { text: t('chat.empty') })]));
   }
   drawChatPreview();
   return el('section.card.dashboard-chat-card.ark-panel', {},

@@ -47,6 +47,30 @@ export async function runMigrations(db) {
   }
   await migrateEmailTokens(db);
   await migrateVaults(db);
+  await splitBreederCrafter(db);
+}
+
+/**
+ * Die kombinierte Rolle breeder_crafter wird in die getrennten Rollen breeder
+ * und crafter aufgeteilt (beide vergeben, damit niemand Rechte verliert).
+ * Admins nehmen danach die jeweils nicht passende Rolle weg. Idempotent.
+ */
+async function splitBreederCrafter(db) {
+  const ids = {};
+  for (const key of ['breeder_crafter', 'breeder', 'crafter']) {
+    await db.run('INSERT INTO roles (key) VALUES (?) ON CONFLICT(key) DO NOTHING', [key]);
+    ids[key] = (await db.get('SELECT id FROM roles WHERE key = ?', [key])).id;
+  }
+  const holders = await db.all('SELECT user_id FROM user_roles WHERE role_id = ?', [ids.breeder_crafter]);
+  for (const { user_id: userId } of holders) {
+    await db.transaction(async (tx) => {
+      for (const key of ['breeder', 'crafter']) {
+        await tx.run('INSERT INTO user_roles (user_id, role_id) VALUES (?,?) ON CONFLICT(user_id, role_id) DO NOTHING', [userId, ids[key]]);
+      }
+      await tx.run('DELETE FROM user_roles WHERE user_id = ? AND role_id = ?', [userId, ids.breeder_crafter]);
+    });
+  }
+  if (holders.length) console.log(`[MIGRATION] ${holders.length} Konto/Konten: Breeder/Crafter in getrennte Rollen aufgeteilt`);
 }
 
 /**

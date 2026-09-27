@@ -328,3 +328,15 @@ export function preferredServer(servers, user) {
 export function rememberServer(id) {
   try { localStorage.setItem('ath_server', String(id)); } catch { /* optional */ }
 }
+
+/** Hauptrolle fuer Farbe/Etikett (Chat usw.): Admin > Breeder > Crafter > Mitglied. */
+export function roleOf(member) {
+  const r = member?.roles || [];
+  if (r.includes('developer')) return 'developer';
+  if (r.includes('admin')) return 'admin';
+  if (r.includes('breeder') && r.includes('crafter')) return 'breeder';
+  if (r.includes('breeder')) return 'breeder';
+  if (r.includes('crafter')) return 'crafter';
+  if (r.includes('breeder_crafter')) return 'breeder_crafter';
+  return 'member';
+}

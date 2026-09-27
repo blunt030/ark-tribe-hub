@@ -116,11 +116,20 @@ export async function createOrder(db, { tribeId, memberId, priority = 'normal', 
 
     await audit(tx, { tribeId, actorId: memberId, action: 'order_created', targetType: 'order', targetId: orderId });
 
+    // Wer benachrichtigt wird, haengt am Inhalt: Eier/Embryos gehen an Breeder,
+    // Saettel, Strukturen und Ressourcen an Crafter. Admins (und Konten mit der
+    // alten kombinierten Rolle) erhalten weiterhin jede neue Bestellung.
+    const types = (await tx.all(
+      'SELECT DISTINCT i.product_type FROM order_items oi JOIN items i ON i.id = oi.item_id WHERE oi.order_id = ?', [orderId]
+    )).map((r) => r.product_type);
+    const roleKeys = ['admin', 'breeder_crafter'];
+    if (types.some((pt) => ['egg', 'embryo', 'creature'].includes(pt))) roleKeys.push('breeder');
+    if (types.some((pt) => !['egg', 'embryo', 'creature'].includes(pt))) roleKeys.push('crafter');
     const staff = await tx.all(
       `SELECT DISTINCT u.id FROM users u
        JOIN user_roles ur ON ur.user_id = u.id JOIN roles r ON r.id = ur.role_id
-       WHERE u.tribe_id = ? AND r.key IN ('breeder_crafter','breeder','crafter','admin') AND u.status = 'active' AND u.id != ?`,
-      [tribeId, memberId]
+       WHERE u.tribe_id = ? AND r.key IN (${roleKeys.map(() => '?').join(',')}) AND u.status = 'active' AND u.id != ?`,
+      [tribeId, ...roleKeys, memberId]
     );
     for (const s of staff) await notify(tx, { userId: s.id, tribeId, type: 'order_created', payload: { orderId } });
 

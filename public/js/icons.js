@@ -27,8 +27,8 @@ const EXAKTE_BILDER = new Set([
 export function eggImage(item) {
   const key = String(item.key || item.item_key || '');
   const type = String(item.product_type || item.productType || '');
-  if (type === 'egg') return key === 'rex_egg' ? '/assets/rex_egg_dashboard.webp' : '/assets/items/egg.webp';
-  if (type === 'embryo') return '/assets/items/embryo.webp';
+  if (type === 'egg') return key === 'rex_egg' ? '/assets/rex_egg_dashboard.webp' : '/assets/items/cut/egg.webp';
+  if (type === 'embryo') return '/assets/items/cut/embryo.webp';
   return null;
 }
 
@@ -38,14 +38,15 @@ export function creatureOf(item) {
   const type = String(item.product_type || item.productType || '');
   if (type !== 'egg' && type !== 'embryo') return null;
   const creatureKey = key.endsWith('_' + type) ? key.slice(0, -type.length - 1) : '';
-  return EXAKTE_BILDER.has(creatureKey) ? `/assets/${creatureKey}.png` : null;
+  return EXAKTE_BILDER.has(creatureKey) ? `/assets/items/cut/${creatureKey}.webp` : null;
 }
 
 export function mitgeliefertesBild(item) {
   const key = String(item.key || item.item_key || '');
   if (key === 'tek_generator') return '/assets/tek_generator.webp';
   if (key === 'attack_drone') return '/assets/attack_drone.webp';
-  if (EXAKTE_BILDER.has(key)) return `/assets/${key}.png`;
+  // Zugeschnittene, verkleinerte Fassung; das Original-PNG bleibt Rueckfallebene.
+  if (EXAKTE_BILDER.has(key)) return `/assets/items/cut/${key}.webp`;
 
   // Ei und Embryo: das Tier gross, das Ei bzw. der Embryo erscheint als kleines
   // Abzeichen (itemArt). Ohne Tierbild wird das Ei/der Embryo selbst gezeigt.
@@ -89,7 +90,8 @@ export function itemArt(item, { className = '', eggFirst = false } = {}) {
     glyph.setAttribute('aria-hidden', 'true');
     stage.replaceChildren(glyph);
   };
-  const sources = [upload, bundled].filter(Boolean);
+  const original = bundled && bundled.startsWith('/assets/items/cut/') ? bundled.replace('/assets/items/cut/', '/assets/').replace('.webp', '.png') : null;
+  const sources = [upload, bundled, original].filter(Boolean);
   const next = () => {
     const src = sources.shift();
     if (!src) { showPlaceholder(); return; }
@@ -106,7 +108,7 @@ export function itemArt(item, { className = '', eggFirst = false } = {}) {
     stage.replaceChildren(img);
     // Kleines Abzeichen: beim Tierbild das Ei/den Embryo, bei eggFirst das Tier.
     const creature = creatureOf(item);
-    const badgeSrc = !creature || src === upload ? null : eggFirst ? creature : src === creature ? eggImage(item).replace('/assets/rex_egg_dashboard.webp', '/assets/items/egg.webp') : null;
+    const badgeSrc = !creature || src === upload ? null : eggFirst ? creature : src === creature ? eggImage(item).replace('/assets/rex_egg_dashboard.webp', '/assets/items/cut/egg.webp') : null;
     if (badgeSrc) {
       const badge = document.createElement('img');
       badge.className = 'item-art-badge';

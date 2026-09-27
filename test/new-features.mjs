@@ -118,6 +118,16 @@ test('Neue Tribe-Funktionen: Login, PIN/Vault, Aufgaben und Voice', async (t) =>
     assert.ok(roles.includes('crafter'));
     assert.ok(!roles.includes('breeder'));
     assert.ok(roles.includes('breeder_crafter'), 'Berechtigung bleibt erhalten');
+    // Neue Ei-Bestellung: Breeder wird benachrichtigt, Crafter nicht.
+    const breederId = (await app.db.get("SELECT id FROM users WHERE username='OaO Breeder'")).id;
+    const count = async (uid) => Number((await app.db.get("SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND type = 'order_created'", [uid])).c);
+    const [crafterBefore, breederBefore] = [await count(memberId), await count(breederId)];
+    const egg = (await admin.get('/api/items?productType=egg')).json.items[0];
+    assert.equal((await admin.post('/api/orders', { items: [{ itemId: egg.id, quantity: 1 }] })).status, 201);
+    assert.equal(await count(memberId), crafterBefore, 'Crafter bekommt keine Ei-Bestellung');
+    assert.equal(await count(breederId), breederBefore + 1, 'Breeder bekommt die Ei-Bestellung');
+    const breederRoles = (await admin.get('/api/admin/members')).json.members.find((m) => m.id === breederId).roles;
+    assert.ok(breederRoles.includes('breeder') && !breederRoles.includes('crafter'));
     assert.equal((await admin.patch(`/api/admin/members/${memberId}/roles`, { crafter: false })).status, 200);
     const after = (await admin.get('/api/admin/members')).json.members.find((m) => m.id === memberId).roles;
     assert.ok(!after.includes('breeder_crafter'));

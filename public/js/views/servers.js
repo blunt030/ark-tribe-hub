@@ -104,11 +104,11 @@ export async function renderServers(mount, ctx) {
     const kinds = Object.keys(MARKER_KINDS).map((k) => [k, detail.markers.filter((m) => markerKind(m.category) === k).length]).filter(([, n]) => n);
     featured.replaceChildren(
       el('div.server-featured-map', {},
-        src ? mapBoard(src, mitgeliefertesKartenbild(detail.map_name), detail.markers, { labels: true, onPin: () => go('/servers/' + detail.id) })
+        src ? mapBoard(src, mitgeliefertesKartenbild(detail.map_name), detail.markers, { labels: true, cover: true, onPin: () => go('/servers/' + detail.id) })
           : el('div.map-upload-empty', {}, uiIcon('map'), el('strong', { text: t('srv.map_image_missing') })),
         el('div.map-compass', { 'aria-hidden': 'true' }, uiIcon('compass'))),
       el('div.server-featured-info', {},
-        el('span.eyebrow', { text: t('dash.your_server') }),
+        el('span.eyebrow', { text: t('srv.featured') }),
         el('h2', { text: detail.name }),
         el('div.server-featured-meta', {}, uiIcon('map'), el('span', { text: detail.map_name }),
           pill(t('srv.status.' + detail.status), detail.status === 'active' ? 'done' : 'muted')),

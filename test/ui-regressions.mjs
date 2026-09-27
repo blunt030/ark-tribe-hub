@@ -21,7 +21,7 @@ test('Passende Katalogbilder erscheinen auf Bestellungen und der neuen Startseit
   // Eier und Embryos: das Tier gross, Ei bzw. Embryo als kleines Abzeichen.
   assert.match(icons, /if \(type === 'egg' \|\| type === 'embryo'\) return creatureOf\(item\) \|\| eggImage\(item\);/);
   assert.match(icons, /src === creature \? eggImage\(item\)/);
-  assert.match(icons, /type === 'embryo'\) return '\/assets\/items\/embryo\.webp'/);
+  assert.match(icons, /type === 'embryo'\) return '\/assets\/items\/cut\/embryo\.webp'/);
   assert.match(icons, /item-art-badge/);
   assert.doesNotMatch(inventory, /itemIcon|itemBild|iconFuerItem/);
   assert.doesNotMatch(catalog, /itemIcon|itemBild|iconFuerItem/);
@@ -120,7 +120,9 @@ test('vorhandene Katalogbilder sind transparente PNGs und werden nicht beschnitt
     read('public/js/icons.js'),
     read('public/css/app.css'),
   ]);
-  assert.match(icons, /return `\/assets\/\$\{key\}\.png`/);
+  // Zugeschnittene WebP-Fassungen, Original-PNG als Rueckfallebene.
+  assert.match(icons, /return `\/assets\/items\/cut\/\$\{key\}\.webp`/);
+  assert.match(icons, /replace\('\/assets\/items\/cut\/', '\/assets\/'\)\.replace\('\.webp', '\.png'\)/);
   assert.match(icons, /item\.key \|\| item\.item_key/);
   assert.doesNotMatch(icons, /createElementNS|<svg|innerHTML/);
   assert.doesNotMatch(icons, /object-fit:cover/);

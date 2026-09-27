@@ -9,8 +9,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CATALOG_FILE = path.resolve(__dirname, '../../data/catalog/creatures.json');
 const CATEGORY_CODE_MAP = { L: 'land_creatures', W: 'water_creatures', F: 'flying_creatures', M: 'misc' };
 
-// breeder_crafter bleibt fuer bestehende Konten erhalten; neu vergeben werden
-// die getrennten Rollen breeder und crafter.
+// breeder_crafter ist die alte kombinierte Rolle; sie wird beim Start in
+// breeder und crafter aufgeteilt (siehe migrations.js).
 const ROLE_KEYS = ['developer', 'admin', 'breeder_crafter', 'breeder', 'crafter', 'member'];
 
 const NOTIFICATION_TYPES = [
@@ -255,7 +255,7 @@ export async function seed(db) {
 
     await ensureUser({ tribeId: null, username: 'Blunt', email: 'blunt@ark-tribe-hub.dev', roles: ['developer'] });
     await ensureUser({ tribeId: oaoId, username: 'OaO Admin', email: 'admin@oao.dev', roles: ['member', 'admin'], server: 'Official PvP 1234', map: 'The Island' });
-    await ensureUser({ tribeId: oaoId, username: 'OaO Breeder', email: 'breeder@oao.dev', roles: ['member', 'breeder_crafter'], server: 'Official PvP 1234', map: 'The Island' });
+    await ensureUser({ tribeId: oaoId, username: 'OaO Breeder', email: 'breeder@oao.dev', roles: ['member', 'breeder'], server: 'Official PvP 1234', map: 'The Island' });
     await ensureUser({ tribeId: oaoId, username: 'Blunt OaO', email: 'blunt.oao@oao.dev', roles: ['member'], server: 'Official PvP 1234', map: 'The Island', vault: 'PV-014' });
 
     // Zweiter Test-Tribe, ausschließlich zum Nachweis der Mandantentrennung

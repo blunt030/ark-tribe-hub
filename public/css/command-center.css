@@ -481,10 +481,12 @@ body:has(.ark-theme) { background: var(--ink-0, #05090c); }
   background: url('/assets/items/stage-jungle.webp') center / cover, #0d161b;
 }
 .item-art.type-structure, .item-art.type-saddle, .item-art.type-resource { background-image: url('/assets/items/stage-workshop.webp'); }
-.item-art::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 55%, rgba(255, 200, 120, .12), transparent 60%), linear-gradient(0deg, rgba(5, 9, 12, .55), transparent 45%); }
+.item-art::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 60%, rgba(255, 210, 140, .1), transparent 60%), linear-gradient(0deg, rgba(5, 9, 12, .45), transparent 40%); }
+.item-art.is-cutout::after { z-index: -1; }
+.item-art { isolation: isolate; }
 .item-art-img { display: block; width: 100%; height: 100%; }
 .item-art.is-scenic .item-art-img { object-fit: cover; object-position: center 45%; }
-.item-art.is-cutout .item-art-img { object-fit: contain; object-position: center; padding: 3% 4% 2%; filter: drop-shadow(0 10px 12px rgba(0, 0, 0, .7)) drop-shadow(0 0 18px rgba(255, 200, 130, .12)); }
+.item-art.is-cutout .item-art-img { object-fit: contain; object-position: center 60%; padding: 6% 7% 5%; filter: drop-shadow(0 6px 5px rgba(0, 0, 0, .75)); }
 .item-art-atlas { display: block; width: 72%; max-height: 82%; background-repeat: no-repeat; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .6)); }
 .item-art-badge { position: absolute; right: 6px; bottom: 6px; z-index: 1; width: 22%; max-width: 44px; opacity: .92; aspect-ratio: 1; object-fit: contain; padding: 4px; border-radius: 50%; background: radial-gradient(circle, rgba(18, 26, 32, .95), rgba(8, 12, 16, .95)); border: 1.5px solid #c89a5a; box-shadow: 0 2px 8px rgba(0, 0, 0, .6); }
 .item-art.is-placeholder { background: radial-gradient(circle at 50% 45%, #1d2a33, #0b1116); }
@@ -1169,7 +1171,7 @@ body:has(.ark-theme) { background: var(--ink-0, #05090c); }
 }
 .map-upload-empty { min-height: 220px; display: grid; place-content: center; gap: 6px; padding: 30px; text-align: center; color: var(--muted); }
 
-.item-art.has-badge.is-cutout .item-art-img { padding: 2% 10% 6% 2%; }
+.item-art.has-badge.is-cutout .item-art-img { padding: 5% 12% 6% 4%; }
 /* Kategorie-Kacheln gedaempft wie die Vorlage; aktive Kachel etwas heller. */
 .cat-tile .item-art { filter: brightness(.66) saturate(.85); transition: filter .15s ease; }
 .cat-tile:hover .item-art { filter: brightness(.8) saturate(.95); }
@@ -1228,7 +1230,7 @@ body:has(.ark-theme) { background: var(--ink-0, #05090c); }
   .alliance-stat-copy span { font-size: .8rem; }
 }
 /* Ei/Embryo ohne passendes Tierbild: kleiner, damit es nicht dominiert. */
-.item-art.is-cutout.type-egg:not(.has-badge) .item-art-img, .item-art.is-cutout.type-embryo:not(.has-badge) .item-art-img { padding: 14% 20% 10%; }
+.item-art.is-cutout.type-egg:not(.has-badge) .item-art-img, .item-art.is-cutout.type-embryo:not(.has-badge) .item-art-img { padding: 12% 20% 8%; }
 .cat-tile .item-art.is-cutout.type-embryo .item-art-img { padding: 6% 8% 12%; }
 
 /* ---------- Rollen-Farben ------------------------------------------------ */
@@ -1389,4 +1391,41 @@ body:has(.ark-theme) { background: var(--ink-0, #05090c); }
   .pending-line .chips { grid-column: 1 / -1; justify-content: flex-start; }
   .ark-theme .chat-log { height: calc(100dvh - 470px); min-height: 200px; }
   .chat-page .presence-bar { padding: 8px 10px; }
+}
+
+/* ---------- Rollenfarben im Chat ------------------------------------------ */
+.role-admin, .role-developer { --role: #f87171; --role-bg: rgba(127, 29, 29, .45); }
+.role-breeder, .role-breeder_crafter { --role: #4ade80; --role-bg: rgba(20, 83, 45, .45); }
+.role-crafter { --role: #60a5fa; --role-bg: rgba(30, 64, 120, .45); }
+.role-member { --role: #f0c47e; --role-bg: rgba(90, 60, 20, .4); }
+.ark-theme .chat-message[class*="role-"] { --author-color: var(--role); }
+.ark-theme .chat-message[class*="role-"] .chat-meta strong, .dash-chat-row[class*="role-"] .dash-chat-meta strong { color: var(--role); }
+.ark-theme .chat-message[class*="role-"] .ark-avatar, .dash-chat-row[class*="role-"] .ark-avatar { border-color: var(--role); box-shadow: 0 0 0 1px rgba(0, 0, 0, .7), 0 0 8px color-mix(in srgb, var(--role) 45%, transparent); }
+.ark-theme .chat-message[class*="role-"] { border-left: 3px solid color-mix(in srgb, var(--role) 70%, transparent); padding-left: 10px; }
+.role-tag { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--role) 60%, transparent); background: var(--role-bg); color: var(--role); font: 700 .66rem/1.4 var(--ff-display); letter-spacing: .08em; text-transform: uppercase; }
+.dash-chat-meta { flex-wrap: wrap; align-items: center; }
+
+/* ---------- Aktive Server im Hero ----------------------------------------- */
+.hero-servers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; }
+.hero-servers .hero-server-label { display: inline-flex; align-items: center; gap: 6px; color: #e8e1d4; font-size: .95rem; margin-right: 2px; }
+.hero-servers .hero-server-label .ui-icon { width: 18px; height: 18px; color: #8cc4ff; }
+.hero-server-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(74, 222, 128, .55); background: rgba(5, 9, 12, .65); color: #fff !important; text-decoration: none !important; backdrop-filter: blur(3px); }
+.hero-server-chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px var(--ok); align-self: center; }
+.hero-server-chip b { font-weight: 600; font-size: .95rem; }
+.hero-server-chip small { color: #cfc6b6; font-size: .8rem; }
+.hero-server-chip:hover { border-color: var(--gold-hi); }
+@media (max-width: 899px) {
+  .hero-servers .hero-server-label span { display: none; }
+  .hero-server-chip small { display: none; }
+  .hero-server-chip { padding: 2px 8px; }
+}
+
+.hero-server-chip.is-more { display: none; }
+.hero-server-chip.is-more::before { display: none; }
+@media (max-width: 899px) {
+  .hero-server-chip.is-extra { display: none; }
+  .hero-server-chip.is-more { display: inline-flex; }
+  .dash-hero { height: auto; min-height: 200px; }
+  .dash-hero-content { padding-block: 14px; }
+  .hero-server-chip b { font-size: .82rem; }
 }
