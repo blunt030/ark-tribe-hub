@@ -9,7 +9,8 @@ import { config } from '../config.js';
  */
 
 // Feste API-Version, damit sich Antworten nicht unbemerkt ändern.
-const API_VERSION = '2024-06-20';
+// Ab 2026-03-25.dahlia nötig für ui_mode 'hosted_page' und integration_identifier.
+const API_VERSION = '2026-08-26.dahlia';
 const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
 
 export class StripeError extends Error {
@@ -76,6 +77,15 @@ async function request(method, path, params) {
 export function createCheckoutSession({ userId, species, name, amountCents, currency = 'eur', successUrl, cancelUrl, locale = 'auto' }) {
   const meta = { app: 'ark-tribe-hub-tamagotchi', user_id: String(userId), species };
   return request('POST', '/v1/checkout/sessions', {
+    // Vorgaben aus dem Stripe Checkout Studio
+    ui_mode: 'hosted_page',
+    billing_address_collection: 'auto',
+    phone_number_collection: { enabled: false },
+    automatic_tax: { enabled: false },
+    allow_promotion_codes: false,
+    submit_type: 'auto',
+    integration_identifier: 'hosted_mobile_app_0001',
+    origin_context: 'mobile_app',
     mode: 'payment',
     success_url: successUrl,
     cancel_url: cancelUrl,
