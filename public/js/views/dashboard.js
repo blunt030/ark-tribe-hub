@@ -66,11 +66,7 @@ export async function renderDashboard(mount, ctx) {
       el('h1.dash-tribe-name', { text: hasTribe ? tribeName : t('dash.platform') }),
       el('div.dash-eyebrow', { text: t('dash.command') }),
       el('div.dash-hero-meta', {},
-        activeServers.length ? el('div.hero-servers', {},
-          el('span.hero-server-label', {}, uiIcon('map'), el('span', { text: t('dash.active_servers') })),
-          ...activeServers.map((s, i) => el('a.hero-server-chip' + (i >= 3 ? '.is-extra' : ''), { href: '#/servers/' + s.id, title: s.map_name },
-            el('b', { text: s.name }), el('small', { text: s.map_name }))),
-          activeServers.length > 3 ? el('a.hero-server-chip.is-more', { href: '#/servers' }, el('b', { text: '+' + (activeServers.length - 3) })) : null) : null,
+        activeServers.length ? heroServers(activeServers) : null,
         !server ? el('span', { text: hasTribe ? t('dash.no_server') : t('dash.welcome_back', { name: user.username }) }) : null
       ),
       el('button.btn.primary.lux.dash-hero-cta', { type: 'button', onclick: () => go('/orders/new') }, uiIcon('plus'), el('span', { text: t('order.new') }))
@@ -228,4 +224,17 @@ function activityIcon(type) {
   if (type === 'new_comment') return 'chat-circle-dots';
   if (type === 'order_completed') return 'check-circle';
   return 'clipboard-text';
+}
+
+// Kompakte Leiste der aktiven Server: Anzahl, hoechstens vier Eintraege,
+// Map nur dann, wenn sie sich vom Servernamen unterscheidet.
+function heroServers(list) {
+  const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const shown = list.slice(0, 4);
+  return el('div.hero-servers', {},
+    el('div.hero-servers-head', {}, uiIcon('map'), el('span', { text: t('dash.active_servers') }), el('b', { text: String(list.length) })),
+    el('div.hero-servers-list', {},
+      ...shown.map((s) => el('a.hero-server-item', { href: '#/servers/' + s.id, title: `${s.name} · ${s.map_name}` },
+        el('i', { 'aria-hidden': 'true' }), el('b', { text: s.name }), same(s.name, s.map_name) ? null : el('small', { text: s.map_name }))),
+      list.length > shown.length ? el('a.hero-server-item.is-more', { href: '#/servers' }, el('span', { text: t('dash.more_servers', { n: list.length - shown.length }) })) : null));
 }
