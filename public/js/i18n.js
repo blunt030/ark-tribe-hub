@@ -1323,6 +1323,18 @@ const REDESIGN2 = {
 for (const [code, values] of Object.entries(REDESIGN2)) Object.assign(STRINGS[code], values);
 
 
+// Dino-Tamagotchi: der Menüpunkt steht hier, alle weiteren Texte bringt
+// public/js/tamagotchi/texts.js über addStrings() mit.
+Object.assign(STRINGS.de, { 'nav.tamagotchi': 'Dino-Tamagotchi' });
+Object.assign(STRINGS.en, { 'nav.tamagotchi': 'Dino Tamagotchi' });
+Object.assign(STRINGS.fr, { 'nav.tamagotchi': 'Dino-Tamagotchi' });
+Object.assign(STRINGS.es, { 'nav.tamagotchi': 'Dino-Tamagotchi' });
+
+/** Erweiterungsmodule bringen eigene Texte mit, ohne diese Datei aufzublähen. */
+export function addStrings(dict) {
+  for (const [lang, entries] of Object.entries(dict)) if (STRINGS[lang]) Object.assign(STRINGS[lang], entries);
+}
+
 let current = localStorage.getItem('ath_lang') || (navigator.language || 'de').slice(0, 2);
 if (!STRINGS[current]) current = 'de';
 
