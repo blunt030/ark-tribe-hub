@@ -86,6 +86,42 @@ export function makeKit(prefix) {
     defs,
     id: nextId,
 
+    /**
+     * 3D-Licht für die ganze Figur: Die weichgezeichnete Silhouette dient als
+     * Höhenkarte. Diffuses Licht von links oben modelliert Rundungen, ein
+     * Glanzlicht gibt den Vinyl-Look, ein kühles Randlicht trennt die Figur vom
+     * Hintergrund. Liefert die Filter-ID.
+     */
+    shade3d({ rim = '#e4f6ff', strength = 1 } = {}) {
+      const id = nextId('l');
+      const o = globalThis.__shade3d || {};
+      const blur = o.blur ?? 10, scale = (o.scale ?? 4) * strength;
+      defs.push(h('filter', { id, x: '-8%', y: '-8%', width: '116%', height: '116%', 'color-interpolation-filters': 'sRGB' },
+        h('feGaussianBlur', { in: 'SourceAlpha', stdDeviation: blur, result: 'hm' }),
+        h('feDiffuseLighting', { in: 'hm', surfaceScale: scale, diffuseConstant: o.diffuse ?? 1, 'lighting-color': '#ffffff', result: 'diff' },
+          h('feDistantLight', { azimuth: 235, elevation: o.elev ?? 48 })),
+        h('feComposite', { in: 'SourceGraphic', in2: 'diff', operator: 'arithmetic', k1: o.k1 ?? 0.8, k2: o.k2 ?? 0.42, k3: 0, k4: 0, result: 'shade' }),
+        h('feSpecularLighting', { in: 'hm', surfaceScale: scale, specularConstant: o.spec ?? 0.35, specularExponent: o.exp ?? 40, 'lighting-color': '#ffffff', result: 'spec' },
+          h('feDistantLight', { azimuth: 235, elevation: o.specElev ?? 56 })),
+        h('feComposite', { in: 'spec', in2: 'SourceAlpha', operator: 'in', result: 'specA' }),
+        h('feComposite', { in: 'specA', in2: 'shade', operator: 'arithmetic', k1: 0, k2: o.specMix ?? 0.45, k3: 1, k4: 0, result: 'lit' }),
+        h('feOffset', { in: 'SourceAlpha', dx: -2.5, dy: 2, result: 'off' }),
+        h('feComposite', { in: 'SourceAlpha', in2: 'off', operator: 'out', result: 'rimMask' }),
+        h('feGaussianBlur', { in: 'rimMask', stdDeviation: 1.4, result: 'rimSoft' }),
+        h('feComposite', { in: 'rimSoft', in2: 'SourceAlpha', operator: 'in', result: 'rimIn' }),
+        h('feFlood', { 'flood-color': rim, 'flood-opacity': o.rim ?? 0.5 }),
+        h('feComposite', { in2: 'rimIn', operator: 'in', result: 'rimLight' }),
+        h('feMerge', {}, h('feMergeNode', { in: 'lit' }), h('feMergeNode', { in: 'rimLight' }))));
+      return id;
+    },
+
+    /** Weicher Kontaktschatten unter der Figur. */
+    softShadow() {
+      const id = nextId('s');
+      defs.push(h('filter', { id, x: '-30%', y: '-200%', width: '160%', height: '500%' }, h('feGaussianBlur', { stdDeviation: 3.2 })));
+      return id;
+    },
+
     /** Volumen-Füllung: Radialverlauf, Licht von oben links. */
     vol(color, cx, cy, r, { hi = 0.3, lo = 0.28 } = {}) {
       const gid = nextId('v');
@@ -144,14 +180,28 @@ export function makeKit(prefix) {
      * entscheidet CSS über die Stimmungsklasse am Wurzelelement. Ohne CSS (z. B.
      * im Minispiel) ist nur das offene Auge zu sehen.
      */
-    eye(x, y, r, { iris = '#2a1d2e', skin = '#888888', line = '#222222', glow = null, front = false } = {}) {
+    eye(x, y, r, { iris = '#2a1d2e', tint = null, skin = '#888888', line = '#222222', glow = null, front = false } = {}) {
       const rx = r * (front ? 0.92 : 0.84);
-      const irisFill = K.vol(glow || iris, x - r * 0.2, y - r * 0.2, r * 1.6, { hi: glow ? 0.45 : 0.22, lo: 0.35 });
       const w = Math.max(1.6, r * 0.34);
+      // Glänzende Iris: dunkle Pupille, farbiger Ring, Lichtreflex unten (wie in 3D-Spielen)
+      let irisFill;
+      if (glow) irisFill = K.vol(glow, x - r * 0.2, y - r * 0.2, r * 1.6, { hi: 0.45, lo: 0.35 });
+      else {
+        const gid = nextId('i');
+        const ring = tint || K.eyeTint || mix(iris, '#6b4a2e', 0.55);
+        defs.push(h('radialGradient', { id: gid, gradientUnits: 'userSpaceOnUse', cx: r1(x), cy: r1(y + r * 0.12), r: r1(r * 1.05) },
+          h('stop', { offset: '0', 'stop-color': '#120a16' }),
+          h('stop', { offset: '0.42', 'stop-color': dark(iris, 0.25) }),
+          h('stop', { offset: '0.62', 'stop-color': ring }),
+          h('stop', { offset: '0.86', 'stop-color': light(ring, 0.28) }),
+          h('stop', { offset: '1', 'stop-color': dark(ring, 0.35) })));
+        irisFill = `url(#${gid})`;
+      }
       return h('g', { class: 'c-eye' },
         glow ? K.glow(glow, x, y, r * 2.2, 0.55) : null,
         h('g', { class: 'e-open' },
           h('ellipse', { cx: r1(x), cy: r1(y), rx: r1(rx), ry: r1(r), fill: irisFill, stroke: line, 'stroke-width': 1.3 }),
+          h('ellipse', { cx: r1(x), cy: r1(y - r * 0.55), rx: r1(rx * 0.72), ry: r1(r * 0.34), fill: '#ffffff', opacity: 0.12 }),
           h('circle', { cx: r1(x + r * 0.3), cy: r1(y - r * 0.36), r: r1(r * 0.36), fill: '#ffffff' }),
           h('circle', { cx: r1(x - r * 0.28), cy: r1(y + r * 0.4), r: r1(r * 0.15), fill: '#ffffff', opacity: 0.85 })),
         h('ellipse', {

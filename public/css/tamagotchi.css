@@ -232,8 +232,19 @@
   box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--t-acc) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, .7);
 }
 :is(.tama-page, .tama-sheet-bg) .btn.primary.tama-cta:hover { filter: brightness(1.08); }
-.tama-sheet-bg .btn.primary:not(.tama-cta) { border-color: var(--t-acc); background: var(--t-acc); color: var(--t-on-acc); }
-.tama-sheet-bg .btn.primary:not(.tama-cta):hover:not(:disabled) { border-color: var(--t-acc); background: color-mix(in srgb, var(--t-acc) 85%, #fff); }
+:is(.tama-page, .tama-sheet-bg) .btn.primary:not(.tama-cta) { border-color: var(--t-acc); background: var(--t-acc); color: var(--t-on-acc); text-shadow: none; box-shadow: none; }
+:is(.tama-page, .tama-sheet-bg) .btn.primary:not(.tama-cta):hover:not(:disabled) { border-color: var(--t-acc); background: color-mix(in srgb, var(--t-acc) 85%, #fff); }
+/* Dialoge hängen in #modal-root: dort gilt sonst der goldene App-Knopf (ID-Selektor) */
+#modal-root .tama-sheet-bg .btn.primary {
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--t-acc) 78%, #fff), var(--t-acc));
+  color: var(--t-on-acc);
+  font-weight: 700;
+  text-shadow: none;
+  box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--t-acc) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+#modal-root .tama-sheet-bg .btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, color-mix(in srgb, var(--t-acc) 70%, #fff), var(--t-acc)); filter: brightness(1.06); box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--t-acc) 80%, transparent), inset 0 1px 0 rgba(255, 255, 255, .7); }
 .tama-cta svg { width: 20px; height: 20px; }
 
 /* ---------- Pflegeansicht: Gerät links, Kacheln rechts ------------------- */
@@ -384,8 +395,7 @@
 .tama-ico:hover:not([disabled]) { color: #e9f7ff; background: rgba(255, 255, 255, .07); }
 .tama-ico.is-lit { color: var(--t-warn); }
 .tama-ico.is-lit svg { animation: tama-pulse 1.3s ease-in-out infinite; filter: drop-shadow(0 0 6px currentColor); }
-.tama-ico[data-act="attention"] { cursor: default; }
-.tama-ico[data-act="attention"].is-lit { color: #ff6b7d; }
+.tama-ico.is-dim { opacity: .38; }
 .tama-ico.is-sel {
   color: var(--t-on-acc);
   background: var(--t-acc);
@@ -436,7 +446,10 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.tama-pet-flip { position: relative; transition: transform .22s ease; }
+.tama-pet-flip { position: relative; }
+/* Blickrichtung: gespiegelt wird im SVG um die Bildmitte (x = 100) */
+.tama-pet .c-turn { transform-box: view-box; transform-origin: 100px 0; transition: transform .22s ease; }
+.tama-pet-flip.is-left .c-turn { transform: scaleX(-1); }
 .tama-pet-flip > svg { display: block; width: 100%; height: auto; overflow: visible; }
 .tama-marks { position: absolute; inset: 0; pointer-events: none; }
 .tama-pet.is-grave { cursor: default; }
@@ -614,8 +627,10 @@
 .tama-pet.is-frozen .tama-pet-flip { filter: saturate(.35) brightness(1.08) hue-rotate(160deg); }
 .tama-pet.is-frozen * { animation-play-state: paused !important; }
 .tama-pet.is-frozen .tama-cryo, .tama-pet.is-frozen .tama-cryo * { animation-play-state: running !important; }
-.tama-pet.is-egg .tama-pet-flip > svg { transform-origin: 50% 92%; animation: tama-egg-idle 3.8s ease-in-out infinite; }
-.tama-pet.is-egg.is-warming .tama-pet-flip > svg { animation: tama-egg-warm .7s ease-in-out, tama-egg-idle 3.8s ease-in-out .7s infinite; }
+.tama-pet.is-egg .egg-body { transform-box: fill-box; transform-origin: 50% 96%; animation: tama-egg-idle 3.8s ease-in-out infinite; }
+.tama-pet.is-egg .egg-float { transform-origin: 50% 50%; animation: tama-float 3.4s ease-in-out infinite; }
+.tama-pet.is-egg.is-warming .egg-body { animation: tama-egg-warm .7s ease-in-out, tama-egg-idle 3.8s ease-in-out .7s infinite; }
+.tama-pet.is-egg.is-warming .egg-float { animation: tama-egg-warm .7s ease-in-out, tama-float 3.4s ease-in-out .7s infinite; }
 .tama-pet.is-egg :is(.egg-halo, .egg-core) { animation: tama-pulse 2.2s ease-in-out infinite; }
 .tama-pet.is-egg .egg-embryo { transform-box: fill-box; transform-origin: 50% 50%; animation: tama-breathe 2.4s ease-in-out infinite; }
 .tama-pet.is-grave .grave-ghost { animation: tama-ghost 3s ease-in-out infinite; }
@@ -801,31 +816,53 @@
 .game-verdict.is-miss { color: var(--t-bad); }
 .game-verdict.is-final { color: var(--t-acc); }
 
-/* Tasten A, B, C */
-.tama-keys { display: flex; justify-content: center; gap: 24px; margin-top: 20px; }
+/* Softkeys: Beschriftung und Symbol wechseln mit der Lage (Scan · Aktion · Menü) */
+.tama-keys { display: grid; grid-template-columns: repeat(3, minmax(0, 88px)); justify-content: center; align-items: start; gap: 10px; margin-top: 16px; }
 .tama-key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--t-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.tama-key.is-m { translate: 0 12px; }
+.tama-key-cap {
   position: relative;
   display: grid;
   place-items: center;
-  width: 54px;
-  height: 54px;
-  padding: 0;
-  border: 0;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 28%, #ffffff, color-mix(in srgb, var(--t-acc) 55%, #e2edf4) 42%, color-mix(in srgb, var(--t-acc) 50%, #34485a) 100%);
+  background: radial-gradient(circle at 34% 28%, #ffffff, color-mix(in srgb, var(--t-acc) 45%, #e2edf4) 42%, color-mix(in srgb, var(--t-acc) 45%, #34485a) 100%);
+  color: rgba(0, 24, 36, .72);
   box-shadow:
     0 5px 0 color-mix(in srgb, var(--t-shell-lo) 75%, #000),
     0 10px 16px rgba(0, 0, 0, .35),
     inset 0 -3px 6px rgba(0, 0, 0, .22),
     inset 0 2px 3px rgba(255, 255, 255, .85);
-  cursor: pointer;
   transition: transform .06s ease, box-shadow .06s ease;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
 }
-.tama-key:nth-child(2) { translate: 0 12px; }
-.tama-key span { color: rgba(0, 20, 30, .5); font: 700 17px/1 var(--t-display); }
-.tama-key.is-down, .tama-key:active {
+.tama-key.is-m .tama-key-cap { width: 62px; height: 62px; background: radial-gradient(circle at 34% 28%, #ffffff, var(--t-acc) 46%, color-mix(in srgb, var(--t-acc) 55%, #10283a) 100%); }
+.tama-key-cap svg { width: 24px; height: 24px; }
+.tama-key.is-m .tama-key-cap svg { width: 28px; height: 28px; }
+.tama-key-label {
+  max-width: 100%;
+  overflow: hidden;
+  font: 700 12.5px/1.1 var(--t-display);
+  letter-spacing: .06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: .88;
+}
+.tama-key.is-down .tama-key-cap, .tama-key:active .tama-key-cap {
   transform: translateY(4px);
   box-shadow:
     0 1px 0 color-mix(in srgb, var(--t-shell-lo) 75%, #000),
@@ -833,7 +870,18 @@
     inset 0 -2px 4px rgba(0, 0, 0, .2),
     inset 0 2px 3px rgba(255, 255, 255, .8);
 }
-.tama-keys-hint { margin-top: 22px; color: var(--t-ink); font-size: 13px; font-weight: 600; letter-spacing: .03em; opacity: .7; text-align: center; }
+.tama-key.is-urgent .tama-key-cap { animation: tama-key-glow 1.5s ease-in-out infinite; }
+.tama-key.has-dot .tama-key-cap::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ff4d63;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .85), 0 0 10px #ff4d63;
+}
 
 /* Retro: pixelige LCD-Anzeige in vier Graustufen wie 1996 */
 .tama-screen.is-retro { background: #b6c48f; }
@@ -864,7 +912,7 @@
 
 /* ---------- Pflegeleiste unter dem Gerät ------------------------------------ */
 
-.tama-dock { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; width: min(100%, 440px); }
+.tama-dock { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px; width: min(100%, 440px); }
 .tama-dock-btn {
   display: flex;
   align-items: center;
@@ -930,7 +978,7 @@
 }
 .tama-card-title svg { flex: none; width: 19px; height: 19px; color: var(--t-acc); }
 .tama-card.is-vitals { grid-row: span 2; }
-.tama-card:is(.is-memorial, .is-forecast, .is-log, .is-nest) { grid-column: 1 / -1; }
+.tama-card:is(.is-memorial, .is-forecast, .is-log, .is-nest, .is-today) { grid-column: 1 / -1; }
 .tama-card.is-nest { padding-top: 20px; }
 .tama-card.is-nest .tama-card-title { font-size: 15px; }
 
@@ -1201,7 +1249,9 @@ input.tama-search:focus, input.tama-input:focus { border-color: var(--t-acc); ou
   border-radius: 26px;
   background: radial-gradient(circle at 50% 62%, color-mix(in srgb, var(--t-acc) 24%, transparent), transparent 68%);
 }
-.tama-confirm-art > svg { width: 150px; height: auto; transform-origin: 50% 92%; animation: tama-egg-idle 3s ease-in-out infinite; }
+.tama-confirm-art > svg { width: 150px; height: auto; overflow: visible; }
+.tama-confirm-art .egg-body { transform-box: fill-box; transform-origin: 50% 96%; animation: tama-egg-idle 3s ease-in-out infinite; }
+.tama-confirm-art .egg-float { animation: tama-float 3.4s ease-in-out infinite; }
 .tama-confirm-copy { min-width: 0; }
 .tama-confirm-copy h3 { margin: 0 0 4px; font: 700 32px/1.05 var(--t-display); }
 .tama-field { display: grid; gap: 6px; margin: 16px 0 14px; }
@@ -1449,6 +1499,664 @@ button.tama-mode { flex-direction: column; gap: 2px; }
   .dash-tama-art.is-empty svg, .dash-tama-pill.is-call { animation: none; }
 }
 
+/* ==========================================================================
+   Tägliche Pflege: Stationen, Softkeys, Scan, Kiste, Rang, Händler, Erfolge
+   ========================================================================== */
+
+:is(.tama-page, .tama-sheet-bg)[data-shell="spooky"] {
+  --t-acc: #ff9a3c; --t-acc2: #b45cff; --t-on-acc: #1e0a00;
+  --t-shell-hi: #ffcf8a; --t-shell: #7a3f9e; --t-shell-lo: #1c0b2a; --t-ink: #ffe6c7;
+}
+:is(.tama-page, .tama-sheet-bg)[data-shell="festive"] {
+  --t-acc: #ff5a6a; --t-acc2: #5dd39e; --t-on-acc: #2a0008;
+  --t-shell-hi: #fff4f0; --t-shell: #e8423f; --t-shell-lo: #6d0f16; --t-ink: #fff2e8;
+}
+.tama-swatch.shell-spooky { --sw: radial-gradient(120% 95% at 28% 16%, #ffcf8a, #7a3f9e 46%, #1c0b2a); color: #ffe6c7; }
+.tama-swatch.shell-festive { --sw: radial-gradient(120% 95% at 28% 16%, #fff4f0, #e8423f 46%, #6d0f16); color: #fff2e8; }
+.tama-swatch { position: relative; }
+.tama-swatch.is-locked { filter: grayscale(.6) brightness(.7); cursor: help; }
+.tama-swatch.is-locked svg { position: absolute; top: 9px; right: 10px; width: 18px; height: 18px; color: #fff; }
+.tama-swatch.is-preview { display: block; width: 100%; min-height: 0; aspect-ratio: 1; padding: 0; border-radius: 42% 42% 40% 40% / 50% 50% 38% 38%; cursor: default; }
+.tama-swatch.is-preview:hover { transform: none; }
+
+/* Gerät: leichte 3D-Neigung, Ruf-LED */
+.tama-device { perspective: 1100px; }
+.tama-shell { transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
+.tama-led {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #7a3a44, #2a0d12);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .25), 0 0 0 1.5px rgba(0, 0, 0, .35);
+}
+.tama-led.is-on { background: radial-gradient(circle at 35% 30%, #ffd0d6, #ff3b55 60%); box-shadow: 0 0 10px #ff3b55, 0 0 0 1.5px rgba(0, 0, 0, .35); animation: tama-pulse 1.1s ease-in-out infinite; }
+
+/* Bildschirm: Ebenen für Events, Einrichtung, Unterwegs und Statuszeile */
+.tama-events, .tama-events > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; }
+.tama-events { z-index: 0; }
+.tama-decor { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.tama-deco { position: absolute; }
+.tama-deco svg { display: block; width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 1.2cqw 1cqw rgba(0, 0, 0, .25)); }
+.tama-deco.is-played svg { animation: tama-jump .5s ease-out 2; transform-origin: 50% 100%; }
+.tama-lcd:has(.tama-dark.is-on) .tama-decor { filter: brightness(.25) saturate(.4); transition: filter .8s ease; }
+.tama-lcd:has(.tama-dark.is-on) .tama-deco.slot-light { filter: brightness(4) saturate(2.5); }
+.tama-dark.is-lamp { background:
+  radial-gradient(34% 44% at 7% 70%, rgba(90, 230, 255, .34), transparent 70%),
+  radial-gradient(120% 90% at 75% 10%, rgba(20, 30, 70, .32), rgba(2, 4, 14, .5)); }
+.tama-dark.is-lamp.is-warm { background:
+  radial-gradient(34% 44% at 7% 70%, rgba(255, 170, 80, .38), transparent 70%),
+  radial-gradient(120% 90% at 75% 10%, rgba(20, 30, 70, .32), rgba(2, 4, 14, .5)); }
+.tama-pet.is-away { visibility: hidden; }
+.tama-away { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
+.tama-away[hidden] { display: none; }
+.tama-away-card {
+  display: grid;
+  justify-items: center;
+  gap: .6cqw;
+  padding: 2.6cqw 4cqw;
+  border-radius: 4cqw;
+  background: rgba(6, 14, 20, .62);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 3cqw 6cqw rgba(0, 0, 0, .35);
+  color: #eaf6ff;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.tama-away-card svg { width: 8cqw; height: 8cqw; color: var(--t-acc); animation: tama-spin 6s linear infinite; }
+.tama-away-card strong { font: 700 5cqw/1.1 var(--t-display); }
+.tama-away-card small { color: #b9cbd8; font-size: 3.6cqw; }
+.tama-away-card small b { color: var(--t-acc); font-variant-numeric: tabular-nums; }
+.tama-away-trail { position: absolute; left: 50%; right: 0; bottom: 6%; display: flex; justify-content: space-around; }
+.tama-away-trail span { width: 6cqw; color: rgba(70, 44, 20, .55); animation: tama-pulse 1.4s ease-in-out infinite; }
+.tama-away-trail svg { display: block; width: 100%; height: auto; }
+.tama-away-trail svg path { fill: currentColor; stroke: none; }
+.tama-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+  padding: 1.6cqw 3.4cqw;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .38), transparent);
+  color: #fff;
+  font: 700 3.6cqw/1 var(--t-display);
+  letter-spacing: .05em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+  pointer-events: none;
+}
+.tama-hud-time, .tama-hud-right { display: flex; align-items: center; gap: 1.4cqw; }
+.tama-hud svg { width: 3.8cqw; height: 3.8cqw; }
+.tama-hud-chip { padding: .6cqw 1.8cqw; border-radius: 999px; background: color-mix(in srgb, var(--t-acc) 30%, rgba(0, 0, 0, .4)); font-size: 3cqw; }
+.tama-hud-drop { display: grid; place-items: center; width: 6cqw; height: 6cqw; border-radius: 1.6cqw; background: #ffd23f; color: #3a2a00; box-shadow: 0 0 2.4cqw rgba(255, 210, 63, .8); animation: tama-bob 1.4s ease-in-out infinite; }
+.tama-hud-drop svg { width: 4.2cqw; height: 4.2cqw; }
+.tama-lcd.is-scanning::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 6;
+  height: 18%;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--t-acc) 55%, transparent) 80%, #fff 100%);
+  opacity: .7;
+  pointer-events: none;
+  animation: tama-scan .85s ease-in-out both;
+}
+.tama-pet.is-shiny .tama-pet-flip::after {
+  content: '✦ ✧ ✦';
+  position: absolute;
+  inset: 8% 10% auto;
+  color: #fff9d6;
+  font-size: 4.6cqw;
+  letter-spacing: 3cqw;
+  text-align: center;
+  text-shadow: 0 0 1.4cqw #ffe27a;
+  pointer-events: none;
+  animation: tama-twinkle 2.4s ease-in-out infinite;
+}
+.tama-pet.is-dirty .tama-pet-flip > svg { filter: sepia(.28) saturate(.82) brightness(.92); }
+.tama-pet.is-dirty .tama-pet-flip::before {
+  content: '';
+  position: absolute;
+  top: 6%;
+  left: 30%;
+  width: 1.4cqw;
+  height: 1.4cqw;
+  border-radius: 50%;
+  background: #222;
+  box-shadow: 5cqw 2cqw 0 -.1cqw #222, 2cqw -3cqw 0 -.2cqw #222;
+  animation: tama-flies 1.6s ease-in-out infinite;
+}
+.tama-loot {
+  position: absolute;
+  right: -8%;
+  bottom: 2%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 13cqw;
+  height: 13cqw;
+  padding: 0;
+  border: 0;
+  border-radius: 3cqw;
+  background: radial-gradient(circle at 35% 30%, #fff3c4, #ffc54a 55%, #b26d0f);
+  color: #5a3300;
+  box-shadow: 0 0 3cqw rgba(255, 197, 74, .8), inset 0 -1cqw 2cqw rgba(0, 0, 0, .2);
+  cursor: pointer;
+  pointer-events: auto;
+  animation: tama-bob 1.2s ease-in-out infinite;
+}
+.tama-loot.is-left { right: auto; left: -8%; }
+.tama-loot svg:first-child { position: absolute; width: 7cqw; height: 7cqw; top: -3cqw; right: -2cqw; }
+.tama-loot svg:last-child { width: 7cqw; height: 7cqw; }
+.tama-float {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1cqw;
+  width: 44%;
+  translate: -50% 0;
+  pointer-events: none;
+  animation: tama-floatup 2.3s ease-out both;
+}
+.tama-float .tama-gain { font-size: 3.4cqw; padding: .8cqw 1.8cqw; }
+.tama-foam { position: absolute; z-index: 5; width: 22%; height: 16%; pointer-events: none; }
+.tama-foam span {
+  position: absolute;
+  width: 5cqw;
+  height: 5cqw;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, rgba(200, 235, 255, .7) 60%, rgba(160, 210, 255, .2));
+  box-shadow: inset 0 0 0 .3cqw rgba(255, 255, 255, .6);
+  animation: tama-foam 1.3s ease-out both;
+}
+.tama-foam span:nth-child(1) { left: 0; top: 30%; }
+.tama-foam span:nth-child(2) { left: 30%; top: 0; }
+.tama-foam span:nth-child(3) { left: 60%; top: 40%; }
+.tama-foam span:nth-child(4) { left: 15%; top: 70%; }
+.tama-foam span:nth-child(5) { left: 80%; top: 10%; }
+.tama-foam span:nth-child(6) { left: 45%; top: 65%; }
+.tama-blanket {
+  position: absolute;
+  bottom: 3%;
+  z-index: 3;
+  height: 16%;
+  border-radius: 40% 40% 12% 12% / 70% 70% 20% 20%;
+  background: repeating-linear-gradient(90deg, #6b8cff 0 8%, #8fa8ff 8% 16%);
+  box-shadow: inset 0 1.4cqw 1.6cqw rgba(255, 255, 255, .35), 0 1cqw 2cqw rgba(0, 0, 0, .3);
+  animation: tama-blanket 2.2s ease-out both;
+}
+
+/* Tricks */
+.tama-pet.expr-trick-sit .tama-pet-flip > svg { transform-origin: 50% 95%; animation: tama-sit 1.6s ease-in-out both; }
+.tama-pet.expr-trick-follow .tama-pet-flip > svg { animation: tama-heel 1.6s ease-in-out both; }
+.tama-pet.expr-trick-roar .tama-pet-flip > svg { animation: tama-shiver .09s linear 12; }
+.tama-pet.expr-trick-roar :is(.m-open) { display: inline; }
+.tama-pet.expr-trick-roar :is(.m-smile) { display: none; }
+.tama-pet.expr-trick-spin .tama-pet-flip > svg { animation: tama-spin-y 1.1s ease-in-out both; }
+.tama-pet.expr-trick-dance .tama-pet-flip > svg { transform-origin: 50% 95%; animation: tama-dance .4s ease-in-out 4; }
+.tama-pet.expr-trick-attack .tama-pet-flip > svg { animation: tama-lunge .8s cubic-bezier(.3, 1.6, .5, 1) 2; }
+.tama-pet.expr-trick-attack :is(.m-open) { display: inline; }
+.tama-pet.expr-trick-attack :is(.m-smile) { display: none; }
+
+/* Requisiten-Animationen (Eier, Kisten, Einrichtung, Events) */
+.egg-shimmer { animation: tama-shimmer 4.2s ease-in-out infinite; }
+.egg-spark, .crate-spark, .dec-blink { transform-box: fill-box; transform-origin: 50% 50%; animation: tama-twinkle 2.2s ease-in-out infinite; }
+.egg-bubble { animation: tama-bubble 2.6s ease-in infinite; }
+.egg-orbit { animation: tama-dash 3s linear infinite; }
+.tama-pet .egg-crack, .tama-confirm-art .egg-crack { animation: tama-crack .5s ease-out both; }
+.crate-beam { animation: tama-pulse 2.4s ease-in-out infinite; }
+.dec-glow { animation: tama-pulse 2.8s ease-in-out infinite; }
+.dec-hover { animation: tama-float 3s ease-in-out infinite; }
+.dec-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: tama-flicker .3s ease-in-out infinite alternate; }
+.dec-spin { transform-box: fill-box; transform-origin: 50% 50%; animation: tama-rotor .25s linear infinite; }
+.dec-bob { animation: tama-float 3.6s ease-in-out infinite; }
+.ev-float { animation: tama-evfloat 7s ease-in-out infinite; }
+.ev-firework { transform-box: fill-box; animation: tama-firework 3.9s ease-out infinite; }
+.ev-fog { animation: sc-drift 16s ease-in-out infinite alternate; }
+.ev-bat { animation: tama-bat 6s ease-in-out infinite; }
+.ev-leaf { animation: tama-leaf 8s linear infinite; }
+.ev-bulb { animation: tama-pulse 1.4s ease-in-out infinite; }
+.ev-snow { animation: tama-snow 7s linear infinite; }
+.ev-rise { transform-box: fill-box; animation: tama-evrise 5s ease-in-out infinite; }
+
+/* Menüs im Bildschirm */
+.tama-menu-title { display: flex; align-items: center; gap: 6px; }
+.tama-menu-title svg { flex: none; width: 15px; height: 15px; }
+.tama-menu-back {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-right: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .12);
+  color: var(--t-text);
+  cursor: pointer;
+}
+.tama-menu-info { display: grid; gap: 4px; margin: 0 2px 8px; }
+.tama-mi { display: grid; grid-template-columns: minmax(64px, auto) minmax(0, 1fr) 36px; align-items: center; gap: 8px; font-size: 12.5px; }
+.tama-mi > span:first-child { color: var(--t-muted); white-space: nowrap; }
+.tama-mi b { font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+.tama-mi .tama-bar { height: 7px; }
+.tama-mi.is-mid .tama-bar > span { background: linear-gradient(90deg, #ffe7a3, var(--t-warn)); box-shadow: none; }
+.tama-mi.is-low .tama-bar > span { background: linear-gradient(90deg, #ffb0b9, var(--t-bad)); box-shadow: none; }
+.tama-mi-text { margin: 0; color: #cfe0ea; font-size: 12.5px; line-height: 1.3; }
+.tama-mi-text b { color: var(--t-acc); font-variant-numeric: tabular-nums; }
+.tama-mi-text.is-warn { color: var(--t-warn); }
+.tama-mi-text.is-ok { color: var(--t-good); }
+.tama-menu-item.is-lit { border-color: color-mix(in srgb, var(--t-warn) 60%, transparent); }
+.tama-menu-item.is-lit .tama-menu-art { box-shadow: 0 0 0 1px var(--t-warn), 0 0 12px color-mix(in srgb, var(--t-warn) 45%, transparent); }
+.tama-menu-item.is-off { opacity: .5; }
+.tama-menu-item.is-off.is-sel { opacity: .75; }
+.tama-menu-art { overflow: hidden; }
+.tama-menu-art img { display: block; width: 30px; height: 30px; }
+.tama-menu-art > svg { overflow: visible; }
+.tama-menu-art.is-icon { color: var(--t-acc); }
+.tama-menu-art.is-icon svg { width: 22px; height: 22px; }
+.tama-menu-copy { flex: 1; }
+.tama-menu-copy .tama-bar.is-thin { margin-top: 4px; }
+.tama-menu-count, .tama-menu-note {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .1);
+  color: var(--t-text);
+  font: 700 12px/1.3 var(--t-display);
+  font-variant-numeric: tabular-nums;
+}
+.tama-menu-note { background: color-mix(in srgb, var(--t-good) 22%, transparent); color: var(--t-good); }
+.tama-menu.is-stations { width: 92%; }
+.tama-station-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.tama-station {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 9px 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .06);
+  color: var(--t-text);
+  font: 600 12px/1.1 var(--t-font);
+  cursor: pointer;
+}
+.tama-station svg { width: 24px; height: 24px; color: var(--t-acc); }
+.tama-station:hover { background: rgba(255, 255, 255, .12); }
+.tama-station.is-sel { border-color: var(--t-acc); background: color-mix(in srgb, var(--t-acc) 18%, transparent); }
+.tama-station.is-lit svg { color: var(--t-warn); animation: tama-pulse 1.3s ease-in-out infinite; }
+.tama-menu.is-scan .tama-menu-title { color: #7dffcb; }
+.tama-scan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+.tama-scan-grid .tama-mi { grid-template-columns: minmax(0, 70px) minmax(0, 1fr) 30px; font-size: 11.5px; }
+.tama-scan-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.tama-scan-chips span { padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, .08); color: #d8e6ee; font-size: 11.5px; }
+.tama-scan-chips .is-buff { background: color-mix(in srgb, var(--t-good) 20%, transparent); color: var(--t-good); }
+.tama-scan-chips .buff-restless { background: rgba(255, 107, 125, .18); color: #ffb3bd; }
+
+/* Pfiff-Training */
+.game-whistle { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 10px 22px; }
+.game-whistle .game-caption { max-width: 80%; line-height: 1.15; }
+.game-whistle-stage { display: grid; place-items: center; width: 100%; }
+.game-whistle-pet { width: 32%; max-width: 128px; }
+.game-whistle-pet.is-trick { animation: tama-spin-y 1s ease-in-out both; }
+.game-pads { display: flex; justify-content: center; gap: 5%; width: 100%; }
+.game-pad {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid var(--t-line);
+  border-radius: 16px;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  transition: transform .08s ease, box-shadow .15s ease, background .15s ease;
+}
+.game-pad.is-a { background: linear-gradient(180deg, #5a7dff, #2d3fa8); }
+.game-pad.is-b { background: linear-gradient(180deg, #3fd18f, #177a4f); }
+.game-pad.is-c { background: linear-gradient(180deg, #ff8a5c, #b0401a); }
+.game-pad.is-on { transform: scale(1.14); box-shadow: 0 0 22px #fff, inset 0 0 0 2px #fff; filter: brightness(1.35); }
+
+/* Pflegeleiste: Kiste und Ausflug */
+.tama-dock-btn.is-drop svg { color: #ffd23f; }
+.tama-dock-btn.is-drop { border-color: #ffd23f; animation: tama-glow-gold 1.8s ease-in-out infinite; }
+.tama-dock-btn.is-info { cursor: default; }
+.tama-dock-btn.is-info small b { color: var(--t-acc); font-variant-numeric: tabular-nums; }
+
+/* Kopfzeile: Rang, Serie, Splitter */
+.tama-hero-side { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 14px; }
+.tama-hero-stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.tama-stat-pill.tama-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 4px 13px 4px 5px;
+  border: 1px solid var(--t-line);
+  border-radius: 999px;
+  background: var(--t-glass);
+  color: var(--t-text);
+  font: 700 15px/1 var(--t-font);
+  text-decoration: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.tama-stat-pill > svg { width: 20px; height: 20px; margin-left: 6px; color: #ff9a3c; }
+a.tama-stat-pill:hover { border-color: color-mix(in srgb, var(--t-acc) 60%, transparent); }
+
+/* Belohnungs-Chips */
+.tama-gain {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .1);
+  color: var(--t-text);
+  font: 700 12.5px/1.25 var(--t-display);
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.tama-gain svg { width: 13px; height: 13px; }
+.tama-gain img { width: 16px; height: 16px; }
+.tama-gain.is-xp { background: rgba(95, 170, 255, .22); color: #b9dcff; }
+.tama-gain.is-bond { background: rgba(255, 111, 145, .22); color: #ffc0d0; }
+.tama-gain.is-bond svg path { fill: currentColor; }
+.tama-gain.is-shards { background: rgba(255, 95, 184, .2); color: #ffc2e6; }
+.tama-shards { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.tama-shards img { width: 20px; height: 20px; }
+.tama-shards.is-big b { font: 700 30px/1 var(--t-display); }
+.tama-shards.is-big img { width: 34px; height: 34px; }
+.tama-art { display: block; }
+
+/* Heute: Kiste, Serie, Aufgaben, Events */
+.tama-card.is-today::before { background: radial-gradient(closest-side, rgba(255, 210, 63, .14), transparent); }
+.tama-card.is-today .tama-card-title svg { color: #ffd23f; }
+.tama-today-date { margin: -8px 0 12px; color: var(--t-muted); font-size: 14px; }
+.tama-events-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.tama-events-row:empty { display: none; }
+.tama-event {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--t-acc2) 55%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(115deg, color-mix(in srgb, var(--t-acc2) 22%, transparent), color-mix(in srgb, var(--t-acc) 12%, transparent));
+}
+.tama-event svg { width: 18px; height: 18px; color: var(--t-acc); }
+.tama-event strong { font-size: 14.5px; }
+.tama-event small { color: #d7c9ff; font-size: 13px; font-weight: 700; }
+.tama-event.is-soon { border-style: dashed; background: rgba(255, 255, 255, .04); }
+.tama-event.is-soon small { color: var(--t-muted); }
+.tama-drop-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.tama-streak { display: grid; grid-template-columns: auto auto; align-items: center; gap: 0 8px; }
+.tama-streak > svg { grid-row: span 2; width: 34px; height: 34px; color: #ff9a3c; filter: drop-shadow(0 0 8px rgba(255, 154, 60, .6)); }
+.tama-streak > svg path { fill: rgba(255, 154, 60, .35); }
+.tama-streak strong { font: 700 20px/1 var(--t-display); white-space: nowrap; }
+.tama-streak small { color: var(--t-muted); font-size: 13px; }
+.tama-freeze { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; color: #bff3ff; font-size: 13px; }
+.tama-freeze img { width: 20px; height: 20px; }
+.tama-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.tama-day { display: grid; justify-items: center; gap: 1px; padding: 3px 1px 4px; border-radius: 12px; opacity: .45; }
+.tama-day img { width: 100%; max-width: 40px; aspect-ratio: 120 / 150; filter: grayscale(.5); }
+.tama-day small { color: var(--t-muted); font: 700 11px/1 var(--t-display); }
+.tama-day.is-done { opacity: 1; }
+.tama-day.is-done img { filter: none; }
+.tama-day.is-done small { color: var(--t-good); }
+.tama-day.is-today { opacity: 1; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t-acc) 55%, transparent); }
+.tama-day.is-today img { filter: none; }
+.tama-day.is-ready img { animation: tama-bob 1.3s ease-in-out infinite; }
+.tama-days.is-big { margin: 12px 0 4px; }
+.tama-days.is-big img { max-width: 52px; }
+:is(.tama-page, .tama-sheet-bg) .btn.primary.tama-cta.is-drop, #modal-root .tama-sheet-bg .btn.primary.tama-cta.is-drop { background: linear-gradient(180deg, #ffe27a, #ffb52e); border-color: #ffd23f; color: #3a2400; box-shadow: 0 0 22px rgba(255, 210, 63, .45); white-space: nowrap; }
+.tama-cta.is-drop svg { color: #3a2400; }
+.tama-next-drop { display: grid; justify-items: end; gap: 2px; color: var(--t-muted); font-size: 13px; text-align: right; }
+.tama-next-drop svg { width: 18px; height: 18px; }
+.tama-next-drop b { color: var(--t-text); font: 700 20px/1 var(--t-display); font-variant-numeric: tabular-nums; }
+.tama-sub { display: flex; align-items: baseline; justify-content: space-between; margin: 18px 0 8px; color: var(--t-muted); font: 700 12.5px/1.2 var(--t-font); letter-spacing: .14em; text-transform: uppercase; }
+.tama-sub small { color: var(--t-acc); font-size: 14px; letter-spacing: 0; }
+.tama-quests { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.tama-quest { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid rgba(255, 255, 255, .06); border-radius: 16px; background: rgba(255, 255, 255, .04); }
+.tama-quest-ico { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: rgba(255, 255, 255, .07); color: var(--t-acc); }
+.tama-quest-ico svg { width: 20px; height: 20px; }
+.tama-quest-copy { display: grid; gap: 5px; min-width: 0; }
+.tama-quest-copy strong { font-size: 15.5px; line-height: 1.2; }
+.tama-quest-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tama-quest-meta > small { color: var(--t-muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.tama-bar.is-thin { height: 5px; }
+.tama-quest.is-done { border-color: color-mix(in srgb, var(--t-good) 40%, transparent); background: color-mix(in srgb, var(--t-good) 8%, transparent); }
+.tama-quest.is-done .tama-quest-ico { background: var(--t-good); color: #062014; }
+.tama-quest.is-done strong { color: #c8f7de; }
+.tama-quest.is-done .tama-bar > span { background: var(--t-good); box-shadow: none; }
+.tama-quest.is-bonus { grid-template-columns: 38px minmax(0, 1fr); border-style: dashed; }
+.tama-quest.is-bonus .tama-quest-ico { color: #ffd23f; }
+.tama-swap {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--t-line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .05);
+  color: var(--t-muted);
+  cursor: pointer;
+}
+.tama-swap svg { width: 18px; height: 18px; }
+.tama-swap:hover { color: var(--t-text); border-color: color-mix(in srgb, var(--t-acc) 55%, transparent); }
+
+/* Rang & Bindung */
+.tama-rank { display: flex; align-items: center; gap: 14px; }
+.tama-rank-badge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 58px;
+  height: 64px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(160deg, #fff, var(--t-acc) 45%, color-mix(in srgb, var(--t-acc2) 80%, #000));
+  color: var(--t-on-acc);
+}
+.tama-rank-badge b { font: 700 26px/1 var(--t-display); }
+.tama-rank-badge.is-small { width: 28px; height: 31px; }
+.tama-rank-badge.is-small b { font-size: 14px; }
+.tama-rank-copy { display: grid; gap: 5px; flex: 1; min-width: 0; }
+.tama-rank-copy strong { font: 700 22px/1.05 var(--t-display); }
+.tama-rank-copy small { color: var(--t-muted); font-size: 13px; }
+.tama-bar.is-xp > span { background: linear-gradient(90deg, #b9dcff, #5faaff); box-shadow: 0 0 10px rgba(95, 170, 255, .5); }
+.tama-bar.is-bond > span { background: linear-gradient(90deg, #ffd0dc, #ff6f91); box-shadow: 0 0 10px rgba(255, 111, 145, .5); }
+.tama-wallet { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding: 10px 12px; border-radius: 16px; background: rgba(255, 255, 255, .05); }
+.tama-shop-btn svg { width: 17px; height: 17px; }
+.tama-bond { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.tama-bond-ico { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 14px; background: rgba(255, 111, 145, .14); color: #ff6f91; }
+.tama-bond-ico svg { width: 24px; height: 24px; }
+.tama-bond-ico svg path { fill: currentColor; }
+.tama-bond-copy { display: grid; gap: 5px; flex: 1; min-width: 0; }
+.tama-bond-copy strong { font-size: 15.5px; }
+.tama-bond-copy small { color: var(--t-muted); font-size: 13px; }
+.tama-chip.is-buff { border-color: color-mix(in srgb, var(--t-good) 45%, transparent); color: var(--t-good); }
+.tama-chip.buff-restless { border-color: rgba(255, 107, 125, .45); color: #ffb3bd; }
+.tama-care.is-empty { grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); }
+.tama-care.is-empty .tama-bento { grid-template-columns: minmax(0, 1fr); }
+.tama-care.is-empty .tama-card.is-nest { grid-column: auto; min-width: 0; }
+
+/* Versorgungskiste */
+.tama-drop { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.tama-drop-stage {
+  position: relative;
+  display: grid;
+  place-items: end center;
+  width: min(100%, 340px);
+  height: 250px;
+  padding: 0 0 12px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 26px;
+  background: radial-gradient(80% 70% at 50% 100%, color-mix(in srgb, var(--dc, #bfe6ff) 40%, transparent), transparent 70%), linear-gradient(180deg, #0c1a2c, #06101a);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+  cursor: pointer;
+}
+.tama-drop-stage:disabled { cursor: default; }
+.drop-white { --dc: #bfe6ff; } .drop-green { --dc: #4fd07a; } .drop-blue { --dc: #4a9dff; } .drop-purple { --dc: #b36bff; }
+.drop-yellow { --dc: #ffd23f; } .drop-red { --dc: #ff4d4d; } .drop-tek { --dc: #35d7ff; }
+.tama-drop-glow { position: absolute; left: 50%; bottom: 8px; width: 70%; height: 30%; translate: -50% 0; border-radius: 50%; background: var(--dc); filter: blur(28px); opacity: .45; }
+.tama-drop-crate { position: relative; width: 150px; animation: tama-drop-fall .9s cubic-bezier(.35, 0, .6, 1) both; }
+.tama-drop-crate svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tama-drop-dust { position: absolute; left: 50%; bottom: 10px; width: 180px; height: 26px; translate: -50% 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(220, 230, 240, .5), transparent); opacity: 0; animation: tama-dust .9s ease-out .75s both; }
+.tama-drop-stage.is-open .tama-drop-crate { animation: tama-jump .5s ease-out; }
+.tama-drop-stage.is-open .tama-drop-glow { opacity: .9; animation: tama-pulse 1.6s ease-in-out infinite; }
+.tama-drop-caption { display: grid; gap: 2px; margin-top: 4px; }
+.tama-drop-caption strong { font: 700 26px/1 var(--t-display); }
+.tama-drop-caption span { color: var(--t-muted); }
+.tama-drop-loot { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; min-height: 0; margin-top: 8px; }
+.tama-loot-tile {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  width: 104px;
+  padding: 12px 8px 10px;
+  border: 1px solid var(--t-line);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .02));
+  animation: tama-pop .45s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.tama-loot-tile > img { width: 46px; height: 46px; }
+.tama-loot-tile strong { font: 700 22px/1 var(--t-display); }
+.tama-loot-tile small { color: var(--t-muted); font-size: 12.5px; line-height: 1.2; }
+.tama-loot-tile.is-shards { border-color: rgba(255, 95, 184, .5); }
+.tama-loot-tile.is-xp { border-color: rgba(95, 170, 255, .5); }
+.tama-loot-xp { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #d9ecff, #5faaff 60%, #1d4f9a); color: #fff; font: 700 17px/1 var(--t-display); }
+.tama-loot-bond { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe0e8, #ff6f91 60%, #a0103a); color: #fff; }
+.tama-loot-bond svg { width: 26px; height: 26px; }
+.tama-loot-bond svg path { fill: currentColor; }
+.tama-drop-note { max-width: 44ch; margin: 8px auto 0; color: #d6e3eb; font-size: 15.5px; }
+.tama-drop .tama-row-actions { justify-content: center; }
+.tama-loot-hero { position: relative; width: 200px; margin: 4px auto 0; }
+.tama-loot-bag { position: absolute; right: -6px; bottom: 6px; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 16px; background: radial-gradient(circle at 35% 30%, #fff3c4, #ffc54a 55%, #b26d0f); color: #5a3300; box-shadow: 0 0 20px rgba(255, 197, 74, .6); animation: tama-bob 1.2s ease-in-out infinite; }
+.tama-loot-bag svg { width: 30px; height: 30px; }
+
+/* Händler */
+.tama-shop { display: grid; gap: 18px; }
+.tama-shop-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; padding: 16px 20px; border: 1px solid var(--t-line); border-radius: var(--t-radius); background: var(--t-glass); }
+.tama-shop-head .tama-wallet { margin: 0; padding: 0; background: none; }
+.tama-shop-head .tama-wallet small { color: var(--t-muted); }
+.tama-shop-head .tama-hint { flex: 1 1 260px; margin: 0; }
+.tama-shop-rank { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.tama-deal { display: grid; gap: 8px; padding: 14px; border: 1px solid rgba(255, 210, 63, .5); border-radius: var(--t-radius); background: linear-gradient(115deg, rgba(255, 210, 63, .14), rgba(255, 95, 184, .08)), var(--t-glass); }
+.tama-deal-tag { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #ffd23f; font: 700 13px/1.2 var(--t-font); letter-spacing: .14em; text-transform: uppercase; }
+.tama-deal-tag svg { width: 18px; height: 18px; }
+.tama-deal-tag small { margin-left: auto; color: var(--t-muted); letter-spacing: 0; text-transform: none; }
+.tama-deal-tag small b { color: var(--t-text); font-variant-numeric: tabular-nums; }
+.tama-shop-section .tama-card-title { margin-bottom: 10px; }
+.tama-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.tama-product { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--t-line); border-radius: 18px; background: var(--t-glass); }
+.tama-product.is-deal { border: 0; background: rgba(0, 0, 0, .18); }
+.tama-product.is-event { border-color: color-mix(in srgb, var(--t-acc2) 55%, transparent); }
+.tama-product-art { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 16px; background: radial-gradient(circle at 50% 70%, rgba(255, 255, 255, .12), transparent 70%); }
+.tama-product-art > img { width: 56px; height: 56px; }
+.tama-product-copy { display: grid; gap: 2px; min-width: 0; }
+.tama-product-copy strong { font-size: 16px; line-height: 1.15; }
+.tama-product-copy small { color: var(--t-muted); font-size: 13px; line-height: 1.3; }
+.tama-product-note { color: #cfe0ea; font-size: 12.5px; }
+.tama-product-buy { display: grid; justify-items: end; gap: 6px; }
+.tama-price { display: inline-flex; align-items: center; gap: 6px; }
+.tama-price s { color: var(--t-muted); font-size: 13px; }
+.tama-price .tama-shards b { font: 700 18px/1 var(--t-display); }
+.tama-product.is-locked { opacity: .7; }
+.tama-product.is-locked .tama-product-art { filter: grayscale(.8); }
+.tama-lock { display: inline-flex; align-items: center; gap: 5px; max-width: 130px; color: var(--t-muted); font-size: 12.5px; line-height: 1.2; text-align: right; }
+.tama-lock svg { flex: none; width: 15px; height: 15px; }
+.tama-owned { display: inline-flex; align-items: center; gap: 4px; color: var(--t-good); font-size: 13px; font-weight: 700; }
+.tama-owned svg { width: 16px; height: 16px; }
+
+/* Erfolge */
+.tama-awards { display: grid; gap: 16px; }
+.tama-awards-head { display: grid; gap: 10px; padding: 16px 20px; border: 1px solid var(--t-line); border-radius: var(--t-radius); background: var(--t-glass); }
+.tama-awards-head strong { display: block; font: 700 24px/1.1 var(--t-display); }
+.tama-awards-head small { color: var(--t-muted); }
+.tama-award-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.tama-award { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; padding: 12px 14px; border: 1px solid var(--t-line); border-radius: 18px; background: var(--t-glass); }
+.tama-award-ico { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: rgba(255, 255, 255, .06); color: var(--t-muted); }
+.tama-award-ico svg { width: 26px; height: 26px; }
+.tama-award.is-done { border-color: rgba(255, 210, 63, .45); background: linear-gradient(180deg, rgba(255, 210, 63, .1), rgba(255, 255, 255, .02)), var(--t-glass); }
+.tama-award.is-done .tama-award-ico { background: radial-gradient(circle at 35% 30%, #fff3c4, #ffc54a 55%, #b26d0f); color: #5a3300; box-shadow: 0 0 16px rgba(255, 197, 74, .45); }
+.tama-award-copy { display: grid; gap: 4px; min-width: 0; }
+.tama-award-copy strong { font-size: 16px; }
+.tama-award-copy > small { color: var(--t-muted); font-size: 13px; }
+.tama-award-date { color: #ffe07a; font-size: 12.5px; }
+.tama-award-reward { display: flex; flex-wrap: wrap; gap: 5px; }
+.tama-award-progress { color: var(--t-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* Tribe-Rangliste */
+.tama-card.is-board { margin-bottom: 18px; }
+.tama-board { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.tama-board-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 14px; background: rgba(255, 255, 255, .04); }
+.tama-board-row.is-me { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t-acc) 60%, transparent); }
+.tama-board-pos { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: rgba(255, 255, 255, .08); font: 700 15px/1 var(--t-display); }
+.tama-board-row.is-top:nth-child(1) .tama-board-pos { background: linear-gradient(160deg, #fff3c4, #ffc54a); color: #4a2c00; }
+.tama-board-row.is-top:nth-child(2) .tama-board-pos { background: linear-gradient(160deg, #ffffff, #b9c6d1); color: #1f2a33; }
+.tama-board-row.is-top:nth-child(3) .tama-board-pos { background: linear-gradient(160deg, #ffe0c2, #c98d47); color: #3a2208; }
+.tama-board-name { display: grid; min-width: 0; }
+.tama-board-name strong { overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.tama-board-name small { color: var(--t-muted); font-size: 12.5px; }
+.tama-board-stat { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.tama-board-stat svg { width: 17px; height: 17px; color: #ff9a3c; }
+.tama-board-stat:last-child svg { color: var(--t-warn); }
+.tama-board-stat b { font: 700 17px/1 var(--t-display); }
+.tama-board-stat small { color: var(--t-muted); font-size: 12px; }
+
+/* Anleitung und Startseite */
+.tama-help-icons.is-keys { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dash-tama-daily { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.dash-tama-daily .dash-tama-pill { display: inline-flex; align-items: center; gap: 5px; margin: 0; }
+.dash-tama-daily svg { width: 15px; height: 15px; }
+.dash-tama-pill.is-drop { background: #ffd23f; color: #3a2400; box-shadow: 0 0 12px rgba(255, 210, 63, .45); }
+.dash-tama-pill.is-streak svg { color: #ff9a3c; }
+
+/* Retro-LCD auch für die neuen Bausteine */
+.tama-screen.is-retro :is(.tama-mi-text, .tama-mi > span:first-child, .tama-scan-chips span) { color: #1d2615; }
+.tama-screen.is-retro :is(.tama-station, .tama-menu-count, .tama-menu-note, .tama-scan-chips span) { border-radius: 4px; background: rgba(29, 38, 21, .12); color: #1d2615; }
+.tama-screen.is-retro :is(.tama-station svg, .tama-menu-art.is-icon, .tama-menu-title svg) { color: #1d2615; }
+.tama-screen.is-retro .tama-station.is-sel { border-color: #1d2615; background: #1d2615; color: #b6c48f; }
+.tama-screen.is-retro .tama-station.is-sel svg { color: #b6c48f; }
+.tama-screen.is-retro .tama-hud { background: none; color: #1d2615; text-shadow: none; }
+.tama-screen.is-retro .game-pad { border-radius: 6px; background: #1d2615; }
+
+@media (max-width: 1240px) {
+  .tama-care.is-empty { grid-template-columns: minmax(0, 1fr); }
+  .tama-care.is-empty .tama-bento { order: -1; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); }
+}
+@media (max-width: 640px) {
+  .tama-hero { grid-template-columns: minmax(0, 1fr); }
+  .tama-hero-side { justify-content: space-between; }
+  .tama-stat-pill.tama-stat-pill { min-height: 34px; font-size: 14px; }
+  .tama-drop-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .tama-drop-row .tama-days { grid-column: 1 / -1; grid-row: 2; }
+  .tama-product { grid-template-columns: 52px minmax(0, 1fr); }
+  .tama-product-art { width: 52px; height: 52px; }
+  .tama-product-art > img { width: 46px; height: 46px; }
+  .tama-product-buy { grid-column: 1 / -1; grid-auto-flow: column; justify-content: space-between; align-items: center; }
+  .tama-products, .tama-award-grid { grid-template-columns: minmax(0, 1fr); }
+  .tama-board-row { grid-template-columns: 30px minmax(0, 1fr) auto; }
+  .tama-board-row .tama-board-stat:last-child { display: none; }
+  .tama-drop-stage { height: 220px; }
+  .tama-loot-tile { width: 92px; }
+  .game-pad { width: 44px; height: 44px; }
+}
+
 /* ---------- Kleinere Bildschirme ------------------------------------------------- */
 
 @media (max-width: 1240px) {
@@ -1480,7 +2188,7 @@ button.tama-mode { flex-direction: column; gap: 2px; }
   .tama-sheet-body { padding: 14px 14px 20px; }
   .tama-confirm-egg { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .tama-confirm-art { min-height: 150px; }
-  .tama-confirm-art > svg { width: 104px; }
+  .tama-confirm-art > svg { width: 110px; }
   .tama-surprise-egg.is-big { width: 88px; height: 106px; font-size: 46px; }
   .tama-modes { grid-template-columns: minmax(0, 1fr); }
   .tama-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
@@ -1497,14 +2205,19 @@ button.tama-mode { flex-direction: column; gap: 2px; }
   .tama-tab small { display: none; }
 }
 @media (max-width: 420px) {
-  .tama-shell { padding: 26% 11.5% 9%; }
+  .tama-shell { padding: 22% 11.5% 7%; }
+  .tama-brand { top: 7.5%; }
+  .tama-device { padding-top: 24px; }
+  .tama-eyebrow { display: none; }
+  .tama-hero h1 { font-size: clamp(30px, 8.6vw, 40px); }
   .tama-bezel { padding: 5px 6px; border-radius: 52px 52px 28px 28px / 40px 40px 28px 28px; }
   .tama-icons { gap: 2px; padding: 1px 4px; }
   .tama-ico { height: 34px; }
   .tama-ico svg { width: 21px; height: 21px; }
-  .tama-keys { gap: 20px; margin-top: 16px; }
-  .tama-key { width: 50px; height: 50px; }
-  .tama-keys-hint { margin-top: 18px; font-size: 12px; }
+  .tama-keys { grid-template-columns: repeat(3, minmax(0, 76px)); gap: 6px; margin-top: 14px; }
+  .tama-key-cap { width: 48px; height: 48px; }
+  .tama-key.is-m .tama-key-cap { width: 56px; height: 56px; }
+  .tama-key-label { font-size: 11.5px; letter-spacing: .03em; }
   .tama-dock { gap: 8px; }
   .tama-dock-btn { gap: 8px; padding: 9px 10px; min-height: 56px; }
   .tama-dock-btn strong { font-size: 15px; }
@@ -1512,6 +2225,10 @@ button.tama-mode { flex-direction: column; gap: 2px; }
   .tama-eyebrow-sub, .tama-chip.is-mode { display: none; }
   .tama-hero-actions { gap: 6px; }
   .tama-round { width: 42px; height: 42px; }
+  .tama-hero-side { gap: 8px; }
+  .tama-hero-stats { gap: 6px; }
+  .tama-stat-pill.tama-stat-pill { padding-right: 10px; }
+  .tama-stat-pill > span:not(.tama-rank-badge):not(.tama-shards) { display: none; }
 }
 
 /* ---------- Bewegung ------------------------------------------------------------ */
@@ -1586,6 +2303,41 @@ button.tama-mode { flex-direction: column; gap: 2px; }
 @keyframes sc-rise { from { translate: 0 0; opacity: 0; } 10% { opacity: .8; } 90% { opacity: .5; } to { translate: 6px -224px; opacity: 0; } }
 @keyframes sc-flicker { 0%, 91%, 100% { opacity: 1; } 93% { opacity: .35; } 95% { opacity: .9; } 97% { opacity: .5; } }
 
+@keyframes tama-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
+@keyframes tama-key-glow {
+  0%, 100% { box-shadow: 0 5px 0 color-mix(in srgb, var(--t-shell-lo) 75%, #000), 0 10px 16px rgba(0, 0, 0, .35), inset 0 -3px 6px rgba(0, 0, 0, .22), inset 0 2px 3px rgba(255, 255, 255, .85), 0 0 0 0 color-mix(in srgb, var(--t-acc) 0%, transparent); }
+  50% { box-shadow: 0 5px 0 color-mix(in srgb, var(--t-shell-lo) 75%, #000), 0 10px 16px rgba(0, 0, 0, .35), inset 0 -3px 6px rgba(0, 0, 0, .22), inset 0 2px 3px rgba(255, 255, 255, .85), 0 0 22px 4px color-mix(in srgb, var(--t-acc) 75%, transparent); }
+}
+@keyframes tama-glow-gold {
+  0%, 100% { box-shadow: inset 0 0 0 1px #ffd23f, 0 0 12px rgba(255, 210, 63, .25); }
+  50% { box-shadow: inset 0 0 0 1px #ffd23f, 0 0 30px rgba(255, 210, 63, .55); }
+}
+@keyframes tama-scan { from { translate: 0 -100%; } to { translate: 0 560%; } }
+@keyframes tama-twinkle { 0%, 100% { opacity: .25; scale: .7; } 50% { opacity: 1; scale: 1.1; } }
+@keyframes tama-flies { 0%, 100% { translate: 0 0; } 25% { translate: 1.5cqw -1cqw; } 50% { translate: -1cqw -2cqw; } 75% { translate: 1cqw 1cqw; } }
+@keyframes tama-floatup { 0% { opacity: 0; translate: -50% 30%; } 15% { opacity: 1; translate: -50% 0; } 75% { opacity: 1; } 100% { opacity: 0; translate: -50% -120%; } }
+@keyframes tama-foam { 0% { opacity: 0; scale: .2; } 30% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1.3; translate: 0 -40%; } }
+@keyframes tama-blanket { 0% { opacity: 0; translate: 0 -40%; } 20% { opacity: 1; translate: 0 0; } 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes tama-sit { 0%, 100% { scale: 1 1; } 25%, 75% { scale: 1.08 .82; } }
+@keyframes tama-heel { 0%, 100% { translate: 0 0; } 25% { translate: -18% 0; } 75% { translate: 18% 0; } }
+@keyframes tama-spin-y { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
+@keyframes tama-dance { 0%, 100% { rotate: 0deg; translate: 0 0; } 25% { rotate: -10deg; translate: -4% -4%; } 75% { rotate: 10deg; translate: 4% -4%; } }
+@keyframes tama-lunge { 0%, 100% { translate: 0 0; } 40% { translate: 16% -3%; scale: 1.06 .96; } }
+@keyframes tama-shimmer { 0%, 55% { translate: 0 0; } 85%, 100% { translate: 160px 0; } }
+@keyframes tama-bubble { 0% { translate: 0 0; opacity: 0; } 15% { opacity: .8; } 100% { translate: 0 -46px; opacity: 0; } }
+@keyframes tama-dash { to { stroke-dashoffset: -44; } }
+@keyframes tama-crack { from { opacity: 0; } }
+@keyframes tama-rotor { to { scale: .2 1; } }
+@keyframes tama-evfloat { 0%, 100% { translate: 0 0; opacity: .85; } 50% { translate: 6px -14px; opacity: 1; } }
+@keyframes tama-firework { 0%, 60% { opacity: 0; scale: .2; } 70% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1.25; } }
+@keyframes tama-bat { 0%, 100% { translate: 0 0; } 25% { translate: 40px -10px; } 50% { translate: 80px 6px; } 75% { translate: 30px 12px; } }
+@keyframes tama-leaf { from { translate: 0 0; rotate: 0deg; } to { translate: -40px 260px; rotate: 540deg; } }
+@keyframes tama-snow { from { translate: 0 0; } to { translate: 18px 250px; } }
+@keyframes tama-evrise { 0% { translate: 0 0; opacity: 0; } 20% { opacity: 1; } 100% { translate: 0 -120px; opacity: 0; } }
+@keyframes tama-drop-fall { 0% { translate: 0 -150%; } 70% { translate: 0 0; } 82% { translate: 0 -8%; } 100% { translate: 0 0; } }
+@keyframes tama-dust { 0% { opacity: 0; scale: .4 1; } 30% { opacity: 1; } 100% { opacity: 0; scale: 1.4 1; } }
+@keyframes tama-pop { from { opacity: 0; scale: .5; translate: 0 12px; } }
+
 @media (prefers-reduced-motion: reduce) {
   :is(.tama-page, .tama-sheet-bg) *, :is(.tama-page, .tama-sheet-bg) *::before, :is(.tama-page, .tama-sheet-bg) *::after {
     animation: none !important;
@@ -1593,3 +2345,385 @@ button.tama-mode { flex-direction: column; gap: 2px; }
   }
   .tama-sweep { display: none; }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Echte Bilder: Karten-Landschaft, gemalte Kulissen, Nest und Brutkapsel        */
+/* -------------------------------------------------------------------------- */
+
+.tama-land, .tama-nest { position: absolute; inset: 0; overflow: hidden; background: #0b1420; }
+.tama-land-sky, .tama-land-ground, .tama-land-haze, .tama-land-fx, .tama-land-tint { position: absolute; pointer-events: none; }
+
+/* Stil „Karte“: Ausschnitt einer ARK-Karte als schräger Boden, gemalter Himmel darüber */
+.tama-land-sky { inset: 0; background-repeat: no-repeat; }
+.tama-land-ground {
+  left: -80%;
+  right: -80%;
+  bottom: -4%;
+  height: 230%;
+  background-repeat: no-repeat;
+  transform-origin: 50% 100%;
+  transform: perspective(95cqw) rotateX(62deg);
+  -webkit-mask-image: linear-gradient(0deg, #000 54%, transparent 88%);
+  mask-image: linear-gradient(0deg, #000 54%, transparent 88%);
+  transition: filter .8s ease;
+}
+.tama-land-haze { left: 0; right: 0; top: 24%; height: 40%; background: linear-gradient(180deg, transparent, var(--haze, rgba(215, 235, 250, .42)) 50%, transparent); }
+.tama-land-tint, .tama-land-fx { inset: 0; }
+.tama-land.is-map .tama-land-tint { background: linear-gradient(0deg, rgba(0, 0, 0, .3), transparent 26%), radial-gradient(125% 95% at 50% 40%, transparent 62%, rgba(0, 0, 0, .32)); }
+
+/* Tageszeit */
+.tama-land.phase-dawn { --haze: rgba(150, 128, 150, .38); }
+.tama-land.phase-dawn .tama-land-ground { filter: brightness(.74) saturate(.9); }
+.tama-land.phase-dusk { --haze: rgba(255, 168, 118, .36); }
+.tama-land.phase-dusk .tama-land-ground { filter: brightness(.78) sepia(.24) saturate(1.1); }
+.tama-land.phase-night { --haze: rgba(38, 58, 112, .42); }
+.tama-land.phase-night .tama-land-ground { filter: brightness(.36) saturate(.7) hue-rotate(8deg); }
+.tama-land.is-map.phase-night .tama-land-tint { background: linear-gradient(0deg, rgba(0, 0, 10, .42), rgba(6, 12, 40, .18) 40%, transparent 70%), radial-gradient(125% 95% at 50% 40%, transparent 55%, rgba(0, 0, 20, .45)); }
+.tama-lcd:has(.phase-night):not(:has(.tama-dark.is-on)) .tama-pet-flip { filter: brightness(.76) saturate(.86); }
+.tama-lcd:has(.phase-dusk):not(:has(.tama-dark.is-on)) .tama-pet-flip { filter: brightness(.94) sepia(.08); }
+
+/* Lebensräume: Schnee, Glut, Höhlenlicht, Hitze, Sumpfnebel */
+.tama-land.biome-snow .tama-land-fx {
+  background-image:
+    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, .95) 0 .45cqw, transparent .6cqw),
+    radial-gradient(circle at 65% 40%, rgba(255, 255, 255, .8) 0 .35cqw, transparent .5cqw),
+    radial-gradient(circle at 40% 75%, rgba(255, 255, 255, .9) 0 .4cqw, transparent .55cqw),
+    radial-gradient(circle at 85% 85%, rgba(255, 255, 255, .7) 0 .3cqw, transparent .45cqw);
+  background-size: 26cqw 26cqw;
+  animation: tama-snowfall 8s linear infinite;
+}
+.tama-land.biome-volcano .tama-land-tint { background: radial-gradient(120% 60% at 50% 115%, rgba(255, 92, 24, .38), transparent 62%), radial-gradient(125% 95% at 50% 40%, transparent 62%, rgba(0, 0, 0, .32)); }
+.tama-land.biome-volcano .tama-land-fx {
+  background-image:
+    radial-gradient(circle at 30% 70%, rgba(255, 176, 70, .95) 0 .3cqw, transparent .5cqw),
+    radial-gradient(circle at 72% 35%, rgba(255, 120, 40, .9) 0 .25cqw, transparent .45cqw),
+    radial-gradient(circle at 52% 92%, rgba(255, 206, 96, .9) 0 .2cqw, transparent .4cqw);
+  background-size: 30cqw 30cqw;
+  animation: tama-embers 7s linear infinite;
+}
+.tama-land.biome-cave .tama-land-tint { background: radial-gradient(95% 85% at 50% 58%, transparent 38%, rgba(0, 4, 12, .6)); }
+.tama-land.biome-cave .tama-land-fx {
+  background-image: radial-gradient(circle at 25% 60%, rgba(120, 255, 230, .8) 0 .3cqw, transparent .55cqw), radial-gradient(circle at 75% 30%, rgba(160, 140, 255, .7) 0 .25cqw, transparent .5cqw);
+  background-size: 34cqw 34cqw;
+  animation: tama-spores 11s ease-in-out infinite alternate;
+}
+.tama-land.biome-desert .tama-land-haze { --haze: rgba(255, 214, 160, .45); }
+.tama-land.biome-swamp .tama-land-haze { --haze: rgba(150, 188, 142, .5); }
+.tama-land.biome-ocean .tama-land-haze { --haze: rgba(190, 230, 250, .42); }
+
+/* Stil „Gemälde“ */
+.tama-land-painting { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tama-land.is-painted.phase-night .tama-land-tint { background: rgba(6, 12, 36, .22); }
+
+/* Wasser vor Meerestieren (liegt über dem Tier, daher eigene Ebene) */
+.tama-water {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(150, 225, 245, .12) 0%, rgba(40, 130, 180, .3) 50%, rgba(10, 50, 95, .5) 100%);
+  -webkit-backdrop-filter: blur(1px) saturate(1.15);
+  backdrop-filter: blur(1px) saturate(1.15);
+}
+.tama-water-shine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -.5cqw;
+  height: 1.2cqw;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .85) 20%, rgba(255, 255, 255, .25) 45%, rgba(255, 255, 255, .8) 70%, transparent);
+  background-size: 200% 100%;
+  filter: blur(.25cqw);
+  animation: tama-shine 6s linear infinite;
+}
+.tama-land.phase-night .tama-water { background: linear-gradient(180deg, rgba(60, 110, 170, .16), rgba(10, 40, 90, .45) 45%, rgba(2, 14, 40, .7)); }
+
+/* Das Tier als gemaltes Bild */
+.tama-real-turn { position: relative; transition: transform .22s ease; filter: drop-shadow(0 1.1cqw .9cqw rgba(0, 0, 0, .45)); }
+.tama-pet-flip:not(.is-left) .tama-real-turn[data-face="-1"],
+.tama-pet-flip.is-left .tama-real-turn[data-face="1"] { transform: scaleX(-1); }
+.tama-real { position: relative; display: block; width: 100%; height: auto; transform-origin: 50% 96%; -webkit-user-drag: none; user-select: none; animation: tama-real-breathe 3.6s ease-in-out infinite; }
+.tama-real-turn::before { content: ''; position: absolute; inset: 14% 8% 4%; border-radius: 50%; pointer-events: none; opacity: 0; }
+.tama-real-turn.var-alpha::before { opacity: 1; background: radial-gradient(closest-side, rgba(255, 50, 50, .55), transparent); animation: tama-pulse 2.4s ease-in-out infinite; }
+.tama-real-turn.var-tek::before { opacity: 1; background: radial-gradient(closest-side, rgba(53, 215, 255, .5), transparent); animation: tama-pulse 2.2s ease-in-out infinite; }
+.tama-real-turn.var-loyal::before { opacity: .8; background: radial-gradient(closest-side, rgba(255, 211, 106, .35), transparent); }
+.tama-real-turn.var-alpha { filter: drop-shadow(0 1.1cqw .9cqw rgba(0, 0, 0, .45)) drop-shadow(0 0 .8cqw rgba(255, 60, 60, .75)); }
+.tama-real-turn.var-tek { filter: drop-shadow(0 1.1cqw .9cqw rgba(0, 0, 0, .45)) drop-shadow(0 0 .8cqw rgba(53, 215, 255, .8)); }
+.tama-pet.is-real { transition-property: left, bottom; }
+.tama-pet.is-walking .tama-real { animation: tama-real-step .42s ease-in-out infinite; }
+.tama-pet.is-walking.is-trot .tama-real { animation-duration: .3s; }
+.tama-pet.is-floating .tama-real { animation: tama-real-glide 3.2s ease-in-out infinite; }
+.tama-pet.is-swimming .tama-real { animation: tama-real-swim 3.4s ease-in-out infinite; }
+.tama-pet[data-mood="sleep"] .tama-real { animation: tama-real-breathe 5.5s ease-in-out infinite; }
+.tama-pet.expr-eat .tama-real { animation: tama-real-chomp .32s ease-in-out infinite; }
+.tama-pet.expr-refuse .tama-real { animation: tama-no .6s ease-in-out; }
+.tama-pet.expr-flinch .tama-real { animation: tama-shiver .12s linear infinite; }
+.tama-pet.expr-scolded .tama-real { animation: tama-squash .55s ease-out; }
+.tama-pet.expr-sad .tama-real { animation: tama-droop 1.2s ease-in-out both; }
+.tama-pet.expr-cuddle .tama-real { animation: tama-wiggle .5s ease-in-out infinite; }
+.tama-pet:is(.expr-cheer, .expr-poke) .tama-real { animation: tama-jump .5s ease-out 2; }
+.tama-pet.expr-poke .tama-real { animation-iteration-count: 1; }
+.tama-pet.is-dirty .tama-real-turn { filter: drop-shadow(0 1.1cqw .9cqw rgba(0, 0, 0, .45)) sepia(.28) saturate(.82) brightness(.92); }
+.tama-pet.is-nest { cursor: pointer; }
+.tama-pet.is-nest .tama-pet-flip { position: absolute; inset: 0; }
+
+/* Ei im gemalten Nest */
+.tama-nest-bg, .tama-nest-copy { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tama-nest-egg { position: absolute; inset: 0; animation: tama-egg-breathe 3.6s ease-in-out infinite; }
+.tama-nest-egg.is-close { animation: tama-egg-wobble 1.8s ease-in-out infinite; }
+.tama-nest-glow { position: absolute; border-radius: 50%; scale: 1.25; background: radial-gradient(closest-side, rgba(255, 214, 120, .6), rgba(255, 170, 60, .18) 70%, transparent); opacity: 0; transition: opacity .6s ease; }
+.tama-nest.cracks-2 .tama-nest-glow { opacity: .45; }
+.tama-nest.cracks-3 .tama-nest-glow { opacity: .9; animation: tama-pulse 1.6s ease-in-out infinite; }
+.tama-nest-crackbox { position: absolute; }
+.tama-nest-cracks { display: block; width: 100%; height: 100%; overflow: visible; }
+.tama-nest-cracks path { fill: none; stroke-linecap: round; stroke-linejoin: round; animation: tama-crack .6s ease-out; }
+.tama-nest-cracks .is-glow { stroke: rgba(255, 224, 150, .85); }
+.tama-nest-cracks .is-line { stroke: #2b1a0e; }
+.tama-lcd:has(.tama-pet.is-warming) .tama-nest-egg { animation: tama-egg-warm-real .7s ease-in-out; }
+.tama-lcd:has(.tama-pet.is-warming) .tama-nest-glow { opacity: 1; }
+.tama-nest.phase-dusk .tama-land-tint { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 150, 90, .16), rgba(60, 20, 40, .18)); }
+.tama-nest.phase-night .tama-land-tint, .tama-nest.phase-dawn .tama-land-tint { position: absolute; inset: 0; background: rgba(6, 12, 40, .5); }
+
+/* Brutkapsel für Säugetiere */
+.tama-capsule { position: absolute; aspect-ratio: 546 / 900; }
+.tama-capsule-img { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 1.4cqw 1.4cqw rgba(0, 0, 0, .55)); }
+.tama-capsule-glow { position: absolute; left: 14%; right: 14%; top: 20%; bottom: 24%; z-index: 1; border-radius: 50%; mix-blend-mode: screen; background: radial-gradient(closest-side, rgba(180, 150, 255, .55), transparent); animation: tama-pulse 2.6s ease-in-out infinite; }
+.tama-capsule-bubbles { position: absolute; inset: 22% 24% 28%; z-index: 1; overflow: hidden; border-radius: 40%; }
+.tama-capsule-bubbles i { position: absolute; bottom: 0; width: 1.3cqw; height: 1.3cqw; border-radius: 50%; border: 1px solid rgba(235, 240, 255, .75); opacity: 0; animation: tama-capsule-bubble 3.2s linear infinite; }
+.tama-capsule-bubbles i:nth-child(1) { left: 22%; }
+.tama-capsule-bubbles i:nth-child(2) { left: 55%; animation-delay: -1.1s; }
+.tama-capsule-bubbles i:nth-child(3) { left: 76%; animation-delay: -2.2s; }
+.tama-lcd:has(.tama-pet.is-warming) .tama-capsule-glow { animation: tama-egg-warm-real .7s ease-in-out; background: radial-gradient(closest-side, rgba(255, 200, 140, .7), transparent); }
+
+/* Was im Ei bzw. in der Kapsel heranwächst */
+.tama-inside {
+  position: absolute;
+  right: 5%;
+  bottom: 8%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, .34), rgba(14, 28, 44, .66) 72%);
+  border: .45cqw solid rgba(255, 255, 255, .6);
+  box-shadow: 0 1cqw 3cqw rgba(0, 0, 0, .45), inset 0 0 2cqw rgba(143, 227, 255, .35);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.tama-inside .tama-thumb { width: 84%; }
+
+.tama-hud-map { padding-left: 1.4cqw; border-left: 1px solid rgba(255, 255, 255, .4); font: 600 2.6cqw/1 var(--t-font); letter-spacing: .02em; opacity: .9; }
+
+/* Echte Motive in Karten, Rastern und Listen */
+.tama-thumb.is-real { filter: drop-shadow(0 .4rem .5rem rgba(0, 0, 0, .35)); }
+.tama-thumb.is-mirror { transform: scaleX(-1); }
+
+@keyframes tama-real-breathe { 0%, 100% { scale: 1 1; } 50% { scale: 1.006 1.016; } }
+@keyframes tama-real-step { 0%, 50%, 100% { translate: 0 0; rotate: 0deg; } 25% { translate: 0 -2.4%; rotate: -1.1deg; } 75% { translate: 0 -2.4%; rotate: 1.1deg; } }
+@keyframes tama-real-glide { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -4%; rotate: -1.5deg; } }
+@keyframes tama-real-swim { 0%, 100% { translate: 0 0; rotate: -1deg; } 50% { translate: 0 2.5%; rotate: 1.2deg; } }
+@keyframes tama-real-chomp { 0%, 100% { rotate: 0deg; scale: 1 1; } 50% { rotate: 1.6deg; scale: 1.01 .99; } }
+@keyframes tama-egg-breathe { 0%, 100% { scale: 1 1; } 50% { scale: 1.01 1.016; } }
+@keyframes tama-egg-wobble { 0%, 100% { rotate: 0deg; scale: 1.01; } 20% { rotate: -1.2deg; } 40% { rotate: 1deg; } 60% { rotate: -.6deg; } 80% { rotate: .4deg; } }
+@keyframes tama-egg-warm-real { 0%, 100% { scale: 1; } 40% { scale: 1.035 .975; } }
+@keyframes tama-capsule-bubble { 0% { translate: 0 0; opacity: 0; } 15% { opacity: .85; } 100% { translate: 0 -24cqw; opacity: 0; } }
+@keyframes tama-snowfall { from { background-position: 0 0, 0 0, 0 0, 0 0; } to { background-position: 3cqw 26cqw, -2cqw 26cqw, 1cqw 26cqw, -1cqw 26cqw; } }
+@keyframes tama-embers { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 2cqw -30cqw, -3cqw -30cqw, 1cqw -30cqw; } }
+@keyframes tama-spores { from { background-position: 0 0, 0 0; } to { background-position: 6cqw -8cqw, -5cqw 6cqw; } }
+@keyframes tama-shine { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Brutstation mit echten Motiven: Gratis/Preis-Kennzeichnung und Kauf */
+.tama-egg-stack.is-real { display: grid; place-items: center; }
+.tama-egg-stack.is-real > .tama-thumb { position: static; width: 94%; max-height: 100%; object-fit: contain; }
+.tama-egg-stack.is-big { width: 190px; height: 190px; }
+.tama-birth-badge {
+  position: absolute;
+  right: 1%;
+  bottom: 1%;
+  display: grid;
+  place-items: center;
+  width: 34%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .3), rgba(10, 24, 36, .78) 72%);
+  border: 2px solid rgba(255, 255, 255, .55);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .4);
+}
+.tama-birth-badge img { width: 62%; height: 62%; object-fit: contain; }
+.tama-tile-meta { flex-wrap: wrap; justify-content: center; }
+.tama-access { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.tama-access svg { width: 12px; height: 12px; }
+.tama-access.is-free { background: rgba(98, 255, 160, .14); color: #8ff0b4; }
+.tama-access.is-owned { background: color-mix(in srgb, var(--t-acc) 20%, transparent); color: var(--t-acc); }
+.tama-access.is-buy { background: rgba(255, 207, 90, .16); color: #ffd978; }
+.tama-access.is-soon { background: rgba(183, 196, 207, .12); color: var(--t-muted); }
+.tama-access.is-new { background: #ff5a8a; color: #fff; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.tama-tile.is-locked .tama-tile-art { filter: saturate(.55) brightness(.82); transition: filter .2s ease; }
+.tama-tile.is-locked:is(:hover, :focus-visible) .tama-tile-art { filter: none; }
+.tama-tile.is-unknown .tama-thumb.is-real { opacity: .6; filter: brightness(0) invert(.32) drop-shadow(0 0 1px rgba(170, 222, 255, .5)) !important; }
+.tama-filter.is-access { padding-left: 8px; border-left: 1px solid var(--t-line); }
+.tama-dex-hero.is-real { display: grid; place-items: center; }
+.tama-dex-hero.is-real > .tama-thumb { width: min(80%, 440px); max-height: 92%; object-fit: contain; }
+.tama-dex-hero.is-real .tama-birth-badge { right: 16px; bottom: 16px; width: 70px; }
+
+.tama-buy { display: grid; gap: 14px; }
+.tama-buy-hero {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: clamp(170px, 30vh, 250px);
+  overflow: hidden;
+  border-radius: 24px;
+  background: radial-gradient(75% 60% at 50% 88%, color-mix(in srgb, var(--b1, #2c8a5c) 75%, transparent), transparent 72%), linear-gradient(180deg, color-mix(in srgb, var(--b1, #2c8a5c) 30%, #0a1218), var(--b2, #0b2a22));
+}
+.tama-buy-hero > .tama-thumb { width: min(80%, 360px); max-height: 90%; object-fit: contain; }
+.tama-buy-egg { position: absolute; right: 14px; bottom: 14px; display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .3), rgba(10, 24, 36, .78) 72%); border: 2px solid rgba(255, 255, 255, .55); }
+.tama-buy-egg img { width: 62%; height: 62%; object-fit: contain; }
+.tama-buy-copy h3 { margin: 0 0 2px; font: 700 28px/1.1 var(--t-display); }
+.tama-buy-copy p { margin: 4px 0; }
+.tama-buy-price { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
+.tama-buy-price strong { color: #ffd978; font: 800 30px/1 var(--t-display); }
+.tama-buy-price small { color: var(--t-muted); font-size: 14px; }
+.tama-buy-consent { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--t-line); border-radius: 16px; background: rgba(255, 255, 255, .05); font-size: 14px; line-height: 1.45; cursor: pointer; }
+.tama-buy-consent input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--t-acc); }
+.tama-buy-legal, .tama-buy-note { margin: 0; color: var(--t-muted); font-size: 13px; }
+.tama-buy-legal a { color: var(--t-acc); }
+.tama-buy-note.is-error { color: #ff9a9a; }
+.btn.is-busy { opacity: .7; pointer-events: none; }
+/* Im Nest bzw. an der Brutkapsel keine Einrichtung davor */
+.tama-lcd.is-nest :is(.tama-decor, .tama-props) { display: none; }
+
+/* -------------------------------------------------------------------------- */
+/* Tamagotchi-Verwaltung (Developer)                                             */
+/* -------------------------------------------------------------------------- */
+
+.tadm-page { display: grid; gap: 16px; }
+.tadm-page .page-head { margin-bottom: 0; }
+.tadm-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.tadm-tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: var(--radius-sm); color: var(--muted); font: 600 .98rem/1 var(--ff-display); text-decoration: none; }
+.tadm-tab svg { width: 18px; height: 18px; }
+.tadm-tab:hover { color: var(--text); background: var(--raised); }
+.tadm-tab.is-on { color: #17130A; background: var(--gold); }
+.tadm-body { display: grid; gap: 16px; }
+.tadm-card { display: grid; gap: 12px; }
+.tadm-title { margin: 0; font: 700 1.25rem/1.2 var(--ff-display); }
+.tadm-sub { margin: 6px 0 0; font: 700 1rem/1.2 var(--ff-display); color: var(--muted); }
+.tadm-lead { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.5; }
+.tadm-muted { color: var(--faint); }
+.tadm-warn { margin: 0; color: #f0b44c; font-size: .86rem; }
+.tadm-block { display: block; color: var(--muted); }
+.tadm-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.tadm-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tadm-actions.is-sticky { position: sticky; bottom: 12px; z-index: 2; justify-content: flex-end; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(6px); }
+.tadm-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tadm-inline select { min-width: 200px; flex: 1; }
+.tadm-stats .stat .n { font-size: 1.6rem; }
+.tadm-top { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.tadm-top li { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--raised); }
+.tadm-top .tama-thumb { width: 56px; height: 40px; object-fit: contain; }
+.tadm-checks { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.tadm-check { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; }
+.tadm-check-ico { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-weight: 800; }
+.tadm-check.is-ok .tadm-check-ico { background: color-mix(in srgb, var(--st-available) 20%, transparent); color: var(--st-available); }
+.tadm-check.is-missing .tadm-check-ico { background: color-mix(in srgb, var(--red) 20%, transparent); color: #ff8080; }
+.tadm-check small { display: block; color: var(--muted); font-size: .82rem; }
+.tadm-steps { display: grid; gap: 8px; margin: 0; padding-left: 20px; line-height: 1.5; }
+.tadm-steps li::marker { color: var(--gold); font-weight: 700; }
+.tadm-code { display: block; margin: 6px 0; padding: 8px 10px; overflow-wrap: anywhere; border-radius: var(--radius-sm); background: #0b0e12; color: var(--gold); font-size: .85rem; }
+.tadm-events { display: block; margin-top: 6px; color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+
+/* Tiere */
+.tadm-counts { display: flex; flex-wrap: wrap; gap: 10px 16px; font-weight: 600; }
+.tadm-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tadm-toolbar input[type="search"] { flex: 1; min-width: 200px; }
+.tadm-seg { flex-wrap: wrap; }
+.tadm-species { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.tadm-sp { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.tadm-sp.is-free { border-color: color-mix(in srgb, var(--st-available) 45%, var(--line)); }
+.tadm-sp.is-buy { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); }
+.tadm-sp.is-off, .tadm-sp.is-noart { opacity: .72; }
+.tadm-sp-art { position: relative; display: grid; place-items: center; height: 120px; padding: 6px; border: 0; border-radius: var(--radius-sm); background: radial-gradient(80% 70% at 50% 80%, rgba(80, 140, 110, .35), transparent 70%), #0d1216; cursor: pointer; }
+.tadm-sp-art .tama-thumb { max-width: 100%; max-height: 108px; object-fit: contain; }
+.tadm-sp-art:hover { outline: 2px solid var(--gold); }
+.tadm-tag { position: absolute; top: 6px; left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--gold); color: #17130A; font-size: .7rem; font-weight: 700; }
+.tadm-sp-copy strong { display: block; font: 700 1.05rem/1.1 var(--ff-display); }
+.tadm-sp-copy small { color: var(--muted); font-size: .8rem; }
+.tadm-status { width: 100%; }
+.tadm-status button { flex: 1; padding: 6px 4px; font-size: .85rem; }
+.tadm-price { display: flex; align-items: center; gap: 6px; }
+.tadm-price span { color: var(--muted); font-weight: 700; }
+.tadm-price input { width: 100%; }
+
+/* Bild-Editor */
+.tadm-art { display: grid; gap: 14px; }
+.tadm-art-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; }
+.tadm-art-stage { display: grid; place-items: center; min-height: 220px; padding: 10px; border-radius: 16px; background: repeating-conic-gradient(rgba(255, 255, 255, .06) 0 25%, transparent 0 50%) 0 0 / 18px 18px, #0d1216; }
+.tadm-art-box { position: relative; width: 100%; max-height: 380px; cursor: crosshair; }
+.tadm-art-box img { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; pointer-events: none; }
+.tadm-art-empty { display: grid; justify-items: center; gap: 8px; color: var(--t-muted); }
+.tadm-art-empty svg { width: 48px; height: 48px; }
+.tadm-mark { position: absolute; width: 16px; height: 16px; translate: -50% -50%; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0, 0, 0, .5); pointer-events: none; }
+.tadm-mark.is-head { background: #ff3b3b; }
+.tadm-mark.is-mouth { background: #2f8bff; }
+.tadm-baseline { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed #62ff9a; pointer-events: none; }
+.tadm-field { display: grid; gap: 6px; margin-bottom: 12px; }
+.tadm-field > span { color: var(--t-muted); font-size: 14px; }
+.tadm-lcd { container-type: inline-size; }
+.tadm-lcd-screen { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 18px; background: #000; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+.tadm-lcd-screen .tama-land { position: absolute; inset: 0; }
+.tadm-lcd-pet { position: absolute; z-index: 2; filter: drop-shadow(0 1.1cqw .9cqw rgba(0, 0, 0, .45)); }
+.tadm-lcd-pet img { display: block; width: 100%; }
+.tadm-lcd-call { position: absolute; translate: -50% 0; display: grid; place-items: center; width: 7cqw; height: 7cqw; border-radius: 50%; background: #ff5a5a; color: #fff; font: 800 4.6cqw/1 var(--t-display); box-shadow: 0 0 0 .6cqw rgba(255, 255, 255, .8); }
+
+/* Tabellen */
+.tadm-table-wrap { overflow-x: auto; }
+.tadm-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.tadm-table th { padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font-weight: 600; text-align: left; white-space: nowrap; }
+.tadm-table td { padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); vertical-align: middle; }
+.tadm-num { text-align: right; font-variant-numeric: tabular-nums; }
+.tadm-badge { margin-right: 4px; }
+.tadm-badge.is-paid, .tadm-badge.is-purchase { color: var(--st-available); border-color: color-mix(in srgb, var(--st-available) 45%, transparent); }
+.tadm-badge.is-refunded, .tadm-badge.is-revoked, .tadm-badge.is-failed { color: #ff8080; border-color: color-mix(in srgb, var(--red) 45%, transparent); }
+.tadm-badge.is-gift { color: var(--gold); border-color: var(--gold-dim, #8a7424); }
+.tadm-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.tadm-pet { display: flex; align-items: center; gap: 8px; }
+.tadm-pet .tama-thumb { width: 54px; height: 38px; object-fit: contain; }
+.tadm-row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.tadm-table.is-players td { white-space: nowrap; }
+
+/* Spiel & Events, Geschenke */
+.tadm-switch { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); cursor: pointer; }
+.tadm-switch input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--gold); }
+.tadm-switch small { display: block; color: var(--muted); }
+.tadm-events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.tadm-event { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--raised); cursor: pointer; }
+.tadm-event input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--gold); }
+.tadm-event small { display: block; color: var(--muted); font-size: .8rem; }
+.tadm-custom-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: end; }
+.tadm-custom-form .field { margin: 0; }
+.tadm-mult { display: grid; gap: 5px; color: var(--muted); font-size: .86rem; }
+.tadm-gift-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 12px; }
+.tadm-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.tadm-item { display: grid; grid-template-columns: 32px 1fr 72px; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--raised); font-size: .88rem; }
+.tadm-item .tama-art { width: 32px; height: 32px; }
+.tadm-item input { width: 100%; padding: 4px 6px; }
+.tadm-grant { display: grid; gap: 12px; }
+
+@media (max-width: 760px) {
+  .tadm-art-grid { grid-template-columns: minmax(0, 1fr); }
+  .tadm-species { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .tadm-tab { padding: 8px 10px; }
+  .tadm-tab span { font-size: .9rem; }
+}
+/* Minispiele: gemalte Motive werden beim Blick in die andere Richtung gespiegelt */
+:is(.game-lr-pet, .game-whistle-pet).is-flip { scale: -1 1; }
+:is(.game-lr-pet, .game-whistle-pet) { object-fit: contain; }
+.tama-hud-chip { max-width: 24cqw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tama-hud-time { min-width: 0; }
+.tama-hud-map { max-width: 22cqw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Gemaltes Ei bzw. Brutkapsel in Karten: nach Höhe einpassen */
+:is(.tama-mini-art, .dash-tama-art) .tama-thumb.is-egg-art { width: auto; height: 80%; max-width: 72%; object-fit: contain; }

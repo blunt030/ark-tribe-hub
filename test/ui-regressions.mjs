@@ -213,15 +213,32 @@ test('Dino-Tamagotchi ist in Menü, Router, Startseite und App-Hülle eingebunde
     read('public/js/views/tamagotchi.js'),
   ]);
   assert.match(app, /path: '\/tamagotchi', icon: 'egg-crack', label: t\('nav\.tamagotchi'\), badge: \(\) => petCalls\(\)/);
-  assert.match(app, /re: \/\^\\\/tamagotchi\(\?:\\\/\(dossier\|hall\|tribe\)\)\?\$\//);
+  assert.match(app, /re: \/\^\\\/tamagotchi\(\?:\\\/\(shop\|awards\|dossier\|hall\|tribe\)\)\?\$\//);
   assert.match(app, /import\('\.\/views\/tamagotchi\.js'\)/);
   assert.match(app, /resetPet\(\)/);
   assert.match(index, /\/css\/tamagotchi\.css/);
   assert.match(sw, /'\/css\/tamagotchi\.css'/);
   assert.match(sw, /'\/js\/tamagotchi\/store\.js'/);
   assert.match(sw, /'\/js\/tamagotchi\/engine\.js'/);
+  // store.js lädt die Fortschrittslogik mit – sie gehört in die App-Hülle
+  assert.match(sw, /'\/js\/tamagotchi\/progress\.js'/);
+  assert.match(sw, /'\/js\/tamagotchi\/catalog\.js'/);
   assert.match(dashboard, /import\('\.\.\/tamagotchi\/widget\.js'\)/);
   assert.match(view, /x\.key !== 'tribe' \|\| user\.tribeId/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /\.tama-screen\.is-retro \.tama-lcd \{ filter: url\(#tama-lcd-filter\); \}/);
+  // store.js holt die Einstellungen des Betreibers (roster.js) – samt Abhängigkeiten in der App-Hülle
+  for (const mod of ['roster', 'artwork', 'access', 'species']) assert.match(sw, new RegExp(`'/js/tamagotchi/${mod}\\.js'`));
+});
+
+test('Tamagotchi-Verwaltung: nur Developer, eigener Menüpunkt und Route', async () => {
+  const [app, admin, i18n] = await Promise.all([read('public/js/app.js'), read('public/js/views/tamagotchi-admin.js'), read('public/js/i18n.js')]);
+  assert.match(app, /if \(isDev\) \{[\s\S]*path: '\/tamagotchi-admin', icon: 'sliders-horizontal', label: t\('nav\.tamagotchi_admin'\)/);
+  assert.match(app, /re: \/\^\\\/tamagotchi-admin/);
+  assert.match(app, /context\.user\.roles\.includes\('developer'\)/);
+  assert.match(app, /import\('\.\/views\/tamagotchi-admin\.js'\)/);
+  for (const tab of ['overview', 'species', 'sale', 'game', 'gifts', 'players']) assert.match(admin, new RegExp(`'${tab}'`));
+  for (const lang of ['de', 'en', 'fr', 'es']) assert.match(i18n, new RegExp(`STRINGS\\.${lang}, \\{ 'nav\\.tamagotchi': [^}]*'nav\\.tamagotchi_admin'`));
+  // Vorschau eines Uploads als data:-Adresse (blob: ist per CSP gesperrt)
+  assert.doesNotMatch(admin, /createObjectURL/);
 });

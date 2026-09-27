@@ -403,3 +403,71 @@ CREATE TABLE IF NOT EXISTS pets (
   revision INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL
 );
+
+-- Tamagotchi-Verwaltung (nur Developer): Einstellungen des Betreibers als JSON
+-- je Bereich (roster = Gratis/Aus/Preise, sale = Verkauf, game = Spiel & Events).
+CREATE TABLE IF NOT EXISTS pet_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_at TEXT NOT NULL
+);
+
+-- Hochgeladene Tierbilder (Freisteller) oder angepasste Bildangaben für ein
+-- mitgeliefertes Bild (dann ohne Bilddaten).
+CREATE TABLE IF NOT EXISTS pet_art (
+  species TEXT PRIMARY KEY,
+  meta TEXT NOT NULL,
+  image_data BLOB,
+  image_mime TEXT,
+  updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_at TEXT NOT NULL
+);
+
+-- Freigeschaltete Arten je Konto (Kauf oder Geschenk des Betreibers).
+CREATE TABLE IF NOT EXISTS pet_unlocks (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  species TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('purchase', 'gift')),
+  ref TEXT,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, species)
+);
+
+-- Käufe über Stripe Checkout. Bleiben für die Buchhaltung erhalten, auch wenn
+-- das Konto gelöscht wird (dann ohne Kontobezug).
+CREATE TABLE IF NOT EXISTS pet_purchases (
+  session_id TEXT PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  species TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL,
+  status TEXT NOT NULL,
+  payment_intent TEXT,
+  livemode INTEGER NOT NULL DEFAULT 0,
+  consent_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  paid_at TEXT,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pet_purchases_user ON pet_purchases(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_pet_purchases_intent ON pet_purchases(payment_intent);
+
+-- Geschenke des Betreibers (Splitter, Gegenstände) an ein Konto oder an alle.
+CREATE TABLE IF NOT EXISTS pet_gifts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  shards INTEGER NOT NULL DEFAULT 0,
+  items TEXT NOT NULL DEFAULT '{}',
+  message TEXT,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT
+);
+CREATE TABLE IF NOT EXISTS pet_gift_claims (
+  gift_id INTEGER NOT NULL REFERENCES pet_gifts(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  claimed_at TEXT NOT NULL,
+  PRIMARY KEY (gift_id, user_id)
+);

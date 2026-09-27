@@ -149,9 +149,11 @@ function raise(mode, online, seed = 3, days = 4) {
         if (type === 'cuddle') E.cuddle(p, now);
         if (type === 'walk') E.walk(p, now);
         if (type === 'meal') E.feed(p, 'meal', now);
+        if (type === 'kibble') E.feed(p, 'kibble_basic', now);
         if (type === 'snack') E.feed(p, 'snack', now);
       }
     }
+    if (p.stage !== 'egg' && !p.asleep && E.hygiene(p, now) < 60) E.groom(p, now);
     if (p.stage !== 'egg' && !p.asleep) {
       for (let i = 0; i < 4 && p.m.hunger < 80; i++) if (!E.feed(p, 'meal', now).ok) break;
       for (let i = 0; i < 4 && p.m.happy < 80; i++) if (!E.play(p, { won: true }, now).ok) { E.cuddle(p, now); break; }
@@ -262,4 +264,26 @@ test('Animierte Teile tragen nie gleichzeitig transform und transform-origin', (
   for (const sp of SPECIES) {
     for (const stage of ['baby', 'juvenile', 'adult']) walk(creatureArt(sp, { stage, variant: stage === 'adult' ? 'alpha' : null }), `${sp.key} ${stage}`);
   }
+});
+
+test('Requisiten: Eier jeder Geburtsart, Kisten, Gegenstände, Einrichtung und Events ergeben gültige Grafik', async () => {
+  const { eggArt, crateArt, itemArt, decorArt, eventArt, DROP_COLORS } = await import('../public/js/tamagotchi/props.js');
+  const { ITEMS, DECOR, EVENTS } = await import('../public/js/tamagotchi/catalog.js');
+  const bad = /NaN|undefined|Infinity|\[object/;
+  for (const sp of SPECIES) {
+    for (const cracks of [0, 3]) {
+      const svg = toSvgString(eggArt(sp, { cracks }));
+      assert.doesNotMatch(svg, bad, `${sp.key} Ei`);
+      assert.match(svg, /class="[^"]*egg-body/, `${sp.key}: das Ei braucht einen beweglichen Körper`);
+    }
+  }
+  for (const color of Object.keys(DROP_COLORS)) for (const open of [false, true]) assert.doesNotMatch(toSvgString(crateArt(color, { open })), bad, color);
+  for (const id of [...Object.keys(ITEMS), 'shard']) assert.doesNotMatch(toSvgString(itemArt(id)), bad, id);
+  for (const id of Object.keys(DECOR)) assert.doesNotMatch(toSvgString(decorArt(id)), bad, id);
+  assert.doesNotMatch(toSvgString(eventArt([...EVENTS.map((e) => e.id), 'evolution'])), bad);
+  assert.equal(eventArt([]), null, 'ohne Event keine Ebene');
+  // Gleiche Grafik zweimal auf einer Seite: IDs dürfen sich nicht überschneiden
+  const ids = (s) => [...s.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
+  const a = ids(toSvgString(eggArt(SPECIES[0]))), b = ids(toSvgString(eggArt(SPECIES[0])));
+  assert.equal(a.filter((x) => b.includes(x)).length, 0);
 });

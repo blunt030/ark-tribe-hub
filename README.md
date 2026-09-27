@@ -84,6 +84,9 @@ versuchen, OaO-Bestellungen zu sehen: muss überall 404 geben).
 | CSRF-Schutz, Rate-Limiting, Brute-Force-Sperre, Security-Header | ✅ |
 | Weboberfläche im Look des Moodboards, responsive, 4 Sprachen | ✅ |
 | Dino-Tamagotchi mit allen 217 ARK-Kreaturen, Echtzeit-Pflege, Minispielen, Dossier und Tribe-Gehege | ✅ |
+| Tamagotchi-Tagesspiel: Versorgungskiste mit Serie, Tagesaufgaben, Pfleger-Rang, Händler, Erfolge, Expeditionen, Tricks, Tribe-Rangliste | ✅ |
+| Tamagotchi mit echten Tierbildern und Landschaften aus den ARK-Karten, 20 Gratis-Tiere, weitere per Stripe freischaltbar | ✅ |
+| Tamagotchi-Verwaltung für Developer: Tiere, Preise, Bilder, Verkauf, Events, Ankündigung, Geschenke, Spieler | ✅ |
 | PWA (Manifest + Service Worker, installierbar) | ✅ |
 | Datenbank-Backend wechselt automatisch: SQLite lokal, Postgres gehostet | ✅ |
 
@@ -145,10 +148,23 @@ Backend dieselbe 403/404 wie über die API.
 
 ### Dino-Tamagotchi („Tek-Gotchi“)
 
-Ein virtuelles Haustier nach dem Vorbild des Tamagotchi von 1996 – mit allen
-217 Kreaturen aus dem Katalog. Erreichbar über den Menüpunkt „Dino-Tamagotchi“
-(`#/tamagotchi`), zusätzlich meldet sich das Tier mit einer Kachel auf der
-Startseite und einem Ruf-Zähler am Menüpunkt.
+Ein virtuelles Haustier nach dem Vorbild des Tamagotchi von 1996 mit den
+gemalten Kreaturen aus dem Bestellkatalog. Erreichbar über den Menüpunkt
+„Dino-Tamagotchi“ (`#/tamagotchi`), zusätzlich meldet sich das Tier mit einer
+Kachel auf der Startseite und einem Ruf-Zähler am Menüpunkt.
+
+- **Echte Bilder:** Ausgebrütet werden nur Arten mit echtem, freigestelltem Bild
+  (26 mitgeliefert, weitere lädt der Betreiber hoch). Das Ei liegt im gemalten
+  Nest und bekommt Risse, Säugetiere wachsen in der Brutkapsel heran. Das Tier
+  steht in einer Landschaft aus den ARK-Karten (The Island, Scorched Earth,
+  Aberration, Extinction, Genesis, The Center, Lost Colony, Astraeos) – als
+  schräger 3D-Boden unter gemaltem Himmel, je nach Lebensraum und Tageszeit,
+  jeden Tag eine andere Gegend. Wahlweise gemalte ARK-Kulissen. Flieger schweben,
+  Meerestiere schwimmen hinter einer Wasserfläche.
+- **Gratis und freischaltbar:** 20 Arten sind gratis (vom Betreiber wählbar), die
+  übrigen lassen sich dauerhaft gegen echtes Geld über Stripe Checkout
+  freischalten. Was ein Spieler schon im Spielstand hat, behält er; Zucht geht
+  weiter. Der Server prüft beim Speichern, dass keine fremde Art dazukommt.
 
 - **Klassische Regeln:** je vier Herzen für Sättigung und Laune, Mahlzeit oder
   Snack (Snack macht dick), Häufchen, Krankheit mit teils zwei Medizin-Dosen,
@@ -156,31 +172,94 @@ Startseite und einem Ruf-Zähler am Menüpunkt.
   15 Minuten, pflegeabhängige Entwicklung (Alpha, Treu, Verwildert und eine
   geheime Tek-Form), Tod bzw. Ruhestand und Nachwuchs über Generationen.
 - **ARK-Extras:** Prägung über Pflegeanfragen mit Countdown, Reifestufen,
-  Kryopod als Pause (z. B. im Urlaub), Farbmutationen bei der Zucht.
+  Kryopod als Pause (z. B. im Urlaub), Farbmutationen bei der Zucht,
+  Kibble in sechs Stufen, Pfiff-Tricks ab einer Bindungsstufe, Expeditionen
+  mit Beute (das Tier ist eine Weile unterwegs).
+- **Bedienung:** drei Softkeys statt A/B/C – links „Scan“ (was braucht das Tier,
+  jede Zeile führt direkt zur Lösung), in der Mitte die gerade sinnvollste
+  Aktion (Wärmen, Licht aus, Zudecken, Medizin, Wunsch erfüllen, Kiste …),
+  rechts „Menü“. In Menüs werden sie zu Zurück · OK · Weiter, in Spielen zu
+  Links · Aktion · Rechts. Acht Stationen ums Display: Futter (Beutel),
+  Nachtruhe (Schlafenszeit, Schlafqualität, Zudecken, Nickerchen), Spielen,
+  Tierarzt (Diagnose, Medizin, Heiltrank), Pflege (Aufräumen, Baden),
+  Training (Ermahnen, Tricks), Ausflug (Gassi, Expeditionen), Gehege (Einrichtung).
+- **Jeden Tag ein Grund vorbeizuschauen:** Versorgungskiste mit 7-Tage-Serie in
+  den ARK-Farben (weiß bis Tek, Serienschutz rettet einen verpassten Tag), drei
+  Tagesaufgaben (eine tauschbar) mit Bonus, Angebot des Tages beim Händler,
+  Events nach Kalender (Love Evolved, Fear Evolved …) und das Evolution-Wochenende
+  mit doppelter Erfahrung. Element-Splitter kaufen Vorräte, Einrichtung mit
+  Dauerwirkung und Gehäuse; Erfahrung hebt den Pfleger-Rang und schaltet
+  Einrichtung, Gehäuse und Expeditionsziele frei; 26 Erfolge mit Belohnungen.
 - **Zwei Modi:** *Entspannt* (langsamer Hunger, Licht automatisch, kein Tod –
   der Tribe rettet per Kryopod) und *Klassisch (1996)* mit den harten Regeln.
 - **Echtzeit ohne Server-Takt:** `public/js/tamagotchi/engine.js` rechnet die
   verstrichene Zeit deterministisch in Minutenschritten nach. Ein Rutsch ergibt
   denselben Stand wie viele kleine Schritte; Geräteuhren gleicht die Serverzeit aus.
-- **Grafik ohne Bilddateien:** Jede Art wird aus einem von 21 Körperbauplänen
-  als SVG gezeichnet (Stufen, Varianten, Mimik, Animation per CSS). Dazu 13
-  Lebensräume mit Tageszeit, drei Minispiele, Retro-LCD-Modus, sechs Gehäuse.
+- **Gezeichnete Rückfallebene:** Arten ohne Bild (ältere Spielstände) werden
+  weiter aus einem von 21 Körperbauplänen als SVG gezeichnet und per
+  SVG-Lichtfilter beleuchtet. Dazu Versorgungskisten, Futter, Einrichtung,
+  Event-Dekoration, vier Minispiele, Retro-LCD-Modus, acht Gehäuse.
 
 ```
 public/js/tamagotchi/
-├── engine.js      Spielregeln (ohne DOM, läuft auch in den Node-Tests)
+├── engine.js      Spielregeln des Tiers (ohne DOM, läuft auch in den Node-Tests)
+├── progress.js    Kiste, Serie, Aufgaben, Rang, Händler, Erfolge, Events (ohne DOM)
+├── catalog.js     Spielinhalte als Daten – auch der Server prüft damit
 ├── species.js     alle 217 Arten: Körperbau, Farben, Futter, Lebensraum
-├── art*.js        SVG-Kreaturen · scene.js Lebensräume, Requisiten, Symbole
+├── artwork.js     echte Bilder: Maße, Blickrichtung, Kopf/Maul, Karten-Ausschnitte (ohne DOM)
+├── access.js      wer welche Art ausbrüten darf – dieselbe Regel für Browser und Server
+├── roster.js      Einstellungen des Betreibers im Browser · real.js Tierbild, Nest, Landschaft
+├── buy.js         Kaufdialog und Rückkehr von Stripe · sheet.js Dialoge
+├── art*.js        SVG-Kreaturen · scene.js Symbole · props.js Eier, Kisten, Deko
 ├── store.js       Zustand, Zeitlauf, Speichern mit Revisionsprüfung
-├── device.js      Gerät, Animationen, Kacheln · games.js Minispiele
-├── panels.js      Brutstation, Dossier, Ahnen, Gehege, Einstellungen, Anleitung
+├── device.js      Gerät, Softkeys, Stationen, Animationen · games.js Minispiele
+├── hub.js         „Heute“, Rang & Bindung, Kacheln zum Tier · daily.js Kiste, Beute
+├── shop.js        Händler und Erfolge · panels.js Brutstation, Dossier, Ahnen, Tribe
 └── widget.js      Kachel für die Startseite (wird nachgeladen)
 ```
 
 Gespeichert wird ein Spielstand pro Konto (Tabelle `pets`, JSON bis 64 KB). Der
 Server prüft Aufbau und Wertebereiche, Schreibkonflikte zwischen zwei Geräten
 löst eine Revisionsnummer (409 liefert den neueren Stand mit). Im Tribe-Gehege
-sehen Mitglieder nur die Tiere ihres eigenen Tribes, ohne Pflegeprotokoll.
+sehen Mitglieder nur die Tiere ihres eigenen Tribes, ohne Pflegeprotokoll; die
+Tribe-Rangliste zeigt nur Rang, aktuelle Serie, Rekord und aufgezogene Arten –
+Beutel, Aufgaben und Splitter bleiben privat. Der Tageswechsel folgt der Ortszeit
+des Geräts; eine zurückgestellte Uhr bringt keine zweite Kiste.
+
+### Tamagotchi-Verwaltung (Developer)
+
+Unter „Plattform → Tamagotchi-Verwaltung“ (`#/tamagotchi-admin`, nur Developer):
+
+- **Übersicht:** Spieler, aktiv heute/7 Tage, lebende Tiere, Käufe, Umsatz,
+  beliebteste Tiere und ein Status-Check für den Verkauf.
+- **Tiere:** jede Art auf *Gratis*, *Freischaltbar* oder *Aus* stellen, eigener
+  Preis je Art, Vorlagen (20 gratis, alle, keine). Bild-Editor: freigestelltes
+  PNG/WebP hochladen (bis 3 MB), Blickrichtung, Größe sowie Kopf, Maul und
+  Fußlinie per Klick festlegen, Vorschau im Spiel.
+- **Verkauf:** Stripe-Status, Standardpreis, Links zu AGB und
+  Widerrufsbelehrung, Verkauf an/aus, Käufe und Freischaltungen (entziehen),
+  Tiere verschenken, Schritt-für-Schritt-Anleitung mit Webhook-Adresse.
+- **Spiel & Events:** Ankündigung für alle Spieler, Startguthaben, Kalender-Events
+  und Evolution-Wochenende an/aus, eigene Aktionen mit Zeitraum und Bonus
+  (XP, Splitter, Bindung ×1,5 bis ×3).
+- **Geschenke:** Splitter und Gegenstände an ein Konto oder an alle, optional
+  mit Nachricht und Ablaufdatum; der Server schreibt sie beim Annehmen in den
+  Spielstand.
+- **Spieler:** Tier, Rang, Serie, Splitter und Freischaltungen je Konto; Tier
+  schenken, Geschenk senden, Spielstand zurücksetzen. Alles landet im Audit-Log.
+
+**Stripe einrichten:** Stripe-Konto anlegen, Zahlarten im Dashboard
+einschalten, bei Render `STRIPE_SECRET_KEY` (sk_test_… zum Testen, später
+sk_live_…) eintragen, unter Entwickler → Webhooks den Endpunkt
+`https://<deine-domain>/api/stripe/webhook` mit den Ereignissen
+`checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+`checkout.session.async_payment_failed`, `checkout.session.expired` und
+`charge.refunded` anlegen und dessen Signing Secret als
+`STRIPE_WEBHOOK_SECRET` eintragen. Danach in der Verwaltung AGB- und
+Widerrufs-Link setzen und „Verkauf aktiv“ einschalten. Vor dem Bezahlen stimmt
+der Spieler ausdrücklich der sofortigen Freischaltung zu (digitale Inhalte,
+Erlöschen des Widerrufsrechts); die Rechtstexte sollte der Betreiber prüfen
+lassen. Ohne Schlüssel bleibt der Kaufen-Knopf aus.
 
 ### Frontend-Tests: echter Browser, nicht nur Behauptung
 
@@ -385,9 +464,23 @@ Developer zusätzlich: `POST/PATCH /categories`, `POST/PATCH /items`, `POST /ite
 `GET/PUT /notifications/preferences`
 
 ### Dino-Tamagotchi
-`GET /pet` (eigener Spielstand + Serverzeit) · `PUT /pet` mit `{ doc, baseRevision }`
-(409 bei veralteter Revision, liefert den aktuellen Stand) · `GET /pet/tribe`
-(Tiere des eigenen Tribes, ohne Protokoll und Sammelkatalog)
+`GET /pet` (eigener Spielstand, Serverzeit und `config` mit Bildern, Gratis-Arten,
+Preisen, Freischaltungen, Events, Ankündigung und Geschenken) · `PUT /pet` mit
+`{ doc, baseRevision }` (409 bei veralteter Revision, liefert den aktuellen Stand;
+403 `SPECIES_LOCKED` bei einer nicht freigeschalteten neuen Art) · `GET /pet/config` ·
+`GET /pet/tribe` (Tiere des eigenen Tribes, ohne Protokoll und Sammelkatalog, dazu
+Rang-Erfahrung, Serie und Rekord für die Rangliste) · `GET /pet/art/:species`
+(hochgeladenes Tierbild) · `POST /pet/gifts/:id/claim` · `POST /pet/checkout` mit
+`{ species, consent: true }` (Stripe-Checkout-Adresse) · `POST /pet/checkout/confirm`
+mit `{ sessionId }` · `POST /stripe/webhook` (ohne Anmeldung, Stripe-Signatur)
+
+### Tamagotchi-Verwaltung (nur Developer)
+`GET /developer/pet` · `GET /developer/pet/overview` · `PATCH /developer/pet/settings`
+(`roster`, `sale`, `game`) · `POST|PATCH|DELETE /developer/pet/art/:species` ·
+`GET /developer/pet/purchases` · `POST /developer/pet/unlocks` ·
+`DELETE /developer/pet/unlocks/:userId/:species` · `GET /developer/pet/players` ·
+`DELETE /developer/pet/players/:userId` · `GET|POST /developer/pet/gifts` ·
+`DELETE /developer/pet/gifts/:id`
 
 ### Admin (eigener Tribe)
 `GET /admin/members` · `PATCH /admin/members/:id/approve|reject|disable|roles` ·

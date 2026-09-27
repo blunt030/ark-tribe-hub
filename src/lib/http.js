@@ -47,6 +47,25 @@ export function readJsonBody(req) {
   });
 }
 
+/** Roher Body (z. B. für Webhook-Signaturen, die über die exakten Bytes gebildet werden). */
+export function readRawBody(req, limit = 256 * 1024) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(payloadTooLarge());
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
 export function sendJson(res, status, body) {
   const payload = JSON.stringify(body);
   if (!res.headersSent) {

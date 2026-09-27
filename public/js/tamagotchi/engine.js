@@ -14,8 +14,11 @@
  * nach 15 Minuten, Disziplin über „Fake-Rufe“, Kot, Krankheit mit teils zwei
  * Medizin-Dosen, Licht aus zur Schlafenszeit, pflegeabhängige Entwicklung) und
  * aus ARK (Prägung über Pflegeanfragen, Reifestufen, Alpha-/Tek-Varianten,
- * Kryopod als Pause, Zucht mit Farbmutationen).
+ * Kryopod als Pause, Zucht mit Farbmutationen, Kibble-Stufen, Pfiff-Kommandos).
+ * Dazu kommen Schlafqualität, Fellpflege, Tricks und Expeditionen.
  */
+
+import { ITEMS, TRICKS, TRICK_SESSIONS, ZONES, BOND } from './catalog.js';
 
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;
@@ -25,8 +28,8 @@ export const STAGES = ['egg', 'baby', 'juvenile', 'adolescent', 'adult', 'elder'
 export const VARIANTS = ['alpha', 'loyal', 'feral', 'tek'];
 export const PERSONALITIES = ['glutton', 'playful', 'sleepy', 'robust', 'cheeky', 'clingy', 'nightowl'];
 export const MODES = ['relaxed', 'classic'];
-export const REQUEST_TYPES = ['cuddle', 'walk', 'meal', 'snack'];
-export const DOC_VERSION = 1;
+export const REQUEST_TYPES = ['cuddle', 'walk', 'meal', 'kibble'];
+export const DOC_VERSION = 2;
 export const NAME_MAX = 24;
 
 export const EGG_TIME = 2 * MINUTE;
@@ -60,7 +63,16 @@ const MAX_CATCH_UP = 60 * DAY;
 const LOG_MAX = 60;
 const HALL_MAX = 30;
 const WARM_MAX = 12;
-export const COOLDOWN = { cuddle: 10 * MINUTE, walk: 30 * MINUTE };
+export const COOLDOWN = { cuddle: 10 * MINUTE, walk: 30 * MINUTE, groom: 6 * HOUR, toy: 20 * MINUTE, train: 10 * MINUTE };
+// Fellpflege: nach 12 Stunden beginnt die Hygiene zu sinken (2,5 % je Stunde).
+const GROOM_GRACE = 12;
+const GROOM_DECAY = 2.5;
+// Schlafqualität: Anteil der Nacht mit Licht aus.
+const SLEEP_GOOD = 0.85;
+const SLEEP_BAD = 0.5;
+const BUFF_LEN = { rested: 8 * HOUR, dreamy: 8 * HOUR, restless: 4 * HOUR, shiny: 6 * HOUR };
+const MEAL = { kind: 'meal', hunger: 25, happy: 0, weight: 1 };
+const SNACK = { kind: 'snack', hunger: 5, happy: 20, weight: 2 };
 
 // Wirkung der Persönlichkeit (moderne Tamagotchis kennen das seit der Uni).
 const TRAITS = {
@@ -140,6 +152,21 @@ export function newDoc() {
   return { v: DOC_VERSION, pet: null, dex: {}, hall: [], settings: { shell: 'tek', retro: false } };
 }
 
+/** Ergänzt Felder, die ein Spielstand aus Version 1 noch nicht kennt. */
+export function migratePet(p, now) {
+  if (!p) return p;
+  p.bond ??= 0;
+  p.tricks ||= {};
+  p.buffs ||= {};
+  p.groomedAt ??= now;
+  p.exp ??= null;
+  p.night ??= null;
+  p.trickDay ??= null;
+  p.cool ||= {};
+  p.stats = { kibble: 0, grooms: 0, trains: 0, tricks: 0, expeditions: 0, ...(p.stats || {}) };
+  return p;
+}
+
 export function createPet({ species, name, now, seed = newSeed(), mode = 'relaxed', gen = 1, colors = null, mutations = 0, personality }) {
   seed >>>= 0;
   return {
@@ -190,7 +217,14 @@ export function createPet({ species, name, now, seed = newSeed(), mode = 'relaxe
     cool: {},
     cryo: null,
     dazedUntil: null,
-    stats: { meals: 0, snacks: 0, games: 0, wins: 0, cleans: 0, meds: 0, cuddles: 0, walks: 0, scolds: 0 },
+    stats: { meals: 0, snacks: 0, games: 0, wins: 0, cleans: 0, meds: 0, cuddles: 0, walks: 0, scolds: 0, kibble: 0, grooms: 0, trains: 0, tricks: 0, expeditions: 0 },
+    bond: 0,
+    tricks: {},
+    buffs: {},
+    groomedAt: now,
+    exp: null,
+    night: null,
+    trickDay: null,
     dex: {},
     log: [],
     end: null,
@@ -258,12 +292,19 @@ function evolve(p, at) {
   log(p, at, 'evolve', to);
 }
 
-function scheduledSleep(p, T, env, tr) {
-  const s = SCHEDULE[p.stage];
-  if (!s) return false;
+/** Schlafenszeit als [Beginn, Ende] in Minuten nach Mitternacht (Ortszeit); Babys halten nur Nickerchen. */
+export function sleepWindow(p) {
+  const s = SCHEDULE[p?.stage];
+  if (!s) return null;
+  const tr = TRAITS[p.personality] || {};
   const shift = (tr.shift || 0) * 60;
-  const start = (s[0] * 60 + shift) % 1440;
-  const end = (s[1] * 60 + shift + (tr.sleepLonger || 0) * 60) % 1440;
+  return [(s[0] * 60 + shift) % 1440, (s[1] * 60 + shift + (tr.sleepLonger || 0) * 60) % 1440];
+}
+
+function scheduledSleep(p, T, env) {
+  const w = sleepWindow(p);
+  if (!w) return false;
+  const [start, end] = w;
   const m = env.minuteOfDay(T);
   return start < end ? m >= start && m < end : m >= start || m < end;
 }
@@ -272,6 +313,8 @@ function fallAsleep(p, T, nap) {
   p.asleep = true;
   p.nap = nap;
   p.sleptAt = T;
+  // Die Nacht wird mitgeschrieben: wie lange war das Licht aus, wurde zugedeckt?
+  if (!nap) p.night = { from: T, total: 0, dark: 0, tucked: false };
   p.lightsOnAt = null;
   p.lightsMistake = false;
   // Wer einschläft, hört auf zu quengeln – das zählt nicht als Erziehungsfehler.
@@ -281,13 +324,35 @@ function fallAsleep(p, T, nap) {
   log(p, T, nap ? 'nap' : 'sleep');
 }
 
-function sleepCheck(p, T, env, tr) {
+/**
+ * Bewertet die Nacht beim Aufwachen: Licht fast die ganze Zeit aus → erholt
+ * (zugedeckt sogar „traumhaft“), Licht meist an → unruhig. Die Wirkung hält
+ * über den Tag an (siehe buffMods).
+ */
+function endNight(p, T, env) {
+  const n = p.night;
+  p.night = null;
+  if (!n || n.total < 60) return;
+  const q = n.dark / n.total + (env.mods?.sleep || 0);
+  if (q >= SLEEP_GOOD) {
+    const kind = n.tucked ? 'dreamy' : 'rested';
+    p.buffs[kind] = T + BUFF_LEN[kind];
+    p.m.happy = clamp(p.m.happy + (n.tucked ? 10 : 5));
+    log(p, T, 'slept', kind);
+  } else if (q < SLEEP_BAD) {
+    p.buffs.restless = T + BUFF_LEN.restless;
+    log(p, T, 'slept', 'restless');
+  } else log(p, T, 'slept', 'ok');
+}
+
+function sleepCheck(p, T, env) {
   if (p.napUntil != null && T >= p.napUntil) p.napUntil = null;
-  const sched = scheduledSleep(p, T, env, tr);
+  const sched = scheduledSleep(p, T, env);
   const shouldSleep = sched || p.napUntil != null;
   if (shouldSleep && !p.asleep) fallAsleep(p, T, !sched);
   else if (shouldSleep && p.nap && sched) fallAsleep(p, T, false); // Nickerchen geht in den Nachtschlaf über
   else if (!shouldSleep && p.asleep) {
+    if (!p.nap) endNight(p, T, env);
     p.asleep = false;
     p.nap = false;
     p.sleptAt = null;
@@ -297,7 +362,17 @@ function sleepCheck(p, T, env, tr) {
   }
 }
 
-function sickChance(p, T, tr) {
+/** Wirkung von Schlaf und Fellpflege auf den Tag. */
+function buffMods(p, T) {
+  const b = p.buffs || {};
+  let happy = 1, energy = 1, sick = 1;
+  if (b.dreamy > T) { happy *= 0.75; energy *= 0.6; } else if (b.rested > T) { happy *= 0.85; energy *= 0.75; }
+  if (b.restless > T) { happy *= 1.25; energy *= 1.2; }
+  if (b.shiny > T) { happy *= 0.9; sick *= 0.6; }
+  return { happy, energy, sick };
+}
+
+function sickChance(p, T, tr, extra = 1) {
   let c = 0.00003;
   for (const since of p.poopSince) if (T - since > 30 * MINUTE) c += 0.00025;
   if (p.m.weight > BASE_WEIGHT[p.stage] * 1.6) c += 0.0002;
@@ -305,7 +380,8 @@ function sickChance(p, T, tr) {
   if (p.m.health < 40) c += 0.0003;
   if (p.stage === 'baby') c *= 0.5;
   if (p.asleep) c *= 0.5;
-  return c * (tr.sick || 1);
+  if (hygiene(p, T) < 30) c *= 1.6;
+  return c * (tr.sick || 1) * extra;
 }
 
 function addMistake(p, T, kind) {
@@ -327,11 +403,12 @@ function careCheck(p, key, T) {
   }
 }
 
-function lightsCheck(p, T) {
+function lightsCheck(p, T, env) {
   if (!p.asleep || p.nap || p.lightsOff || p.sleptAt == null) return;
   const since = Math.max(p.sleptAt, p.lightsOnAt ?? 0);
   if (T - since < CARE_WINDOW) return;
-  if (p.mode !== 'classic') { p.lightsOff = true; return; }
+  // Entspannter Modus oder Nachtlicht im Gehege: das Licht geht von selbst aus.
+  if (p.mode !== 'classic' || env.mods?.night) { p.lightsOff = true; return; }
   if (!p.lightsMistake) { p.lightsMistake = true; addMistake(p, T, 'lights'); }
 }
 
@@ -374,7 +451,7 @@ function requestCheck(p, T, n) {
   if (T < p.nextRequestAt) return;
   if (p.asleep) { p.nextRequestAt = T + 15 * MINUTE; return; }
   const r = rand(p.seed, n, SALT.request);
-  const type = r < 0.35 ? 'cuddle' : r < 0.6 ? 'walk' : r < 0.8 ? 'meal' : 'snack';
+  const type = r < 0.35 ? 'cuddle' : r < 0.6 ? 'walk' : r < 0.8 ? 'meal' : 'kibble';
   p.request = { type, at: T, until: T + REQUEST_WINDOW };
   p.nextRequestAt = null;
   log(p, T, 'request', type);
@@ -397,6 +474,25 @@ function collapse(p, T) {
   log(p, T, 'rescue');
 }
 
+/**
+ * Unterwegs auf Expedition: das Tier sucht sich selbst Futter (Werte sinken
+ * langsamer), es gibt keinen Kot, keine Krankheit und keine Pflegefehler.
+ * Anfragen, Quengeln und Häufchen-Zeitpunkte werden verschoben.
+ */
+function awayTick(p, T, st, tr) {
+  const m = p.m;
+  const mode = p.mode === 'classic' ? 1 : RELAXED_DECAY;
+  m.hunger = clamp(m.hunger - (100 / DECAY.hunger[st]) * 0.5 * mode * (tr.hunger || 1));
+  m.happy = clamp(m.happy - (100 / DECAY.happy[st]) * 0.3 * mode);
+  m.energy = clamp(m.energy - (100 / DECAY.energy[st]) * 0.8, 5);
+  if (p.request) p.request.until += MINUTE;
+  else if (p.nextRequestAt != null) p.nextRequestAt += MINUTE;
+  if (p.nextMisbehaveAt != null) p.nextMisbehaveAt += MINUTE;
+  if (p.nextPoopAt != null) p.nextPoopAt += MINUTE;
+  p.empty.hunger = null;
+  p.empty.happy = null;
+}
+
 function tick(p, T, env) {
   const n = minuteIndex(T);
   if (p.stage === 'egg') {
@@ -409,14 +505,29 @@ function tick(p, T, env) {
   const tr = TRAITS[p.personality] || {};
   const st = p.stage;
   const m = p.m;
-  sleepCheck(p, T, env, tr);
+  if (p.exp && !p.exp.done) {
+    if (T < p.exp.until) { awayTick(p, T, st, tr); return; }
+    p.exp.done = true;
+    log(p, T, 'returned', p.exp.zone);
+  }
+  sleepCheck(p, T, env);
+
+  // Abgelaufene Wirkungen stündlich aufräumen (an festen Minuten: bleibt deterministisch).
+  if (n % 60 === 0) for (const k of Object.keys(p.buffs)) if (p.buffs[k] <= T) delete p.buffs[k];
+  if (p.asleep && !p.nap && p.night) {
+    p.night.total += 1;
+    if (p.lightsOff) p.night.dark += 1;
+  }
+  const mods = env.mods || {};
+  const bm = buffMods(p, T);
+  const dirty = hygiene(p, T) < 30 ? 1.1 : 1;
 
   const slow = (p.asleep ? SLEEP_DECAY : 1) * (p.mode === 'classic' ? 1 : RELAXED_DECAY);
-  m.hunger = clamp(m.hunger - (100 / DECAY.hunger[st]) * slow * (tr.hunger || 1));
-  m.happy = clamp(m.happy - (100 / DECAY.happy[st]) * slow * (tr.happy || 1) * (m.health < 40 ? 1.3 : 1));
+  m.hunger = clamp(m.hunger - (100 / DECAY.hunger[st]) * slow * (tr.hunger || 1) * (mods.hunger || 1));
+  m.happy = clamp(m.happy - (100 / DECAY.happy[st]) * slow * (tr.happy || 1) * (m.health < 40 ? 1.3 : 1) * bm.happy * (mods.happy || 1) * dirty);
   if (p.asleep) m.energy = clamp(m.energy + 100 / (p.lightsOff ? ENERGY_REGEN.dark : ENERGY_REGEN.light));
   else {
-    m.energy = clamp(m.energy - (100 / DECAY.energy[st]) * (tr.energy || 1));
+    m.energy = clamp(m.energy - (100 / DECAY.energy[st]) * (tr.energy || 1) * bm.energy * (mods.energy || 1));
     if (m.energy <= 0) {
       p.napUntil = T + (st === 'baby' ? 15 : 45) * MINUTE;
       fallAsleep(p, T, true);
@@ -435,7 +546,7 @@ function tick(p, T, env) {
     }
   }
 
-  if (!p.sick && rand(p.seed, n, SALT.sick) < sickChance(p, T, tr)) {
+  if (!p.sick && rand(p.seed, n, SALT.sick) < sickChance(p, T, tr, bm.sick * (mods.sick || 1))) {
     p.sick = rand(p.seed, n, SALT.doses) < 0.3 ? 2 : 1;
     p.sickSince = T;
     log(p, T, 'sick');
@@ -451,7 +562,7 @@ function tick(p, T, env) {
 
   careCheck(p, 'hunger', T);
   careCheck(p, 'happy', T);
-  lightsCheck(p, T);
+  lightsCheck(p, T, env);
   misbehaveCheck(p, T, n, tr);
   requestCheck(p, T, n);
 
@@ -509,10 +620,14 @@ export function advanceDoc(doc, now, env = ENV) {
 const fail = (code) => ({ ok: false, code });
 const done = (code, extra) => ({ ok: true, code, ...extra });
 
+/** Ist das Tier gerade auf Expedition (noch nicht zurück)? */
+export const isAway = (p) => Boolean(p?.exp && !p.exp.done);
+
 function blocked(p, { awake = true, hatched = true } = {}) {
   if (!p) return 'no_pet';
   if (p.end) return 'gone';
   if (p.cryo) return 'frozen';
+  if (isAway(p)) return 'away';
   if (hatched && p.stage === 'egg') return 'egg';
   if (awake && p.asleep) return 'asleep';
   return null;
@@ -521,8 +636,8 @@ function blocked(p, { awake = true, hatched = true } = {}) {
 const minWeight = (p) => Math.max(1, Math.round(BASE_WEIGHT[p.stage] * 0.5));
 const isDazed = (p, now) => p.dazedUntil != null && now < p.dazedUntil;
 
-function fulfill(p, type, now) {
-  if (p.request?.type !== type) return 0;
+function fulfill(p, types, now) {
+  if (!p.request || ![].concat(types).includes(p.request.type)) return 0;
   const before = p.m.imprint;
   p.m.imprint = Math.min(100, p.m.imprint + IMPRINT_GAIN);
   p.request = null;
@@ -531,23 +646,45 @@ function fulfill(p, type, now) {
   return p.m.imprint - before;
 }
 
-export function feed(p, kind, now) {
+/** Futterbeschreibung aus Name ('meal', 'snack') oder Gegenstand des Beutels. */
+export function foodDef(food) {
+  if (food && typeof food === 'object') return food;
+  if (food === 'meal') return MEAL;
+  if (food === 'snack') return SNACK;
+  return ITEMS[food] && ['kibble', 'snack', 'boost'].includes(ITEMS[food].kind) ? ITEMS[food] : null;
+}
+
+/**
+ * Füttern. Grundfutter („meal“) ist unbegrenzt; Kibble macht satter und
+ * glücklicher und erfüllt auch Kibble-Wünsche; Leckerli heben die Laune (zu
+ * viele verderben den Magen); Stimbeeren geben Energie.
+ */
+export function feed(p, food, now) {
+  const def = foodDef(food);
+  if (!def) return fail('food');
   const b = blocked(p);
   if (b) return fail(b);
   const tr = TRAITS[p.personality] || {};
-  if (kind === 'meal') {
-    if (p.m.hunger >= 100) return fail('full');
-    p.m.hunger = clamp(p.m.hunger + 25);
-    p.m.happy = clamp(p.m.happy + (tr.mealJoy || 0));
-    p.m.weight += 1;
-    p.stats.meals += 1;
-    const imprint = fulfill(p, 'meal', now);
-    log(p, now, 'meal');
-    return done('meal', { imprint });
+  if (def.kind === 'boost') {
+    if (p.m.energy >= 100) return fail('not_tired');
+    p.m.energy = clamp(p.m.energy + (def.energy || 30));
+    log(p, now, 'boost');
+    return done('boost');
   }
-  p.m.happy = clamp(p.m.happy + 20);
-  p.m.hunger = clamp(p.m.hunger + 5);
-  p.m.weight += 2;
+  if (def.kind === 'meal' || def.kind === 'kibble') {
+    if (p.m.hunger >= 100) return fail('full');
+    p.m.hunger = clamp(p.m.hunger + def.hunger);
+    p.m.happy = clamp(p.m.happy + (def.happy || 0) + (tr.mealJoy || 0));
+    p.m.weight += def.weight || 1;
+    p.stats.meals += 1;
+    if (def.kind === 'kibble') p.stats.kibble = (p.stats.kibble || 0) + 1;
+    const imprint = fulfill(p, def.kind === 'kibble' ? ['kibble', 'meal'] : ['meal'], now);
+    log(p, now, def.kind, def.tier);
+    return done(def.kind, { imprint, tier: def.tier || 0 });
+  }
+  p.m.happy = clamp(p.m.happy + (def.happy ?? 20));
+  p.m.hunger = clamp(p.m.hunger + (def.hunger ?? 5));
+  p.m.weight += def.weight ?? 2;
   p.stats.snacks += 1;
   p.snacks = p.snacks.filter((t) => now - t < 2 * HOUR);
   p.snacks.push(now);
@@ -559,7 +696,7 @@ export function feed(p, kind, now) {
     tummy = true;
     log(p, now, 'sick', 'tummy');
   }
-  const imprint = fulfill(p, 'snack', now);
+  const imprint = fulfill(p, ['snack'], now);
   log(p, now, 'snack');
   return done('snack', { imprint, tummy });
 }
@@ -600,18 +737,19 @@ export function clean(p, now) {
   return done('clean');
 }
 
-export function medicine(p, now) {
+/** Medizin: eine Dosis (manchmal sind zwei nötig). Der Heiltrank heilt sofort. */
+export function medicine(p, now, strong = false) {
   const b = blocked(p, { awake: false });
   if (b) return fail(b);
   if (!p.sick) {
-    if (!p.asleep) p.m.happy = clamp(p.m.happy - 5);
+    if (!p.asleep && !strong) p.m.happy = clamp(p.m.happy - 5);
     return fail('healthy');
   }
-  p.sick -= 1;
+  p.sick = strong ? 0 : p.sick - 1;
   p.stats.meds += 1;
   if (!p.sick) {
     p.sickSince = null;
-    p.m.health = clamp(p.m.health + 10);
+    p.m.health = clamp(p.m.health + (strong ? 25 : 10));
     log(p, now, 'cured');
     return done('cured');
   }
@@ -638,6 +776,150 @@ export function lights(p, now) {
     return done('nap');
   }
   return fail('not_tired');
+}
+
+/**
+ * Zudecken: Licht aus und Decke drüber. Nur einmal pro Nacht – wer es tut und
+ * das Licht ausgelassen hat, bekommt morgens ein „traumhaft“ erholtes Tier.
+ */
+export function tuck(p, now) {
+  const b = blocked(p, { awake: false });
+  if (b) return fail(b);
+  if (!p.asleep) return fail('not_asleep');
+  if (p.nap) {
+    if (p.lightsOff) return fail('already_tucked');
+    p.lightsOff = true;
+    return done('lights_off');
+  }
+  if (p.night?.tucked) return fail('already_tucked');
+  p.night ||= { from: now, total: 0, dark: 0, tucked: false };
+  p.night.tucked = true;
+  p.lightsOff = true;
+  log(p, now, 'tucked');
+  return done('tucked');
+}
+
+/** Baden und Bürsten: sauberes, glänzendes Fell – bessere Laune, seltener krank. */
+export function groom(p, now) {
+  const b = blocked(p);
+  if (b) return fail(b);
+  if (cooldownLeft(p, 'groom', now) > 0) return fail('cooldown');
+  p.groomedAt = now;
+  p.cool.groom = now + COOLDOWN.groom;
+  p.buffs.shiny = now + BUFF_LEN.shiny;
+  p.m.happy = clamp(p.m.happy + 8);
+  p.stats.grooms = (p.stats.grooms || 0) + 1;
+  log(p, now, 'groom');
+  return done('groom');
+}
+
+/** Spielzeug aus dem Gehege: kurzes Spiel ohne Minispiel. */
+export function toyPlay(p, now) {
+  const b = canPlay(p, now, 5);
+  if (b) return fail(b);
+  if (cooldownLeft(p, 'toy', now) > 0) return fail('cooldown');
+  p.cool.toy = now + COOLDOWN.toy;
+  p.m.happy = clamp(p.m.happy + 12);
+  p.m.energy = clamp(p.m.energy - 3);
+  log(p, now, 'toy');
+  return done('toy');
+}
+
+/** Bindungsstufe 1–10 aus den gesammelten Bindungspunkten. */
+export function bondLevel(p) {
+  const pts = p?.bond || 0;
+  let level = 1;
+  for (let i = 1; i < BOND.length; i++) if (pts >= BOND[i]) level = i + 1;
+  return level;
+}
+
+export function bondProgress(p) {
+  const level = bondLevel(p);
+  const lo = BOND[level - 1], hi = BOND[level];
+  return { level, pct: hi == null ? 100 : clamp(((p?.bond || 0) - lo) / (hi - lo) * 100), next: hi ?? null };
+}
+
+export const learned = (p, trick) => (p?.tricks?.[trick] || 0) >= TRICK_SESSIONS;
+
+/** locked (Bindung zu niedrig) · training · learned */
+export function trickState(p, trick) {
+  if (learned(p, trick)) return 'learned';
+  return bondLevel(p) >= (TRICKS[trick]?.bond ?? 99) ? 'training' : 'locked';
+}
+
+/**
+ * Eine Trainingseinheit (das Pfiff-Minispiel entscheidet über `success`).
+ * Drei gelungene Einheiten und der Trick sitzt.
+ */
+export function train(p, trick, success, now) {
+  const b = canPlay(p, now, 8);
+  if (b) return fail(b);
+  if (p.stage === 'baby') return fail('too_young');
+  const state = TRICKS[trick] ? trickState(p, trick) : null;
+  if (!state) return fail('trick');
+  if (state === 'locked') return fail('bond');
+  if (state === 'learned') return fail('learned');
+  if (cooldownLeft(p, 'train', now) > 0) return fail('cooldown');
+  p.cool.train = now + COOLDOWN.train;
+  p.m.energy = clamp(p.m.energy - 6);
+  p.stats.trains = (p.stats.trains || 0) + 1;
+  if (!success) {
+    p.m.happy = clamp(p.m.happy - 2);
+    log(p, now, 'train_fail', trick);
+    return done('train_fail', { trick, progress: p.tricks[trick] || 0 });
+  }
+  p.tricks[trick] = (p.tricks[trick] || 0) + 1;
+  p.m.discipline = Math.min(100, p.m.discipline + 5);
+  const mastered = p.tricks[trick] >= TRICK_SESSIONS;
+  log(p, now, mastered ? 'trick_learned' : 'train', trick);
+  return done(mastered ? 'trick_learned' : 'trained', { trick, progress: p.tricks[trick] });
+}
+
+/** Gelernten Trick vorführen – die Belohnung gibt es einmal pro Tag (`day`). */
+export function perform(p, trick, now, day) {
+  const b = blocked(p);
+  if (b) return fail(b);
+  if (!learned(p, trick)) return fail('trick');
+  if (p.trickDay === day) {
+    log(p, now, 'trick', trick);
+    return done('performed_again', { trick });
+  }
+  p.trickDay = day;
+  p.m.happy = clamp(p.m.happy + 12);
+  p.stats.tricks = (p.stats.tricks || 0) + 1;
+  log(p, now, 'trick', trick);
+  return done('performed', { trick });
+}
+
+/** Kann das Tier gerade auf Expedition gehen? Liefert sonst den Grund. */
+export function canExplore(p, now) {
+  const b = canPlay(p, now, 40);
+  if (b) return b;
+  if (p.stage === 'baby') return 'too_young';
+  if (p.exp) return 'away';
+  if (p.misbehave) return 'attention';
+  if (p.m.hunger < 40) return 'hungry';
+  return null;
+}
+
+/** Expedition starten: das Tier ist eine Weile unterwegs und bringt Beute mit. */
+export function explore(p, zone, now) {
+  if (!ZONES[zone]) return fail('zone');
+  const b = canExplore(p, now);
+  if (b) return fail(b);
+  // Rückkehr auf einer Minutengrenze – dort rechnet advance(), das Tier ist also pünktlich zurück.
+  const until = Math.ceil((now + ZONES[zone].mins * MINUTE) / MINUTE) * MINUTE;
+  p.exp = { zone, at: now, until, done: false };
+  log(p, now, 'expedition', zone);
+  return done('expedition', { until, zone });
+}
+
+/** Expedition abbrechen: das Tier kommt sofort zurück, ohne Beute. */
+export function recall(p, now) {
+  if (!isAway(p)) return fail('not_away');
+  p.exp = null;
+  log(p, now, 'recalled');
+  return done('recalled');
 }
 
 export function scold(p, now) {
@@ -700,15 +982,19 @@ export function warm(p, now) {
 export function freeze(p, now) {
   if (!p || p.end) return fail('gone');
   if (p.cryo) return fail('frozen');
+  if (isAway(p)) return fail('away');
   p.cryo = { at: now, reason: 'manual' };
   log(p, now, 'cryo');
   return done('cryo');
 }
 
 function shiftTimes(p, d) {
-  for (const k of ['bornAt', 'hatchAt', 'stageAt', 'sleptAt', 'napUntil', 'lightsOnAt', 'nextPoopAt', 'sickSince', 'nextMisbehaveAt', 'nextRequestAt', 'dazedUntil']) {
+  for (const k of ['bornAt', 'hatchAt', 'stageAt', 'sleptAt', 'napUntil', 'lightsOnAt', 'nextPoopAt', 'sickSince', 'nextMisbehaveAt', 'nextRequestAt', 'dazedUntil', 'groomedAt']) {
     if (typeof p[k] === 'number') p[k] += d;
   }
+  for (const k of Object.keys(p.buffs || {})) p.buffs[k] += d;
+  if (p.exp) { p.exp.at += d; p.exp.until += d; }
+  if (p.night) p.night.from += d;
   p.poopSince = p.poopSince.map((t) => t + d);
   p.snacks = p.snacks.map((t) => t + d);
   if (p.misbehave) p.misbehave.at += d;
@@ -742,7 +1028,7 @@ export function setMode(p, mode) {
 }
 
 export function canBreed(p, now) {
-  if (!p || p.end || p.cryo || p.sick || p.asleep) return false;
+  if (!p || p.end || p.cryo || p.sick || p.asleep || p.exp) return false;
   return (p.stage === 'adult' && now - p.stageAt >= BREED_AFTER) || p.stage === 'elder';
 }
 
@@ -815,10 +1101,14 @@ export function ageMs(p, now) {
   return Math.max(0, until - p.hatchAt);
 }
 
-/** Alles, was gerade Aufmerksamkeit braucht. „poop“ ist ein stiller Hinweis ohne Ruf. */
+/**
+ * Alles, was gerade Aufmerksamkeit braucht. „poop“, „dirty“ und „loot“ sind
+ * stille Hinweise ohne Ruf.
+ */
 export function needs(p, now) {
   if (!p || p.end || p.cryo) return [];
   if (p.stage === 'egg') return now >= p.hatchAt ? ['hatch'] : [];
+  if (isAway(p)) return [];
   const r = [];
   if (p.m.hunger <= 0) r.push('hungry');
   if (p.m.happy <= 0) r.push('unhappy');
@@ -827,12 +1117,16 @@ export function needs(p, now) {
   if (p.misbehave) r.push('attention');
   if (p.request) r.push('imprint');
   if (p.poop) r.push('poop');
+  if (hygiene(p, now) < 30) r.push('dirty');
+  if (p.exp?.done) r.push('loot');
   return r;
 }
 
+const SILENT = ['poop', 'hatch', 'dirty', 'loot'];
+
 /** Leuchtet das Aufmerksamkeitssymbol? (Wie beim Original ohne Kot.) */
 export function calling(p, now) {
-  return needs(p, now).filter((n) => n !== 'poop' && n !== 'hatch');
+  return needs(p, now).filter((n) => !SILENT.includes(n));
 }
 
 export function mood(p, now) {
@@ -840,6 +1134,7 @@ export function mood(p, now) {
   if (p.end) return 'gone';
   if (p.cryo) return 'frozen';
   if (p.stage === 'egg') return 'egg';
+  if (isAway(p)) return 'away';
   if (p.asleep) return 'sleep';
   if (p.sick) return 'sick';
   if (isDazed(p, now)) return 'dazed';
@@ -883,6 +1178,17 @@ export function nextRequestIn(p, now) {
   return Math.max(0, p.nextRequestAt - now);
 }
 
-export function hygiene(p) {
-  return p ? clamp(100 - p.poop * 25) : 100;
+/**
+ * Hygiene: Häufchen und Zeit seit der letzten Fellpflege. Die ersten 12 Stunden
+ * nach dem Baden bleibt das Fell sauber, danach sinkt der Wert langsam.
+ */
+export function hygiene(p, now = p?.t) {
+  if (!p) return 100;
+  const hours = p.groomedAt == null ? 0 : Math.max(0, (now - p.groomedAt) / HOUR - GROOM_GRACE);
+  return clamp(100 - p.poop * 20 - hours * GROOM_DECAY);
+}
+
+/** Aktive Stärkungen (Schlaf, Fellglanz) mit Restzeit. */
+export function activeBuffs(p, now) {
+  return Object.entries(p?.buffs || {}).filter(([, until]) => until > now).map(([kind, until]) => ({ kind, left: until - now }));
 }
