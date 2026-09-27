@@ -101,13 +101,15 @@ export async function renderServers(mount, ctx) {
       ? el('div.server-grid', {},
           ...servers.map((s) => {
             const src = serverKartenbild(s);
-            return el('button.server-card', { type: 'button', onclick: () => go('/servers/' + s.id) },
-              el('span.server-card-map', {}, src ? el('img', { src, alt: '', loading: 'lazy' }) : el('span.server-map-missing', {}, uiIcon('map'), el('small', { text: t('srv.map_image_missing') }))),
-              el('span.server-card-copy', {},
+            return el('button.server-tile' + (s.status === 'active' ? '.is-active' : ''), { type: 'button', onclick: () => go('/servers/' + s.id), 'aria-label': `${s.name} · ${s.map_name}` },
+              src ? el('img.server-tile-map', { src, alt: '', loading: 'lazy' })
+                : el('span.server-tile-missing', {}, uiIcon('map'), el('small', { text: t('srv.map_image_missing') })),
+              el('span.server-tile-shade', { 'aria-hidden': 'true' }),
+              pill(t('srv.status.' + s.status), s.status === 'active' ? 'done' : 'muted'),
+              el('span.server-tile-copy', {},
                 el('strong', { text: s.name }),
-                el('span', { text: s.map_name }),
-                pill(t('srv.status.' + s.status), s.status === 'active' ? 'done' : 'muted')),
-              uiIcon('caret-right', 'server-card-chevron'));
+                el('span', {}, uiIcon('map'), el('span', { text: s.map_name }))),
+              el('span.server-tile-open', {}, el('span', { text: t('common.open') }), uiIcon('arrow-right')));
           }))
       : emptyBlock('map', t('srv.none'), t('srv.map_image_hint'))
   );

@@ -102,6 +102,7 @@ export function itemArt(item, { className = '', eggFirst = false } = {}) {
     stage.classList.toggle('is-cutout', !(SZENISCH.has(src) || src === upload));
     img.addEventListener('error', next, { once: true });
     img.src = src;
+    stage.classList.remove('has-badge');
     stage.replaceChildren(img);
     // Kleines Abzeichen: beim Tierbild das Ei/den Embryo, bei eggFirst das Tier.
     const creature = creatureOf(item);
@@ -113,6 +114,7 @@ export function itemArt(item, { className = '', eggFirst = false } = {}) {
       badge.loading = 'lazy';
       badge.addEventListener('error', () => badge.remove(), { once: true });
       badge.src = badgeSrc;
+      stage.classList.add('has-badge');
       stage.append(badge);
     }
   };

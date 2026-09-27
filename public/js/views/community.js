@@ -11,13 +11,14 @@ export async function renderAlliances(mount, { user }) {
   const canEdit = user.roles.some(r => ['admin', 'developer'].includes(r));
   const list = el('div.community-list');
   const editor = el('div');
+  const RELATIONS = ['alliance', 'friend', 'enemy'];
   const draw = () => {
-    list.replaceChildren(...alliances.map(a => el('article.alliance-card.' + a.relationship, {},
+    const card = (a) => el('article.alliance-card.' + a.relationship, {},
       el('span.alliance-icon', {}, uiIcon(RELATION_ICON[a.relationship] || 'users')),
       el('div.alliance-copy', {},
-        el('span.relationship-label', { text: t('alliance.' + a.relationship) }),
-        el('h2', { text: a.name }),
-        el('p', { text: a.server + ' · ' + a.map })),
+        el('h3', { text: a.name }),
+        el('p', {}, uiIcon('hard-drives'), el('span', { text: a.server })),
+        el('p', {}, uiIcon('map'), el('span', { text: a.map }))),
       canEdit ? kebabMenu([
         { label: t('common.edit'), icon: 'pencil-simple', onclick: () => form(a) },
         { label: t('common.delete'), icon: 'trash', danger: true, onclick: async () => {
@@ -25,9 +26,18 @@ export async function renderAlliances(mount, { user }) {
           try { await api.deleteAlliance(a.id); alliances.splice(alliances.indexOf(a), 1); draw(); }
           catch (e) { toast(e.message, 'err'); }
         } },
-      ]) : null
-    )));
-    if (!alliances.length) list.append(emptyBlock('handshake', t('alliance.empty')));
+      ]) : null);
+    list.replaceChildren(
+      el('div.alliance-summary', {}, ...RELATIONS.map((rel) => el('div.alliance-stat.' + rel, {},
+        el('span.alliance-icon', {}, uiIcon(RELATION_ICON[rel])),
+        el('span.alliance-stat-copy', {}, el('strong', { text: String(alliances.filter((a) => a.relationship === rel).length) }), el('span', { text: t('alliance.' + rel) }))))),
+      el('div.alliance-columns', {}, ...RELATIONS.map((rel) => {
+        const rows = alliances.filter((a) => a.relationship === rel);
+        return el('section.ark-panel.alliance-column.' + rel, {},
+          el('header.ark-panel-head', {}, uiIcon(RELATION_ICON[rel], 'ark-panel-icon'), el('h2', { text: t('alliance.' + rel) }), el('span.ark-count', { text: String(rows.length) })),
+          rows.length ? el('div.alliance-list', {}, ...rows.map(card))
+            : el('p.alliance-empty', {}, uiIcon(RELATION_ICON[rel]), el('span', { text: t('alliance.empty') })));
+      })));
   };
   function form(a = {}) {
     const name = el('input', { id: 'alliance-name', required: true, maxlength: 100, value: a.name || '' });
