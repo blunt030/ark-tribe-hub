@@ -13,6 +13,7 @@ import { renderServers, renderServerDetail } from './views/servers.js';
 import { renderTasks, renderTaskForm, renderTaskDetail } from './views/tasks.js';
 import { renderAlliances, renderChat } from './views/community.js';
 import { renderVoice } from './views/voice.js';
+import { loadPet, onPetChange, petCalls, resetPet, savePet } from './tamagotchi/store.js';
 import { uiIcon } from './ui-icons.js';
 
 const root = document.getElementById('root');
@@ -46,6 +47,7 @@ function navItems() {
     ...(user.tribeId ? [{ path: '/tasks', icon: '☑', label: t('nav.tasks') }, { path: '/servers', icon: '◇', label: t('nav.servers') },
       { path: '/chat', icon: '☷', label: t('nav.chat') }, { path: '/voice', icon: '♩', label: t('nav.voice') },
       { path: '/members', icon: '♙', label: t('nav.members') }] : []),
+    { path: '/tamagotchi', icon: 'egg-crack', label: t('nav.tamagotchi'), badge: () => petCalls() },
     { path: '/profile', icon: '◐', label: t('nav.profile') },
     { path: '/notifications', icon: '◔', label: t('nav.notifications'), badge: () => unreadCount },
   ];
@@ -215,7 +217,9 @@ function buildShell() {
   );
   // Ungelesene Mitteilungen liegen jetzt hinter "Mehr" - der Zähler muss deshalb
   // auch am "Mehr"-Knopf auftauchen, sonst würde man sie auf dem Handy übersehen.
-  if (unreadCount > 0) moreBtn.append(el('span.count', { text: String(unreadCount) }));
+  // Dasselbe gilt für Rufe des Tamagotchis.
+  const moreCount = unreadCount + petCalls();
+  if (moreCount > 0) moreBtn.append(el('span.count', { text: String(moreCount) }));
 
   moreBtn.addEventListener('click', () => {
     const closeMenu = () => { sheet.remove(); moreBtn.focus(); };
@@ -298,7 +302,14 @@ const ROUTES = [
   { re: /^\/tribes$/, view: renderTribes },
   { re: /^\/users$/, view: renderUsers },
   { re: /^\/catalog$/, view: renderCatalog },
+  { re: /^\/tamagotchi(?:\/(dossier|hall|tribe))?$/, view: renderTamagotchi },
 ];
+
+// Das Tamagotchi bringt eigene Grafik- und Spielmodule mit. Sie werden erst beim
+// ersten Besuch der Seite geladen, damit der Start der App schlank bleibt.
+function renderTamagotchi(...args) {
+  return import('./views/tamagotchi.js').then((m) => m.renderTamagotchi(...args));
+}
 
 export function go(path, replace = false) {
   if (location.hash === '#' + path) { route(); return; }
@@ -357,6 +368,26 @@ function ctx() {
   return { user, go, onSignOut: signOut, refreshBadges, reloadUser: loadUser };
 }
 
+function paintCount(node, n) {
+  node.querySelector('.count')?.remove();
+  if (n > 0) node.append(el('span.count', { text: String(n) }));
+}
+
+// Das Tamagotchi ruft wie das Original von 1996: Braucht es etwas, zeigt der
+// Menüpunkt einen Zähler - auch wenn man gerade auf einer anderen Seite ist.
+function refreshPetBadge() {
+  const n = petCalls();
+  document.querySelectorAll('[data-path="/tamagotchi"]').forEach((a) => paintCount(a, n));
+  const more = document.querySelector('.bottomnav .more-btn');
+  if (more) paintCount(more, unreadCount + n);
+}
+
+let petWatch = null;
+function watchPet() {
+  petWatch ||= onPetChange(refreshPetBadge);
+  loadPet(user).catch(() => { /* Das Tamagotchi ist optional */ });
+}
+
 async function refreshBadges() {
   try {
     const { notifications } = await api.notifications();
@@ -371,6 +402,7 @@ async function refreshBadges() {
       tb.querySelector('.count')?.remove();
       if (unreadCount > 0) tb.append(el('span.count', { text: String(unreadCount) }));
     }
+    refreshPetBadge();
   } catch { /* Zähler ist nicht kritisch */ }
 }
 
@@ -404,7 +436,9 @@ function startIdleWatch() {
 
 async function signOut(wasIdle = false) {
   stopIdleWatch();
+  await savePet();
   try { await api.logout(); } catch { /* egal, lokal trotzdem abmelden */ }
+  resetPet();
   user = null;
   setCsrf(null);
   location.hash = '';
@@ -429,6 +463,7 @@ async function afterSignIn() {
   }
   await refreshBadgesInitial();
   buildShell();
+  watchPet();
   await route();
 }
 

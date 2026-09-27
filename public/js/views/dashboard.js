@@ -116,6 +116,13 @@ export async function renderDashboard(mount, ctx) {
   );
   mount.append(el('div.dash-main-grid', {}, work, aside));
 
+  // Das Dino-Tamagotchi meldet sich auch hier. Seine Grafik-Module kommen erst,
+  // wenn die Startseite steht – der erste Aufbau bleibt so schnell wie bisher.
+  import('../tamagotchi/widget.js')
+    .then(({ petWidget }) => petWidget({ user, go }))
+    .then((node) => { if (aside.isConnected) aside.prepend(node); })
+    .catch(() => { /* Tamagotchi ist optional */ });
+
   if (pendingMembers.length) mount.append(el('section.dash-panel.dash-attention', {},
     heading(t('admin.pending'), pendingMembers.length, t('dash.show'), () => go('/members')),
     ...pendingMembers.slice(0, 4).map((member) => el('div.dash-task-row', {},

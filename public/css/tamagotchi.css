@@ -1,0 +1,1594 @@
+/* ==========================================================================
+   Dino-Tamagotchi („Tek-Gotchi“)
+   Ei-förmiges Gerät im Liquid-Glass-Look, Bento-Kacheln, Brutstation, Dossier.
+   Gehäusefarben kommen aus data-shell (Einstellungen), die Kreaturen sind
+   Inline-SVG: Mimik und Bewegung steuert dieses Stylesheet über data-face,
+   data-mood und expr-*-Klassen am Tier.
+   ========================================================================== */
+
+.tama-page, .tama-sheet-bg {
+  --t-acc: #5ff2ff;
+  --t-acc2: #8f7bff;
+  --t-on-acc: #03131c;
+  --t-shell-hi: #f2fbff;
+  --t-shell: #9ccbe4;
+  --t-shell-lo: #34607f;
+  --t-ink: #10283a;
+  --t-glass: rgba(13, 22, 31, .66);
+  --t-line: rgba(170, 222, 255, .16);
+  --t-text: #eef6fb;
+  --t-muted: #a9bdcb;
+  --t-good: #6cf2a8;
+  --t-warn: #ffc65c;
+  --t-bad: #ff6b7d;
+  --t-radius: 22px;
+  --t-font: 'Barlow Semi Condensed', system-ui, sans-serif;
+  --t-display: Rajdhani, 'Barlow Semi Condensed', system-ui, sans-serif;
+}
+:is(.tama-page, .tama-sheet-bg)[data-shell="bronze"] {
+  --t-acc: #f5c77e; --t-acc2: #ff8a4c; --t-on-acc: #241304;
+  --t-shell-hi: #ffe8bd; --t-shell: #c98d47; --t-shell-lo: #5b3514; --t-ink: #3a2208;
+}
+:is(.tama-page, .tama-sheet-bg)[data-shell="obsidian"] {
+  --t-acc: #c7a2ff; --t-acc2: #ff5ab4; --t-on-acc: #16062a;
+  --t-shell-hi: #6f6886; --t-shell: #27222f; --t-shell-lo: #09080d; --t-ink: #e6ddff;
+}
+:is(.tama-page, .tama-sheet-bg)[data-shell="amber"] {
+  --t-acc: #ffb547; --t-acc2: #ff6d4a; --t-on-acc: #2a1300;
+  --t-shell-hi: #fff1c4; --t-shell: #ffad3b; --t-shell-lo: #9a4e08; --t-ink: #4a2300;
+}
+:is(.tama-page, .tama-sheet-bg)[data-shell="aberrant"] {
+  --t-acc: #5dffc0; --t-acc2: #c06bff; --t-on-acc: #02201a;
+  --t-shell-hi: #b8ffe9; --t-shell: #34a092; --t-shell-lo: #173247; --t-ink: #06261f;
+}
+:is(.tama-page, .tama-sheet-bg)[data-shell="ice"] {
+  --t-acc: #a8ecff; --t-acc2: #d8c9ff; --t-on-acc: #0b2233;
+  --t-shell-hi: #ffffff; --t-shell: #d9eaf6; --t-shell-lo: #86a6c0; --t-ink: #20405a;
+}
+
+/* ---------- Seite ---------------------------------------------------------- */
+
+.tama-page {
+  position: relative;
+  isolation: isolate;
+  max-width: 1340px;
+  margin-inline: auto;
+  color: var(--t-text);
+  font-family: var(--t-font);
+}
+.tama-page::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -30px -10px auto;
+  height: 640px;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 55% at 18% 34%, color-mix(in srgb, var(--t-acc) 26%, transparent), transparent 72%),
+    radial-gradient(34% 48% at 62% 8%, color-mix(in srgb, var(--t-acc2) 22%, transparent), transparent 72%),
+    radial-gradient(30% 40% at 90% 40%, color-mix(in srgb, var(--t-acc) 12%, transparent), transparent 70%);
+  opacity: .8;
+}
+.tama-page :is(button, a, input, [tabindex]):focus-visible { outline: 2px solid var(--t-acc); outline-offset: 3px; }
+
+.tama-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 16px;
+  margin: 2px 0 16px;
+}
+.tama-hero-copy { min-width: 0; }
+.tama-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 13px/1 var(--t-font);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--t-muted);
+}
+.tama-eyebrow b {
+  padding: 4px 7px 3px;
+  border-radius: 7px;
+  background: var(--t-acc);
+  color: var(--t-on-acc);
+  letter-spacing: .16em;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--t-acc) 55%, transparent);
+}
+.tama-hero h1 {
+  margin: 10px 0 10px;
+  font: 700 clamp(36px, 4.6vw, 60px)/.95 var(--t-display);
+  letter-spacing: -.01em;
+  overflow-wrap: anywhere;
+  color: #fff;
+}
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .tama-hero h1 {
+    background: linear-gradient(100deg, #ffffff 30%, color-mix(in srgb, var(--t-acc) 80%, #fff) 70%, var(--t-acc2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 10px rgba(0, 0, 0, .45));
+  }
+}
+.tama-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tama-chip {
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--t-line);
+  background: rgba(255, 255, 255, .06);
+  color: var(--t-muted);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.tama-chip.is-species { color: var(--t-text); border-color: color-mix(in srgb, var(--t-acc) 55%, transparent); }
+.tama-chip.is-warn { color: var(--t-warn); border-color: color-mix(in srgb, var(--t-warn) 45%, transparent); }
+.tama-chip.var-alpha { color: #ffb8b8; border-color: #ff5a5a88; background: #ff3b3b1f; }
+.tama-chip.var-tek { color: #a5f4ff; border-color: #35d7ff99; background: #35d7ff1c; }
+.tama-chip.var-loyal { color: #ffe3a1; border-color: #ffd36a77; }
+.tama-chip.var-feral { color: #cfc8ba; border-color: #9c917d77; }
+
+.tama-hero-actions { display: flex; gap: 8px; }
+.tama-round {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--t-line);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .03)), var(--t-glass);
+  color: var(--t-text);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 8px 20px -8px rgba(0, 0, 0, .7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform .15s ease, border-color .15s ease;
+}
+.tama-round svg { width: 22px; height: 22px; }
+.tama-round:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--t-acc) 60%, transparent); }
+
+.tama-tabs {
+  display: flex;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 20px;
+  padding: 4px;
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid var(--t-line);
+  background: rgba(6, 12, 18, .62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  scrollbar-width: none;
+}
+.tama-tabs::-webkit-scrollbar { display: none; }
+.tama-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 12px;
+  color: var(--t-muted);
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color .15s ease, background .15s ease;
+}
+.tama-tab:hover { color: var(--t-text); text-decoration: none; background: rgba(255, 255, 255, .06); }
+.tama-tab svg { width: 18px; height: 18px; flex: none; }
+.tama-tab small {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .09);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.tama-tab.is-on {
+  color: var(--t-on-acc);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--t-acc) 82%, #fff), var(--t-acc));
+  box-shadow: 0 6px 22px -4px color-mix(in srgb, var(--t-acc) 55%, transparent), inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+.tama-tab.is-on small { background: rgba(0, 0, 0, .14); }
+
+.tama-loading, .tama-empty {
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  padding: 64px 20px;
+  border-radius: var(--t-radius);
+  border: 1px dashed var(--t-line);
+  background: var(--t-glass);
+  color: var(--t-muted);
+  text-align: center;
+}
+.tama-empty svg { width: 48px; height: 48px; color: var(--t-acc); }
+.tama-empty p { max-width: 46ch; margin: 0; }
+.tama-lead { max-width: 72ch; margin: 0 0 16px; color: var(--t-muted); font-size: 16px; }
+.tama-muted { margin: 0; color: var(--t-muted); }
+.tama-hint { margin: 12px 0 0; color: var(--t-muted); font-size: 14px; line-height: 1.45; }
+.tama-warn { margin: 0 0 12px; color: var(--t-warn); font-size: 15px; }
+.tama-thumb { display: block; width: 100%; height: auto; }
+.tama-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+
+:is(.tama-page, .tama-sheet-bg) .btn.primary.tama-cta {
+  gap: 9px;
+  min-height: 46px;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--t-acc) 78%, #fff), var(--t-acc));
+  background-blend-mode: normal;
+  color: var(--t-on-acc);
+  font: 700 18px/1 var(--t-font);
+  box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--t-acc) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+:is(.tama-page, .tama-sheet-bg) .btn.primary.tama-cta:hover { filter: brightness(1.08); }
+.tama-sheet-bg .btn.primary:not(.tama-cta) { border-color: var(--t-acc); background: var(--t-acc); color: var(--t-on-acc); }
+.tama-sheet-bg .btn.primary:not(.tama-cta):hover:not(:disabled) { border-color: var(--t-acc); background: color-mix(in srgb, var(--t-acc) 85%, #fff); }
+.tama-cta svg { width: 20px; height: 20px; }
+
+/* ---------- Pflegeansicht: Gerät links, Kacheln rechts ------------------- */
+
+.tama-care {
+  display: grid;
+  grid-template-columns: minmax(330px, 430px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.tama-device-col { display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 0; }
+@media (min-width: 900px) and (min-height: 780px) {
+  .tama-device-col { position: sticky; top: 14px; }
+}
+
+/* ---------- Das Gerät ------------------------------------------------------ */
+
+.tama-device { position: relative; width: min(100%, 420px); padding-top: 30px; }
+.tama-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.tama-keyring {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 0;
+  width: 46px;
+  height: 46px;
+  translate: -50% 0;
+  border-radius: 50%;
+  border: 6px solid;
+  border-color: #eef2f5 #9aa5af #6c7680 #c9d0d6;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(0, 0, 0, .25);
+}
+.tama-keyring::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  width: 16px;
+  height: 20px;
+  translate: -50% 0;
+  border-radius: 6px 6px 3px 3px;
+  background: linear-gradient(90deg, var(--t-shell-lo), var(--t-shell-hi) 45%, var(--t-shell-lo));
+  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, .3);
+}
+.tama-shell {
+  --gx: 30%;
+  --gy: 16%;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Prozentwerte beziehen sich auf die Breite: so passt der Rahmen bei jeder
+     Gerätegröße in die Eiform, deren breiteste Stelle unter der Mitte liegt. */
+  padding: 24% 13.5% 8.5%;
+  overflow: hidden;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background:
+    radial-gradient(70% 34% at 50% 102%, rgba(0, 0, 0, .28), transparent 70%),
+    radial-gradient(120% 95% at 28% 16%, var(--t-shell-hi), var(--t-shell) 46%, var(--t-shell-lo) 100%);
+  box-shadow:
+    inset 0 -22px 44px rgba(0, 0, 0, .32),
+    inset 0 12px 30px rgba(255, 255, 255, .38),
+    inset 0 0 0 1.5px rgba(255, 255, 255, .38),
+    0 36px 60px -18px rgba(0, 0, 0, .75),
+    0 0 90px -16px color-mix(in srgb, var(--t-acc) 50%, transparent);
+}
+.tama-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(34% 26% at var(--gx) var(--gy), rgba(255, 255, 255, .42), transparent 70%);
+  mix-blend-mode: soft-light;
+  transition: background .2s ease;
+}
+.tama-shell-gloss {
+  position: absolute;
+  top: 4%;
+  left: 19%;
+  width: 34%;
+  height: 13%;
+  border-radius: 50%;
+  background: linear-gradient(165deg, rgba(255, 255, 255, .8), rgba(255, 255, 255, 0) 75%);
+  filter: blur(2px);
+  rotate: -28deg;
+  pointer-events: none;
+}
+.tama-brand {
+  position: absolute;
+  top: 9%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  translate: -50% 0;
+  white-space: nowrap;
+  color: var(--t-ink);
+  font: 700 15px/1 var(--t-display);
+  letter-spacing: .34em;
+}
+.tama-brand b {
+  padding: 4px 4px 3px 8px;
+  border-radius: 7px;
+  background: #07121a;
+  color: var(--t-acc);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12), 0 0 14px color-mix(in srgb, var(--t-acc) 35%, transparent);
+}
+.tama-brand span { opacity: .82; }
+
+.tama-bezel {
+  position: relative;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 64px 64px 36px 36px / 46px 46px 36px 36px;
+  background: linear-gradient(180deg, #0e1821, #05090d 70%);
+  box-shadow:
+    inset 0 3px 10px rgba(0, 0, 0, .85),
+    inset 0 0 0 1px rgba(255, 255, 255, .07),
+    0 1px 0 rgba(255, 255, 255, .55),
+    0 -1px 0 rgba(0, 0, 0, .25);
+}
+.tama-icons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 2px 8px; }
+.tama-ico {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(190, 218, 236, .62);
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.tama-ico svg { width: 24px; height: 24px; }
+.tama-ico-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.tama-ico:hover:not([disabled]) { color: #e9f7ff; background: rgba(255, 255, 255, .07); }
+.tama-ico.is-lit { color: var(--t-warn); }
+.tama-ico.is-lit svg { animation: tama-pulse 1.3s ease-in-out infinite; filter: drop-shadow(0 0 6px currentColor); }
+.tama-ico[data-act="attention"] { cursor: default; }
+.tama-ico[data-act="attention"].is-lit { color: #ff6b7d; }
+.tama-ico.is-sel {
+  color: var(--t-on-acc);
+  background: var(--t-acc);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--t-acc) 70%, transparent);
+}
+.tama-ico.is-sel svg { animation: none; filter: none; }
+
+/* Bildschirm: 4:3 wie die Minispiele, alle Ebenen darin absolut */
+.tama-screen {
+  position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+  aspect-ratio: 4 / 3;
+  margin: 5px 0;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #0b1a22;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, .7), 0 0 0 3px rgba(255, 255, 255, .06);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.tama-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(152deg, rgba(255, 255, 255, .22) 0%, rgba(255, 255, 255, .05) 26%, transparent 38%),
+    radial-gradient(130% 90% at 50% 125%, rgba(0, 0, 0, .28), transparent 60%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12), inset 0 0 26px rgba(0, 0, 0, .45);
+}
+.tama-lcd { position: absolute; inset: 0; overflow: hidden; }
+.tama-scene, .tama-scene > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.tama-props, .tama-fx, .tama-dark { position: absolute; inset: 0; pointer-events: none; }
+.tama-props { z-index: 1; }
+.tama-fx { z-index: 4; }
+
+.tama-pet {
+  position: absolute;
+  z-index: 2;
+  bottom: 4%;
+  width: 50%;
+  transition-property: left, bottom;
+  transition-timing-function: linear;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tama-pet-flip { position: relative; transition: transform .22s ease; }
+.tama-pet-flip > svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tama-marks { position: absolute; inset: 0; pointer-events: none; }
+.tama-pet.is-grave { cursor: default; }
+
+.tama-poop { position: absolute; width: 10%; }
+.tama-poop svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tama-poop .poop-stink { animation: tama-stink 1.6s ease-in-out infinite; }
+
+/* Licht aus: Bühne abdunkeln, Mond und Zzz bleiben sichtbar */
+.tama-dark {
+  z-index: 3;
+  opacity: 0;
+  background: radial-gradient(120% 90% at 75% 10%, rgba(20, 30, 70, .32), rgba(2, 4, 14, .5));
+  transition: opacity .8s ease;
+}
+.tama-dark.is-on { opacity: 1; }
+.tama-lcd :is(.tama-scene, .tama-props, .tama-pet-flip) { transition: filter .8s ease; }
+.tama-lcd:has(.tama-dark.is-on) :is(.tama-scene, .tama-props, .tama-pet-flip) { filter: brightness(.2) saturate(.45); }
+.tama-moon {
+  position: absolute;
+  top: 9%;
+  right: 9%;
+  width: 11%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow: inset -2.4cqw 1cqw 0 0 #f4f1d8;
+  filter: drop-shadow(0 0 1.6cqw rgba(244, 241, 216, .55));
+}
+
+/* Sprechblase */
+.tama-say {
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  z-index: 6;
+  max-width: 88%;
+  width: max-content;
+  padding: 6px 12px;
+  translate: -50% -8px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .93);
+  color: #0b1a24;
+  font: 600 clamp(12px, 4.6cqw, 15px)/1.25 var(--t-font);
+  text-align: center;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease, translate .25s ease;
+}
+.tama-say.is-on { opacity: 1; translate: -50% 0; }
+
+/* Markierungen über dem Kopf */
+.tama-mark { position: absolute; z-index: 3; translate: -50% 0; pointer-events: none; }
+.tama-mark.is-zzz { display: flex; align-items: flex-end; gap: .3cqw; color: #eaf6ff; font: 800 4.2cqw/1 var(--t-display); text-shadow: 0 0 1.6cqw #8fd3ff; }
+.tama-mark.is-zzz b { opacity: 0; animation: tama-zzz 2.6s ease-in-out infinite; }
+.tama-mark.is-zzz b:nth-child(2) { font-size: 5.2cqw; animation-delay: .55s; }
+.tama-mark.is-zzz b:nth-child(3) { font-size: 6.4cqw; animation-delay: 1.1s; }
+.tama-mark.is-sick svg { display: block; width: 8cqw; height: 8cqw; color: #b9ff8f; filter: drop-shadow(0 0 1.4cqw #62ff5a); animation: tama-bob 1.4s ease-in-out infinite; }
+.tama-mark.is-call b {
+  display: grid;
+  place-items: center;
+  width: 7.4cqw;
+  height: 7.4cqw;
+  border-radius: 50%;
+  background: #ff5a6a;
+  color: #fff;
+  font: 800 5.4cqw/1 var(--t-display);
+  box-shadow: 0 0 0 .6cqw rgba(255, 255, 255, .85), 0 0 2.4cqw #ff5a6a;
+  animation: tama-ping 1s ease-in-out infinite;
+}
+.tama-mark.is-request {
+  width: 12cqw;
+  aspect-ratio: 1;
+  padding: 2cqw;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .94);
+  color: #d9486a;
+  box-shadow: 0 1.2cqw 3cqw rgba(0, 0, 0, .3);
+}
+.tama-mark.is-request::after {
+  content: '';
+  position: absolute;
+  right: 6%;
+  bottom: -14%;
+  width: 3cqw;
+  height: 3cqw;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .94);
+}
+.tama-mark.is-request svg { display: block; width: 100%; height: 100%; animation: tama-bob 1.8s ease-in-out infinite; }
+.tama-cryo { position: absolute; left: 6%; right: 6%; bottom: 3%; z-index: 3; }
+.tama-cryo svg { display: block; width: 100%; height: auto; }
+.tama-cryo .cryo-light { animation: tama-pulse 1.8s ease-in-out infinite; }
+
+/* Effekte */
+.tama-burst { position: absolute; width: 7%; translate: -50% 0; animation: tama-burst 1.4s ease-out both; }
+.tama-burst svg { display: block; width: 100%; height: auto; }
+.tama-burst.is-heart { color: #ff6f91; }
+.tama-burst.is-star { color: #ffd35a; }
+.tama-burst:is(.is-heart, .is-star) svg path { fill: currentColor; stroke: rgba(0, 0, 0, .25); stroke-width: 1; }
+.tama-burst b { display: block; color: #fff; font: 800 6cqw/1 var(--t-display); text-align: center; text-shadow: 0 0 1.6cqw var(--t-acc), 0 0 .4cqw #fff; }
+.tama-prop { position: absolute; width: 12%; translate: -50% 0; }
+.tama-prop svg { display: block; width: 100%; height: auto; }
+.tama-prop.is-food { animation: tama-food 1.25s ease-in both; }
+.tama-prop.is-flask { animation: tama-pour .9s ease-in-out both; }
+.tama-prop.is-hand { width: 14%; color: #ff7fa0; animation: tama-pat .42s ease-in-out 3; }
+.tama-prop.is-hand svg path:first-child { fill: rgba(255, 150, 175, .85); }
+.tama-sweep { position: absolute; bottom: 1%; left: 100%; z-index: 5; width: 20%; animation: tama-sweep 1.4s linear both; }
+.tama-sweep svg { display: block; width: 100%; height: auto; transform: scaleX(-1); }
+.tama-sweep::after {
+  content: '';
+  position: absolute;
+  left: 70%;
+  bottom: 8%;
+  width: 90%;
+  height: 22%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, .7), transparent);
+  filter: blur(2px);
+}
+.tama-paw { position: absolute; width: 5%; color: rgba(70, 44, 20, .55); animation: tama-paw 2.4s ease-out both; }
+.tama-paw svg { display: block; width: 100%; height: auto; }
+.tama-paw svg path { fill: currentColor; stroke: none; }
+.tama-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  background: radial-gradient(circle at 50% 62%, #fff, rgba(255, 255, 255, .45) 38%, transparent 72%);
+  animation: tama-flash .9s ease-out both;
+}
+
+/* ---------- Kreaturen: Mimik und Bewegung --------------------------------- */
+
+.tama-pet :is(.c-body, .c-head, .c-tail, .c-wing, .c-tentacle, .c-aura) { will-change: auto; }
+.tama-pet .c-body { animation: tama-breathe 3.2s ease-in-out infinite; }
+.tama-pet .c-tail { animation: tama-wag 2.6s ease-in-out infinite; }
+.tama-pet .c-wing { animation: tama-flap 1.9s ease-in-out infinite; }
+.tama-pet .c-wing.far { animation-delay: -.12s; }
+.tama-pet.is-floating .c-wing { animation-duration: .55s; }
+.tama-pet .c-head:not(.c-subhead) { animation: tama-nod 6s ease-in-out infinite; }
+.tama-pet .c-tentacle { transform-box: fill-box; transform-origin: 50% 0; animation: tama-sway 3.2s ease-in-out infinite; }
+.tama-pet .c-tentacle:nth-of-type(2n) { animation-delay: -1.1s; }
+.tama-pet :is(.c-glowdot, .c-glowline, .c-tek) { animation: tama-pulse 2.4s ease-in-out infinite; }
+.tama-pet .c-aura { transform-box: fill-box; transform-origin: 50% 50%; animation: tama-aura 3s ease-in-out infinite; }
+.tama-pet .c-rotor { transform-box: fill-box; transform-origin: 50% 50%; animation: tama-spin .5s linear infinite; }
+.tama-pet .c-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: tama-flicker .28s ease-in-out infinite alternate; }
+.tama-pet .c-ring { transform-box: fill-box; transform-origin: 50% 50%; animation: tama-spin 7s linear infinite; }
+
+/* Augen: data-face wählt den Ausdruck, die Lider blinzeln im Normalzustand */
+.tama-pet:is([data-face="happy"], [data-face="sleep"], [data-face="sad"], [data-face="sick"], [data-face="dead"]) .e-open { display: none; }
+.tama-pet[data-face="happy"] .e-happy,
+.tama-pet[data-face="sleep"] .e-closed,
+.tama-pet[data-face="sad"] .e-sad,
+.tama-pet[data-face="sick"] .e-dizzy,
+.tama-pet[data-face="dead"] .e-x,
+.tama-pet[data-face="cheeky"] .e-brow { display: inline; }
+.tama-pet:is([data-face="open"], [data-face="cheeky"]) .c-lid { display: inline; scale: 1 0; animation: tama-blink 4.8s ease-in-out infinite; }
+.tama-pet .c-eye:nth-of-type(2n) .c-lid { animation-delay: .04s; }
+.tama-pet[data-face="tired"] .c-lid { display: inline; scale: 1 .58; }
+.tama-pet[data-face="sick"] .e-dizzy { transform-box: fill-box; transform-origin: 50% 50%; animation: tama-spin 1.6s linear infinite; }
+.tama-pet[data-face="sad"] .e-tear { animation: tama-tear 1.6s ease-in infinite; }
+.tama-pet:is(.expr-eat, .expr-cheer, .expr-scolded) .m-open { display: inline; }
+.tama-pet:is(.expr-eat, .expr-cheer, .expr-scolded) .m-smile { display: none; }
+.tama-pet.expr-cuddle .c-blush { opacity: .8; }
+
+/* Zustände */
+.tama-pet.is-walking .tama-pet-flip > svg { animation: tama-hop .38s ease-in-out infinite; }
+.tama-pet.is-walking.is-trot .tama-pet-flip > svg { animation-duration: .26s; }
+.tama-pet.is-floating .tama-pet-flip > svg { animation: tama-hover 2.6s ease-in-out infinite; }
+.tama-pet[data-mood="sleep"] .c-body { animation-duration: 5.5s; }
+.tama-pet[data-mood="sleep"] :is(.c-tail, .c-wing, .c-head) { animation: none; }
+.tama-pet[data-mood="sleep"].is-floating .tama-pet-flip > svg { animation-duration: 5s; }
+.tama-pet.is-sick .tama-pet-flip { filter: saturate(.7) sepia(.3) hue-rotate(38deg); }
+.tama-pet.is-sick .c-body { animation-duration: 4.8s; }
+.tama-pet.is-frozen .tama-pet-flip { filter: saturate(.35) brightness(1.08) hue-rotate(160deg); }
+.tama-pet.is-frozen * { animation-play-state: paused !important; }
+.tama-pet.is-frozen .tama-cryo, .tama-pet.is-frozen .tama-cryo * { animation-play-state: running !important; }
+.tama-pet.is-egg .tama-pet-flip > svg { transform-origin: 50% 92%; animation: tama-egg-idle 3.8s ease-in-out infinite; }
+.tama-pet.is-egg.is-warming .tama-pet-flip > svg { animation: tama-egg-warm .7s ease-in-out, tama-egg-idle 3.8s ease-in-out .7s infinite; }
+.tama-pet.is-egg :is(.egg-halo, .egg-core) { animation: tama-pulse 2.2s ease-in-out infinite; }
+.tama-pet.is-egg .egg-embryo { transform-box: fill-box; transform-origin: 50% 50%; animation: tama-breathe 2.4s ease-in-out infinite; }
+.tama-pet.is-grave .grave-ghost { animation: tama-ghost 3s ease-in-out infinite; }
+
+/* Kurze Reaktionen (expr-*) */
+.tama-pet.expr-eat .c-head:not(.c-subhead) { animation: tama-chomp .31s ease-in-out infinite; }
+.tama-pet.expr-refuse .tama-pet-flip > svg { animation: tama-no .6s ease-in-out; }
+.tama-pet.expr-flinch .tama-pet-flip > svg { animation: tama-shiver .12s linear infinite; }
+.tama-pet.expr-scolded .tama-pet-flip > svg { transform-origin: 50% 90%; animation: tama-squash .55s ease-out; }
+.tama-pet.expr-sad .tama-pet-flip > svg { transform-origin: 50% 90%; animation: tama-droop 1.2s ease-in-out both; }
+.tama-pet.expr-cuddle .tama-pet-flip > svg { transform-origin: 50% 90%; animation: tama-wiggle .5s ease-in-out infinite; }
+.tama-pet:is(.expr-cheer, .expr-poke) .tama-pet-flip > svg { transform-origin: 50% 90%; animation: tama-jump .5s ease-out 2; }
+.tama-pet.expr-poke .tama-pet-flip > svg { animation-iteration-count: 1; }
+
+/* ---------- Bühnenanimationen --------------------------------------------- */
+
+.tama-scene .sc-star { animation: sc-twinkle 3.4s ease-in-out infinite; }
+.tama-scene .sc-clouds { animation: sc-drift 40s ease-in-out infinite alternate; }
+.tama-scene .sc-smoke { transform-box: fill-box; transform-origin: 50% 100%; animation: sc-smoke 6s ease-in-out infinite; }
+.tama-scene .sc-snow circle { animation: sc-fall 7.2s linear infinite; }
+.tama-scene .sc-haze { animation: sc-haze 4s ease-in-out infinite alternate; }
+.tama-scene .sc-fog { animation: sc-drift 18s ease-in-out infinite alternate; }
+.tama-scene :is(.sc-glow, .sc-lava, .sc-obelisk) { animation: sc-pulse 3.6s ease-in-out infinite; }
+.tama-scene .sc-lava { animation-duration: 2s; }
+.tama-scene .sc-motes circle { animation: sc-motes 5s ease-in-out infinite; }
+.tama-scene .sc-rays { animation: sc-rays 7s ease-in-out infinite alternate; }
+.tama-scene .sc-kelp { animation: sc-kelp 4.6s ease-in-out infinite alternate; }
+.tama-scene .sc-kelp:nth-of-type(2n) { animation-delay: -2s; }
+.tama-scene :is(.sc-bubbles, .sc-embers) circle { animation: sc-rise 6.4s linear infinite; }
+.tama-scene .sc-embers circle { animation-duration: 4.6s; }
+.tama-scene .sc-panel { animation: sc-flicker 5s linear infinite; }
+
+/* ---------- Menüs, Status und Minispiele im Bildschirm ---------------------- */
+
+.tama-overlay { position: absolute; inset: 0; z-index: 7; display: none; }
+.tama-overlay.is-open {
+  display: grid;
+  place-items: center;
+  background: rgba(4, 10, 16, .5);
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+  animation: tama-fade .18s ease-out;
+}
+.tama-overlay.is-game { background: rgba(4, 10, 16, .66); }
+.tama-menu {
+  position: relative;
+  width: 88%;
+  max-height: 92%;
+  padding: 10px;
+  overflow: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(10, 20, 28, .84);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .08);
+  scrollbar-width: thin;
+}
+.tama-menu-title {
+  margin: 2px 34px 8px 4px;
+  color: var(--t-acc);
+  font: 700 12px/1.1 var(--t-font);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.tama-menu-items { display: grid; gap: 6px; }
+.tama-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .05);
+  color: var(--t-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tama-menu-item:hover { background: rgba(255, 255, 255, .1); }
+.tama-menu-item.is-sel { border-color: var(--t-acc); background: color-mix(in srgb, var(--t-acc) 16%, transparent); }
+.tama-menu-art { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 10px; background: rgba(255, 255, 255, .08); }
+.tama-menu-art svg { width: 28px; height: 28px; }
+.tama-menu-copy { display: flex; flex-direction: column; min-width: 0; }
+.tama-menu-copy strong { font-size: 15px; line-height: 1.15; }
+.tama-menu-copy small { color: var(--t-muted); font-size: 12px; line-height: 1.25; }
+.tama-menu-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .12);
+  color: var(--t-text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tama-menu.is-status { display: grid; gap: 7px; }
+.tama-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .05);
+}
+.tama-status-row > span:first-child { font-weight: 600; }
+.tama-status-row small { color: var(--t-muted); font-size: 12px; line-height: 1.25; text-align: right; }
+.tama-status-next {
+  justify-self: end;
+  padding: 4px 14px;
+  border: 1px solid var(--t-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  color: var(--t-text);
+  cursor: pointer;
+}
+
+.tama-hearts { display: inline-flex; gap: 3px; }
+.tama-heart { display: block; line-height: 0; }
+.tama-heart svg { width: 19px; height: 19px; color: rgba(255, 255, 255, .24); }
+.tama-heart.is-full svg { color: #ff6f91; filter: drop-shadow(0 0 4px rgba(255, 111, 145, .5)); }
+.tama-heart.is-full svg path { fill: currentColor; }
+.tama-segs { display: inline-flex; gap: 3px; }
+.tama-segs span { width: 15px; height: 9px; border-radius: 3px; background: rgba(255, 255, 255, .14); }
+.tama-segs span.is-on { background: var(--t-acc); box-shadow: 0 0 8px color-mix(in srgb, var(--t-acc) 60%, transparent); }
+
+.tama-game { position: absolute; inset: 0; color: var(--t-text); }
+.game-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+.game-hud {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  right: 46px;
+  font: 700 14px/1.2 var(--t-font);
+  letter-spacing: .04em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+  pointer-events: none;
+}
+.game-hud.is-final { color: var(--t-acc); font-size: 17px; }
+.game-hint {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  color: var(--t-muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .8);
+  pointer-events: none;
+}
+.game-lr { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 10px 22px; }
+.game-caption { font-weight: 700; font-size: clamp(13px, 5cqw, 16px); text-align: center; }
+.game-score { color: var(--t-muted); font-size: 12px; }
+.game-lr-stage { display: flex; align-items: center; justify-content: center; gap: 4%; width: 100%; }
+.game-lr-pet { width: 40%; max-width: 150px; }
+.game-lr-pet.is-turning { animation: tama-turn .28s ease-in-out; }
+.game-arrow {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--t-line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .1);
+  color: var(--t-text);
+  font-size: 17px;
+  cursor: pointer;
+}
+.game-arrow:hover { background: color-mix(in srgb, var(--t-acc) 25%, transparent); }
+.game-verdict { min-height: 22px; font: 700 clamp(15px, 6cqw, 20px)/1.1 var(--t-display); text-align: center; }
+.game-verdict.is-hit { color: var(--t-good); }
+.game-verdict.is-miss { color: var(--t-bad); }
+.game-verdict.is-final { color: var(--t-acc); }
+
+/* Tasten A, B, C */
+.tama-keys { display: flex; justify-content: center; gap: 24px; margin-top: 20px; }
+.tama-key {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #ffffff, color-mix(in srgb, var(--t-acc) 55%, #e2edf4) 42%, color-mix(in srgb, var(--t-acc) 50%, #34485a) 100%);
+  box-shadow:
+    0 5px 0 color-mix(in srgb, var(--t-shell-lo) 75%, #000),
+    0 10px 16px rgba(0, 0, 0, .35),
+    inset 0 -3px 6px rgba(0, 0, 0, .22),
+    inset 0 2px 3px rgba(255, 255, 255, .85);
+  cursor: pointer;
+  transition: transform .06s ease, box-shadow .06s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.tama-key:nth-child(2) { translate: 0 12px; }
+.tama-key span { color: rgba(0, 20, 30, .5); font: 700 17px/1 var(--t-display); }
+.tama-key.is-down, .tama-key:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--t-shell-lo) 75%, #000),
+    0 3px 6px rgba(0, 0, 0, .35),
+    inset 0 -2px 4px rgba(0, 0, 0, .2),
+    inset 0 2px 3px rgba(255, 255, 255, .8);
+}
+.tama-keys-hint { margin-top: 22px; color: var(--t-ink); font-size: 13px; font-weight: 600; letter-spacing: .03em; opacity: .7; text-align: center; }
+
+/* Retro: pixelige LCD-Anzeige in vier Graustufen wie 1996 */
+.tama-screen.is-retro { background: #b6c48f; }
+.tama-screen.is-retro .tama-lcd { filter: url(#tama-lcd-filter); }
+.tama-screen.is-retro::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(20, 30, 10, .1) 1px, transparent 1px), linear-gradient(90deg, rgba(20, 30, 10, .1) 1px, transparent 1px);
+  background-size: 5px 5px;
+}
+.tama-screen.is-retro .tama-say { border-radius: 4px; background: #c9d4a8; color: #1d2615; box-shadow: 0 0 0 2px #1d2615; font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace; font-size: clamp(11px, 4cqw, 13px); }
+.tama-screen.is-retro .tama-overlay.is-open { background: rgba(170, 186, 132, .88); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.tama-screen.is-retro .tama-menu { border: 2px solid #1d2615; border-radius: 6px; background: #b6c48f; color: #1d2615; box-shadow: none; font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace; }
+.tama-screen.is-retro :is(.tama-menu-title, .tama-menu-copy small, .tama-status-row small) { color: #2f3b22; }
+.tama-screen.is-retro :is(.tama-menu-item, .tama-status-row) { border-radius: 4px; background: transparent; color: #1d2615; }
+.tama-screen.is-retro .tama-menu-item.is-sel { border-color: #1d2615; background: #1d2615; color: #b6c48f; }
+.tama-screen.is-retro .tama-menu-item.is-sel small { color: #b6c48f; }
+.tama-screen.is-retro :is(.tama-menu-art, .tama-menu-close, .tama-status-next) { border-radius: 4px; background: rgba(29, 38, 21, .12); color: #1d2615; }
+.tama-screen.is-retro .tama-menu-art svg { filter: grayscale(1) contrast(1.4); }
+.tama-screen.is-retro .tama-heart.is-full svg, .tama-screen.is-retro .tama-segs span.is-on { color: #1d2615; background-color: transparent; filter: none; box-shadow: none; }
+.tama-screen.is-retro .tama-segs span.is-on { background: #1d2615; }
+.tama-screen.is-retro .tama-game { color: #1d2615; filter: url(#tama-lcd-filter); }
+.tama-screen.is-retro :is(.game-hint, .game-score) { color: #2f3b22; text-shadow: none; }
+.tama-screen.is-retro .game-hud { text-shadow: none; }
+
+/* ---------- Pflegeleiste unter dem Gerät ------------------------------------ */
+
+.tama-dock { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; width: min(100%, 440px); }
+.tama-dock-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 10px 12px;
+  border: 1px solid var(--t-line);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02)), var(--t-glass);
+  color: var(--t-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 12px 24px -14px rgba(0, 0, 0, .8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: transform .15s ease, border-color .15s ease;
+}
+.tama-dock-btn svg { flex: none; width: 24px; height: 24px; color: var(--t-acc); }
+.tama-dock-btn > span { display: flex; flex-direction: column; min-width: 0; }
+.tama-dock-btn strong { font-size: 16px; line-height: 1.1; }
+.tama-dock-btn small { overflow: hidden; color: var(--t-muted); font-size: 12px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.tama-dock-btn:hover:not(:disabled) { transform: translateY(-2px); border-color: color-mix(in srgb, var(--t-acc) 55%, transparent); }
+.tama-dock-btn:disabled { opacity: .45; cursor: not-allowed; }
+.tama-dock-btn.is-lit { border-color: var(--t-acc); animation: tama-glow 1.8s ease-in-out infinite; }
+
+/* ---------- Bento-Kacheln ---------------------------------------------------- */
+
+.tama-bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; min-width: 0; }
+.tama-card {
+  position: relative;
+  min-width: 0;
+  padding: 18px 20px 20px;
+  overflow: hidden;
+  border: 1px solid var(--t-line);
+  border-radius: var(--t-radius);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .075), rgba(255, 255, 255, .015)), var(--t-glass);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .09), 0 24px 44px -24px rgba(0, 0, 0, .75);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+}
+.tama-card::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -20%;
+  width: 60%;
+  height: 80%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--t-acc) 12%, transparent), transparent);
+  pointer-events: none;
+}
+.tama-card > * { position: relative; }
+.tama-card-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 14px;
+  color: var(--t-muted);
+  font: 700 13px/1.1 var(--t-font);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.tama-card-title svg { flex: none; width: 19px; height: 19px; color: var(--t-acc); }
+.tama-card.is-vitals { grid-row: span 2; }
+.tama-card:is(.is-memorial, .is-forecast, .is-log, .is-nest) { grid-column: 1 / -1; }
+.tama-card.is-nest { padding-top: 20px; }
+.tama-card.is-nest .tama-card-title { font-size: 15px; }
+
+.tama-meter {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 50px;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .05);
+}
+.tama-meter:last-of-type { border-bottom: 0; }
+.tama-meter-label { font-size: 16px; font-weight: 600; }
+.tama-meter-value { color: var(--t-muted); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+.tama-meter.is-low .tama-meter-value { color: var(--t-bad); font-weight: 700; }
+.tama-bar { position: relative; display: block; height: 10px; overflow: hidden; border-radius: 999px; background: rgba(255, 255, 255, .08); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .45); }
+.tama-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--t-acc) 60%, #fff), var(--t-acc));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--t-acc) 55%, transparent);
+  transition: width .6s cubic-bezier(.2, .8, .2, 1);
+}
+.tama-meter.is-mid .tama-bar > span { background: linear-gradient(90deg, #ffe7a3, var(--t-warn)); box-shadow: 0 0 12px rgba(255, 198, 92, .45); }
+.tama-meter.is-low .tama-bar > span { background: linear-gradient(90deg, #ffb0b9, var(--t-bad)); box-shadow: 0 0 12px rgba(255, 107, 125, .5); }
+.tama-card.is-vitals .tama-chips { margin-top: 14px; }
+
+.tama-growth { display: flex; align-items: center; gap: 18px; }
+.tama-ring { position: relative; flex: none; width: 116px; aspect-ratio: 1; }
+.tama-ring > svg { display: block; width: 100%; height: 100%; }
+.tama-ring .ring-bg { fill: none; stroke: rgba(255, 255, 255, .08); stroke-width: 9; }
+.tama-ring .ring-fg { fill: none; stroke: var(--t-acc); stroke-width: 9; stroke-linecap: round; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--t-acc) 70%, transparent)); transition: stroke-dasharray .8s ease; }
+.tama-ring.is-imprint-ring .ring-fg { stroke: #ff8fb1; filter: drop-shadow(0 0 5px rgba(255, 143, 177, .6)); }
+.tama-ring-copy { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; text-align: center; }
+.tama-ring-copy strong { font: 700 18px/1.05 var(--t-display); overflow-wrap: anywhere; }
+.tama-ring-copy small { color: var(--t-muted); font-size: 12px; line-height: 1.2; }
+.tama-growth-copy { flex: 1; min-width: 0; }
+.tama-growth-copy p { margin: 0; font-size: 16px; }
+.tama-growth-copy p b { color: var(--t-acc); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tama-track { display: flex; gap: 4px; margin: 12px 0 0; padding: 0; list-style: none; }
+.tama-track li { position: relative; flex: 1; height: 6px; border-radius: 999px; background: rgba(255, 255, 255, .1); }
+.tama-track li span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tama-track li.is-done { background: color-mix(in srgb, var(--t-acc) 55%, transparent); }
+.tama-track li.is-now { background: var(--t-acc); box-shadow: 0 0 10px var(--t-acc); }
+
+.tama-request {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, #ff8fb1 45%, transparent);
+  border-radius: 16px;
+  background: rgba(255, 143, 177, .1);
+}
+.tama-request-art { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 13px; background: rgba(255, 255, 255, .1); color: #ff8fb1; }
+.tama-request-art svg { width: 30px; height: 30px; animation: tama-bob 1.6s ease-in-out infinite; }
+.tama-request > span:last-child { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tama-request small { color: var(--t-muted); font-size: 12.5px; }
+.tama-request strong { font-size: 17px; line-height: 1.15; }
+.tama-request small b { color: var(--t-text); font-variant-numeric: tabular-nums; }
+.tama-request.is-waiting { flex-direction: column; align-items: flex-start; gap: 4px; border-color: var(--t-line); background: rgba(255, 255, 255, .04); }
+.tama-clock { color: #ff8fb1; font: 700 28px/1 var(--t-display); font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+
+.tama-variants { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 168px)); gap: 10px; margin-bottom: 12px; }
+.tama-variant {
+  margin: 0;
+  padding: 8px 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .04);
+  opacity: .5;
+  text-align: center;
+  transition: opacity .2s ease, border-color .2s ease;
+}
+.tama-variant img { aspect-ratio: 1; }
+.tama-variant figcaption { font-size: 14px; font-weight: 700; }
+.tama-variant.is-on {
+  border-color: var(--t-acc);
+  background: color-mix(in srgb, var(--t-acc) 12%, transparent);
+  box-shadow: 0 0 28px -6px color-mix(in srgb, var(--t-acc) 45%, transparent);
+  opacity: 1;
+}
+.tama-card.is-forecast > p { margin: 0 0 10px; font-size: 16px; }
+.tama-card.is-forecast > p b { color: var(--t-acc); }
+
+.tama-log { display: grid; max-height: 280px; margin: 0; padding: 0; overflow: auto; list-style: none; scrollbar-width: thin; }
+.tama-log li { display: flex; justify-content: space-between; gap: 14px; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, .06); font-size: 15px; }
+.tama-log li:last-child { border-bottom: 0; }
+.tama-log time { flex: none; color: var(--t-muted); font-size: 12.5px; white-space: nowrap; }
+
+.tama-card.is-memorial { text-align: center; }
+.tama-card.is-memorial .tama-card-title { justify-content: center; }
+.tama-card.is-memorial p { max-width: 52ch; margin: 6px auto 14px; color: var(--t-muted); }
+.tama-thumb.is-memorial-art { width: min(200px, 60%); margin: 0 auto; filter: grayscale(.55) drop-shadow(0 10px 20px rgba(0, 0, 0, .5)); }
+
+/* ---------- Dialoge -------------------------------------------------------- */
+
+.tama-sheet-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 6, 10, .62);
+  color: var(--t-text);
+  font-family: var(--t-font);
+  font-size: 16px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: tama-fade .2s ease-out;
+}
+.tama-sheet-bg :is(button, a, input, [tabindex]):focus-visible { outline: 2px solid var(--t-acc); outline-offset: 3px; }
+.tama-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(580px, 100%);
+  max-height: min(90vh, 920px);
+  overflow: hidden;
+  border: 1px solid var(--t-line);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(28, 42, 54, .95), rgba(10, 18, 26, .97));
+  box-shadow: 0 40px 90px -20px rgba(0, 0, 0, .85), inset 0 1px 0 rgba(255, 255, 255, .1);
+  animation: tama-rise .28s cubic-bezier(.2, .9, .3, 1.15);
+}
+.tama-sheet.is-wide { width: min(1000px, 100%); }
+.tama-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px 14px; border-bottom: 1px solid var(--t-line); }
+.tama-sheet-head h2 { margin: 0; font: 700 24px/1.1 var(--t-display); }
+.tama-sheet-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--t-line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .06);
+  color: var(--t-text);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tama-sheet-body { padding: 18px 20px 22px; overflow: auto; overscroll-behavior: contain; }
+.tama-confirm p { margin: 0; font-size: 17px; line-height: 1.5; }
+
+/* ---------- Artenraster (Brutstation und Dossier) --------------------------- */
+
+.tama-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+input.tama-search, input.tama-input {
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--t-line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, .32);
+  color: var(--t-text);
+  font: 500 16px var(--t-font);
+}
+input.tama-search { flex: 1 1 220px; width: auto; }
+input.tama-search:focus, input.tama-input:focus { border-color: var(--t-acc); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--t-acc) 25%, transparent); }
+.tama-filter { display: flex; flex-wrap: wrap; gap: 4px; }
+.tama-filter-chip {
+  padding: 6px 13px;
+  border: 1px solid var(--t-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .04);
+  color: var(--t-muted);
+  font: 600 14px var(--t-font);
+  cursor: pointer;
+}
+.tama-filter-chip[aria-pressed="true"] { border-color: var(--t-acc); background: var(--t-acc); color: var(--t-on-acc); }
+.tama-check { display: inline-flex; align-items: center; gap: 7px; color: var(--t-muted); font-size: 14px; cursor: pointer; }
+.tama-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--t-acc); }
+.tama-grid-count { margin-left: auto; color: var(--t-muted); font-size: 13px; }
+.tama-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; }
+.tama-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px 9px;
+  border: 1px solid var(--t-line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .035);
+  color: var(--t-text);
+  font: inherit;
+  cursor: pointer;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 184px;
+  transition: transform .15s ease, border-color .15s ease, background .15s ease;
+}
+.tama-tile:hover, .tama-tile:focus-visible { transform: translateY(-3px); border-color: color-mix(in srgb, var(--t-acc) 55%, transparent); background: rgba(255, 255, 255, .07); }
+.tama-tile.rarity-rare { border-color: rgba(90, 209, 255, .26); }
+.tama-tile.rarity-epic { border-color: rgba(199, 125, 255, .32); background: linear-gradient(180deg, rgba(199, 125, 255, .08), rgba(255, 255, 255, .02)); }
+.tama-tile.rarity-legendary { border-color: rgba(255, 207, 90, .4); background: linear-gradient(180deg, rgba(255, 207, 90, .1), rgba(255, 255, 255, .02)); }
+.tama-tile-art { display: grid; place-items: center; width: 100%; aspect-ratio: 1; }
+.tama-lazy { display: block; width: 100%; height: 100%; }
+.tama-tile-name {
+  display: -webkit-box;
+  min-height: 2.3em;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.tama-tile-meta { display: flex; align-items: center; gap: 6px; }
+.tama-rarity { padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.rarity-common .tama-rarity { background: rgba(183, 196, 207, .12); color: #b9c6d1; }
+.rarity-rare .tama-rarity { background: rgba(90, 209, 255, .14); color: #86dcff; }
+.rarity-epic .tama-rarity { background: rgba(199, 125, 255, .16); color: #d8adff; }
+.rarity-legendary .tama-rarity { background: rgba(255, 207, 90, .16); color: #ffd978; }
+.tama-tile-check { line-height: 0; }
+.tama-tile-check svg { width: 16px; height: 16px; color: var(--t-warn); }
+.tama-tile-check svg path { fill: currentColor; }
+.tama-tile.is-unknown .tama-tile-art img { opacity: .6; filter: brightness(0) invert(.32) drop-shadow(0 0 1px rgba(170, 222, 255, .5)); }
+.tama-tile.is-unknown .tama-tile-name { color: var(--t-muted); }
+.tama-egg-stack { position: relative; display: block; width: 100%; height: 100%; }
+.tama-egg-stack .tama-thumb { position: absolute; transition: opacity .3s ease, transform .3s ease; }
+.tama-egg-stack .is-egg { top: 6%; left: 18%; width: 64%; }
+.tama-egg-stack .is-peek { inset: 0; opacity: 0; transform: translateY(10%) scale(.8); }
+.tama-tile:is(:hover, :focus-visible) .tama-egg-stack .is-egg { opacity: 0; transform: scale(.85) rotate(-10deg); }
+.tama-tile:is(:hover, :focus-visible) .tama-egg-stack .is-peek { opacity: 1; transform: none; }
+
+.tama-surprise {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 14px 18px;
+  border: 1px dashed color-mix(in srgb, var(--t-acc) 60%, transparent);
+  border-radius: 22px;
+  background: linear-gradient(115deg, color-mix(in srgb, var(--t-acc) 15%, transparent), color-mix(in srgb, var(--t-acc2) 15%, transparent));
+  color: var(--t-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .15s ease;
+}
+.tama-surprise:hover { transform: translateY(-2px); }
+.tama-surprise strong { display: block; font-size: 18px; }
+.tama-surprise small { color: var(--t-muted); font-size: 14px; }
+.tama-surprise-egg {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 64px;
+  border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%;
+  background: radial-gradient(circle at 34% 28%, #fff, var(--t-acc) 58%, var(--t-acc2));
+  color: var(--t-on-acc);
+  font: 700 28px/1 var(--t-display);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--t-acc) 45%, transparent), inset 0 -6px 10px rgba(0, 0, 0, .2);
+  animation: tama-wobble 2.6s ease-in-out infinite;
+}
+.tama-surprise-egg.is-big { width: 124px; height: 150px; font-size: 64px; }
+
+.tama-confirm-egg { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 26px; align-items: center; }
+.tama-confirm-art {
+  display: grid;
+  place-items: center;
+  min-height: 230px;
+  border-radius: 26px;
+  background: radial-gradient(circle at 50% 62%, color-mix(in srgb, var(--t-acc) 24%, transparent), transparent 68%);
+}
+.tama-confirm-art > svg { width: 150px; height: auto; transform-origin: 50% 92%; animation: tama-egg-idle 3s ease-in-out infinite; }
+.tama-confirm-copy { min-width: 0; }
+.tama-confirm-copy h3 { margin: 0 0 4px; font: 700 32px/1.05 var(--t-display); }
+.tama-field { display: grid; gap: 6px; margin: 16px 0 14px; }
+.tama-field > span, .tama-modes legend, .tama-settings h3 {
+  color: var(--t-muted);
+  font: 700 12.5px/1.2 var(--t-font);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.tama-name-row { display: flex; gap: 8px; }
+.tama-name-row input.tama-input { flex: 1; width: auto; }
+.tama-dice {
+  flex: none;
+  width: 48px;
+  border: 1px solid var(--t-line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .06);
+  font-size: 20px;
+  cursor: pointer;
+}
+.tama-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; padding: 0; border: 0; }
+.tama-modes legend { margin-bottom: 8px; padding: 0; }
+.tama-mode {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--t-line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .04);
+  color: var(--t-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+button.tama-mode { flex-direction: column; gap: 2px; }
+.tama-mode input { flex: none; width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--t-acc); }
+.tama-mode strong { display: block; font-size: 17px; }
+.tama-mode small { display: block; color: var(--t-muted); font-size: 13.5px; line-height: 1.35; }
+.tama-mode.is-on { border-color: var(--t-acc); background: color-mix(in srgb, var(--t-acc) 12%, transparent); }
+
+/* ---------- Dossier ----------------------------------------------------------- */
+
+.tama-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.tama-stat {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--t-line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .015)), var(--t-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.tama-stat strong { font: 700 32px/1 var(--t-display); font-variant-numeric: tabular-nums; }
+.tama-stat > span:not(.tama-bar) { color: var(--t-muted); font-size: 15px; }
+.tama-dossier .tama-species, .tama-card.is-nest .tama-species { margin-top: 4px; }
+
+.biome-jungle { --b1: #2c8a5c; --b2: #0b2a22; }
+.biome-forest { --b1: #3f7a4a; --b2: #0e2418; }
+.biome-snow { --b1: #a8cbee; --b2: #2f4b69; }
+.biome-desert { --b1: #e0a866; --b2: #5e3518; }
+.biome-swamp { --b1: #5d7f4f; --b2: #1a2a1c; }
+.biome-cave { --b1: #5a3fb0; --b2: #120c2a; }
+.biome-ocean { --b1: #2a93cf; --b2: #062038; }
+.biome-sky { --b1: #7cc0ff; --b2: #2a4a8a; }
+.biome-volcano { --b1: #c24a2c; --b2: #2a0c0c; }
+.biome-tek { --b1: #1f73ab; --b2: #06121e; }
+.biome-space { --b1: #5b35a8; --b2: #05060f; }
+.biome-ruins { --b1: #7a6680; --b2: #1c1822; }
+.biome-arena { --b1: #8a6236; --b2: #1a1024; }
+:is(.tama-dex-hero, .tama-mini-art, .dash-tama-art) {
+  background:
+    radial-gradient(75% 60% at 50% 88%, color-mix(in srgb, var(--b1, #2c8a5c) 75%, transparent), transparent 72%),
+    linear-gradient(180deg, color-mix(in srgb, var(--b1, #2c8a5c) 30%, #0a1218), var(--b2, #0b2a22));
+}
+
+.tama-dex-detail { display: grid; gap: 16px; }
+.tama-dex-hero { position: relative; height: clamp(200px, 36vh, 320px); overflow: hidden; border-radius: 24px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+.tama-dex-hero > svg { position: absolute; inset: 12px; width: calc(100% - 24px); height: calc(100% - 24px); }
+.tama-dex-forms { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.tama-dex-forms figure { margin: 0; padding: 8px 8px 10px; border-radius: 18px; background: rgba(255, 255, 255, .04); text-align: center; }
+.tama-dex-form { display: flex; align-items: flex-end; justify-content: center; aspect-ratio: 1; }
+.tama-dex-forms figcaption { color: var(--t-muted); font-size: 13px; font-weight: 600; }
+.tama-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 18px; margin: 0; padding: 14px 16px; border-radius: 18px; background: rgba(255, 255, 255, .04); }
+.tama-facts dt { color: var(--t-muted); font-size: 15px; }
+.tama-facts dd { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; font-weight: 600; }
+.tama-food-mini { line-height: 0; }
+.tama-food-mini svg { width: 26px; height: 26px; }
+.tama-dex-variants { display: flex; flex-wrap: wrap; gap: 6px; }
+.tama-badge { padding: 4px 13px; border: 1px solid var(--t-line); border-radius: 999px; color: var(--t-muted); font-size: 14px; font-weight: 700; }
+.tama-badge.is-on { border-color: var(--t-acc); background: var(--t-acc); color: var(--t-on-acc); }
+.tama-artwork { margin: 0; padding: 12px; border-radius: 20px; background: rgba(255, 255, 255, .04); text-align: center; }
+.tama-artwork img { max-width: 100%; max-height: 260px; object-fit: contain; }
+.tama-artwork figcaption { margin-top: 6px; color: var(--t-muted); font-size: 13px; }
+
+/* ---------- Ahnengalerie und Tribe-Gehege -------------------------------------- */
+
+.tama-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 16px; }
+.tama-mini {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--t-line);
+  border-radius: 22px;
+  background: var(--t-glass);
+  box-shadow: 0 20px 40px -24px rgba(0, 0, 0, .8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.tama-mini-art { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; }
+.tama-mini-art .tama-thumb { width: 72%; }
+.tama-mini-copy { display: grid; gap: 2px; padding: 12px 16px 16px; }
+.tama-mini-copy strong { font: 700 22px/1.1 var(--t-display); overflow-wrap: anywhere; }
+.tama-mini-copy span { font-size: 15px; }
+.tama-mini-copy small { color: var(--t-muted); font-size: 13px; }
+.tama-mini.is-me { border-color: color-mix(in srgb, var(--t-acc) 70%, transparent); }
+.tama-mini.var-tek { box-shadow: 0 0 0 1px #35d7ff66, 0 0 32px -8px #35d7ff88; }
+.tama-mini.var-alpha { box-shadow: 0 0 0 1px #ff5a5a66, 0 0 32px -8px #ff5a5a77; }
+.tama-mini.mood-gone .tama-mini-art .tama-thumb { filter: grayscale(.85) brightness(.8); }
+.tama-mini.mood-sleep .tama-mini-art .tama-thumb { filter: brightness(.7) saturate(.8); }
+.tama-mood-chip {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .5);
+  font-size: 12.5px;
+  font-weight: 700;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ---------- Einstellungen und Anleitung ---------------------------------------- */
+
+.tama-settings { display: grid; gap: 12px; }
+.tama-settings h3 { margin: 10px 0 0; }
+.tama-settings > .btn { justify-self: start; }
+.tama-swatches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tama-swatch {
+  display: flex;
+  align-items: flex-end;
+  min-height: 78px;
+  padding: 8px 12px;
+  border: 2px solid transparent;
+  border-radius: 20px 20px 18px 18px / 26px 26px 18px 18px;
+  background: var(--sw);
+  color: #0b1a24;
+  font: 700 15px var(--t-font);
+  cursor: pointer;
+  box-shadow: inset 0 3px 8px rgba(255, 255, 255, .5), inset 0 -10px 18px rgba(0, 0, 0, .25);
+  transition: transform .15s ease;
+}
+.tama-swatch:hover { transform: translateY(-2px); }
+.tama-swatch[aria-checked="true"] { border-color: #fff; box-shadow: inset 0 3px 8px rgba(255, 255, 255, .5), inset 0 -10px 18px rgba(0, 0, 0, .25), 0 0 0 3px var(--t-acc); }
+.tama-swatch.shell-tek { --sw: radial-gradient(120% 95% at 28% 16%, #f2fbff, #9ccbe4 46%, #34607f); }
+.tama-swatch.shell-bronze { --sw: radial-gradient(120% 95% at 28% 16%, #ffe8bd, #c98d47 46%, #5b3514); }
+.tama-swatch.shell-obsidian { --sw: radial-gradient(120% 95% at 28% 16%, #6f6886, #27222f 46%, #09080d); color: #efe8ff; }
+.tama-swatch.shell-amber { --sw: radial-gradient(120% 95% at 28% 16%, #fff1c4, #ffad3b 46%, #9a4e08); }
+.tama-swatch.shell-aberrant { --sw: radial-gradient(120% 95% at 28% 16%, #b8ffe9, #34a092 46%, #173247); }
+.tama-swatch.shell-ice { --sw: radial-gradient(120% 95% at 28% 16%, #ffffff, #d9eaf6 46%, #86a6c0); }
+.tama-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--t-line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .04);
+  cursor: pointer;
+}
+.tama-toggle input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; }
+.tama-toggle-ui { position: relative; flex: none; width: 48px; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, .16); transition: background .2s ease; }
+.tama-toggle-ui::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .35);
+  transition: translate .2s ease;
+}
+.tama-toggle input:checked + .tama-toggle-ui { background: var(--t-acc); }
+.tama-toggle input:checked + .tama-toggle-ui::after { translate: 20px 0; }
+.tama-toggle input:focus-visible + .tama-toggle-ui { outline: 2px solid var(--t-acc); outline-offset: 3px; }
+.tama-toggle strong { display: block; font-size: 16px; }
+.tama-toggle small { display: block; color: var(--t-muted); font-size: 13.5px; line-height: 1.35; }
+.tama-settings form.tama-name-row .btn { flex: none; }
+
+.tama-help { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+.tama-help section { padding: 16px 18px; border: 1px solid var(--t-line); border-radius: 20px; background: rgba(255, 255, 255, .04); }
+.tama-help h3 { margin: 0 0 6px; color: var(--t-acc); font: 700 20px/1.15 var(--t-display); }
+.tama-help p { margin: 0; color: #d6e3eb; line-height: 1.55; white-space: pre-line; }
+.tama-help-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; margin-top: 12px; }
+.tama-help-icons span { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px 4px; border-radius: 14px; background: rgba(255, 255, 255, .05); }
+.tama-help-icons svg { width: 24px; height: 24px; color: var(--t-acc); }
+.tama-help-icons small { font-size: 12.5px; line-height: 1.2; text-align: center; }
+
+/* ---------- Kachel auf der Startseite ------------------------------------------- */
+
+.dash-tama-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 14px 14px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dash-tama-body:hover .dash-tama-art { transform: translateY(-2px) rotate(-2deg); }
+.dash-tama-art {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 96px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1), 0 8px 18px -8px rgba(0, 0, 0, .7);
+  transition: transform .2s ease;
+}
+.dash-tama-art .tama-thumb { width: 86%; }
+.dash-tama-art.is-empty { background: radial-gradient(circle at 50% 60%, rgba(95, 242, 255, .22), transparent 70%), #0c171e; color: #5ff2ff; }
+.dash-tama-art.is-empty svg { width: 42px; height: 42px; animation: tama-wobble 2.6s ease-in-out infinite; }
+.dash-tama-art.is-gone .tama-thumb { filter: grayscale(.85); }
+.dash-tama-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+.dash-tama-copy strong { font-size: 21px; line-height: 1.1; overflow-wrap: anywhere; }
+.dash-tama-copy small { color: #aab8c2; font-size: 14px; }
+.dash-tama-hearts { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.dash-tama-hearts .tama-heart svg { width: 16px; height: 16px; }
+.dash-tama-pill { margin-top: 2px; padding: 2px 10px; border-radius: 999px; background: rgba(255, 255, 255, .08); color: #d9e4ea; font-size: 13px; font-weight: 600; }
+.dash-tama-pill.is-call { background: #ff5a6a; color: #fff; box-shadow: 0 0 14px rgba(255, 90, 106, .55); animation: tama-pulse 1.6s ease-in-out infinite; }
+.dash-tama-pill.is-gone { color: #aab8c2; }
+@media (prefers-reduced-motion: reduce) {
+  .dash-tama-art.is-empty svg, .dash-tama-pill.is-call { animation: none; }
+}
+
+/* ---------- Kleinere Bildschirme ------------------------------------------------- */
+
+@media (max-width: 1240px) {
+  .tama-bento { grid-template-columns: minmax(0, 1fr); }
+  .tama-card.is-vitals { grid-row: auto; }
+}
+@media (max-width: 899px) {
+  .tama-care { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .tama-device { width: min(100%, 390px); }
+  .tama-bento { grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); }
+  .tama-hero { align-items: start; gap: 10px; }
+  .tama-hero h1 { font-size: clamp(32px, 8.6vw, 46px); }
+  .tama-tabs { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; width: 100%; }
+  .tama-tab { padding: 9px 8px; }
+  .tama-stats { gap: 8px; }
+  .tama-stat { gap: 4px; padding: 12px; border-radius: 16px; }
+  .tama-stat strong { font-size: 22px; }
+  .tama-stat > span:not(.tama-bar) { font-size: 13px; }
+}
+@media (max-width: 640px) {
+  .tama-sheet-bg { place-items: end stretch; padding: 0; }
+  .tama-sheet, .tama-sheet.is-wide {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 26px 26px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: tama-slide .3s cubic-bezier(.2, .9, .3, 1);
+  }
+  .tama-sheet-body { padding: 14px 14px 20px; }
+  .tama-confirm-egg { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .tama-confirm-art { min-height: 150px; }
+  .tama-confirm-art > svg { width: 104px; }
+  .tama-surprise-egg.is-big { width: 88px; height: 106px; font-size: 46px; }
+  .tama-modes { grid-template-columns: minmax(0, 1fr); }
+  .tama-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  .tama-tile { padding: 8px 6px; border-radius: 16px; }
+  .tama-tile-name { font-size: 14px; }
+  .tama-grid-count { margin-left: 0; }
+  .tama-dex-forms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tama-swatches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tama-growth { gap: 14px; }
+  .tama-ring { width: 100px; }
+  .tama-meter { grid-template-columns: 78px minmax(0, 1fr) 44px; gap: 10px; }
+  .tama-card { padding: 16px; }
+  .tama-tab { flex-direction: column; gap: 3px; padding: 7px 4px; font-size: 14px; }
+  .tama-tab small { display: none; }
+}
+@media (max-width: 420px) {
+  .tama-shell { padding: 26% 11.5% 9%; }
+  .tama-bezel { padding: 5px 6px; border-radius: 52px 52px 28px 28px / 40px 40px 28px 28px; }
+  .tama-icons { gap: 2px; padding: 1px 4px; }
+  .tama-ico { height: 34px; }
+  .tama-ico svg { width: 21px; height: 21px; }
+  .tama-keys { gap: 20px; margin-top: 16px; }
+  .tama-key { width: 50px; height: 50px; }
+  .tama-keys-hint { margin-top: 18px; font-size: 12px; }
+  .tama-dock { gap: 8px; }
+  .tama-dock-btn { gap: 8px; padding: 9px 10px; min-height: 56px; }
+  .tama-dock-btn strong { font-size: 15px; }
+  .tama-eyebrow { gap: 6px; font-size: 11.5px; letter-spacing: .16em; }
+  .tama-eyebrow-sub, .tama-chip.is-mode { display: none; }
+  .tama-hero-actions { gap: 6px; }
+  .tama-round { width: 42px; height: 42px; }
+}
+
+/* ---------- Bewegung ------------------------------------------------------------ */
+
+@keyframes tama-blink { 0%, 91%, 100% { scale: 1 0; } 94%, 96% { scale: 1 1; } }
+@keyframes tama-breathe { 0%, 100% { scale: 1 1; } 50% { scale: 1.012 1.028; } }
+@keyframes tama-wag { 0%, 100% { rotate: -5deg; } 50% { rotate: 7deg; } }
+@keyframes tama-flap { 0%, 100% { rotate: 0deg; } 50% { rotate: -16deg; } }
+@keyframes tama-nod { 0%, 72%, 100% { rotate: 0deg; } 80% { rotate: -5deg; } 88% { rotate: 2deg; } }
+@keyframes tama-sway { 0%, 100% { rotate: -7deg; } 50% { rotate: 7deg; } }
+@keyframes tama-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes tama-aura { 0%, 100% { opacity: .7; scale: 1; } 50% { opacity: 1; scale: 1.07; } }
+@keyframes tama-spin { to { rotate: 360deg; } }
+@keyframes tama-flicker { from { scale: 1 1; opacity: .85; } to { scale: .9 1.14; opacity: 1; } }
+@keyframes tama-hop { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4%; } }
+@keyframes tama-hover { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5%; } }
+@keyframes tama-chomp { 0%, 100% { rotate: 0deg; } 50% { rotate: 8deg; } }
+@keyframes tama-no { 0%, 100% { translate: 0 0; } 20%, 60% { translate: -4% 0; } 40%, 80% { translate: 4% 0; } }
+@keyframes tama-shiver { 0%, 100% { translate: 0 0; } 25% { translate: -1.5% 0; } 75% { translate: 1.5% 0; } }
+@keyframes tama-squash { 0%, 100% { scale: 1 1; } 30% { scale: 1.12 .84; } 62% { scale: .95 1.05; } }
+@keyframes tama-droop { 0%, 100% { translate: 0 0; scale: 1 1; } 30%, 75% { translate: 0 3%; scale: 1.03 .95; } }
+@keyframes tama-wiggle { 0%, 100% { rotate: 0deg; } 25% { rotate: -4deg; } 75% { rotate: 4deg; } }
+@keyframes tama-jump { 0%, 100% { translate: 0 0; scale: 1 1; } 15% { scale: 1.07 .9; } 45% { translate: 0 -15%; scale: .95 1.06; } 78% { translate: 0 0; scale: 1.05 .94; } }
+@keyframes tama-egg-idle { 0%, 78%, 100% { rotate: 0deg; } 82% { rotate: -7deg; } 86% { rotate: 6deg; } 90% { rotate: -4deg; } 94% { rotate: 2deg; } }
+@keyframes tama-egg-warm {
+  0%, 100% { rotate: 0deg; filter: drop-shadow(0 0 0 rgba(255, 180, 90, 0)); }
+  20% { rotate: -10deg; }
+  40% { rotate: 9deg; filter: drop-shadow(0 0 14px rgba(255, 180, 90, .85)); }
+  60% { rotate: -6deg; }
+  80% { rotate: 4deg; }
+}
+@keyframes tama-zzz { 0% { opacity: 0; translate: 0 6px; } 30% { opacity: 1; } 100% { opacity: 0; translate: 10px -20px; } }
+@keyframes tama-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10%; } }
+@keyframes tama-ping { 0%, 100% { scale: 1; } 50% { scale: 1.18; } }
+@keyframes tama-tear { 0% { translate: 0 0; opacity: 1; } 100% { translate: 0 6px; opacity: 0; } }
+@keyframes tama-stink { 0%, 100% { opacity: .2; translate: 0 2px; } 50% { opacity: 1; translate: 0 -2px; } }
+@keyframes tama-burst { 0% { opacity: 0; translate: -50% 20%; scale: .4; } 20% { opacity: 1; scale: 1.12; } 100% { opacity: 0; translate: -50% -260%; scale: .9; } }
+@keyframes tama-food {
+  0% { opacity: 0; translate: -50% -70%; scale: .6; }
+  14% { opacity: 1; translate: -50% 0; scale: 1; }
+  38% { scale: 1; }
+  48% { scale: .78; }
+  64% { scale: .56; }
+  80% { scale: .34; opacity: 1; }
+  100% { scale: .1; opacity: 0; translate: -50% 0; }
+}
+@keyframes tama-pour { 0% { opacity: 0; translate: -50% -40%; rotate: 0deg; } 20% { opacity: 1; translate: -50% 0; } 50%, 82% { rotate: -110deg; } 100% { opacity: 0; translate: -50% 0; rotate: -110deg; } }
+@keyframes tama-pat { 0%, 100% { translate: -50% 0; } 50% { translate: -50% 22%; } }
+@keyframes tama-sweep { from { left: 100%; } to { left: -25%; } }
+@keyframes tama-paw { 0% { opacity: 0; scale: .5; } 15% { opacity: 1; scale: 1; } 100% { opacity: 0; } }
+@keyframes tama-flash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes tama-ghost { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+@keyframes tama-turn { 0%, 100% { scale: 1 1; } 50% { scale: .1 1; } }
+@keyframes tama-glow {
+  0%, 100% { box-shadow: inset 0 0 0 1px var(--t-acc), 0 0 12px color-mix(in srgb, var(--t-acc) 22%, transparent); }
+  50% { box-shadow: inset 0 0 0 1px var(--t-acc), 0 0 30px color-mix(in srgb, var(--t-acc) 50%, transparent); }
+}
+@keyframes tama-wobble { 0%, 100% { rotate: 0deg; } 25% { rotate: -6deg; } 75% { rotate: 6deg; } }
+@keyframes tama-fade { from { opacity: 0; } }
+@keyframes tama-rise { from { opacity: 0; translate: 0 18px; scale: .98; } }
+@keyframes tama-slide { from { translate: 0 100%; } }
+
+@keyframes sc-twinkle { 0%, 100% { opacity: .95; } 50% { opacity: .2; } }
+@keyframes sc-drift { from { translate: 0 0; } to { translate: -46px 0; } }
+@keyframes sc-smoke { 0%, 100% { scale: 1; opacity: .35; } 50% { scale: 1.35 1.7; opacity: .12; } }
+@keyframes sc-fall { from { translate: 0 -24px; opacity: 0; } 12%, 88% { opacity: .9; } to { translate: 14px 70px; opacity: 0; } }
+@keyframes sc-haze { from { translate: -6px 0; opacity: .12; } to { translate: 6px 0; opacity: .38; } }
+@keyframes sc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@keyframes sc-motes { 0%, 100% { translate: 0 0; opacity: .3; } 50% { translate: 6px -14px; opacity: 1; } }
+@keyframes sc-rays { from { opacity: .08; } to { opacity: .26; } }
+@keyframes sc-kelp { from { rotate: -4deg; } to { rotate: 5deg; } }
+@keyframes sc-rise { from { translate: 0 0; opacity: 0; } 10% { opacity: .8; } 90% { opacity: .5; } to { translate: 6px -224px; opacity: 0; } }
+@keyframes sc-flicker { 0%, 91%, 100% { opacity: 1; } 93% { opacity: .35; } 95% { opacity: .9; } 97% { opacity: .5; } }
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.tama-page, .tama-sheet-bg) *, :is(.tama-page, .tama-sheet-bg) *::before, :is(.tama-page, .tama-sheet-bg) *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .tama-sweep { display: none; }
+}

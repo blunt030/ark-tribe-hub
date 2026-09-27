@@ -1050,6 +1050,18 @@ Object.assign(STRINGS.es, {
   "voice.ready": "Listo para voice.", "voice.tap_to_hear": "Toca el botón para permitir el audio.", "voice.connected": "Audio conectado.", "voice.connection_problem": "La conexión de audio se interrumpió.", "voice.unsupported": "Este navegador no admite la tecnología de voz necesaria.", "voice.mic_request": "Solicitando acceso al micrófono …", "voice.joined_audio": "Micrófono activo. Conectando con los demás …", "voice.mic_denied": "No se permitió el micrófono.", "voice.audio_sub": "Salas de voz reales en el navegador para tu tribu.", "voice.turn_hint": "Voice usa conexiones directas. Aún hacen falta credenciales TURN para funcionar de forma fiable en todas las redes móviles y corporativas.", "voice.enable_audio": "Activar sonido", "voice.audio_enabled": "El sonido está activado.", "voice.turn_ready": "TURN listo", "voice.direct_only": "Solo conexión directa", "voice.waiting": "Micrófono activo. Esperando a otros participantes …", "voice.signal_failed": "No se pudo negociar la conexión de voz."
 });
 
+// Dino-Tamagotchi: der Menüpunkt steht hier, alle weiteren Texte bringt
+// public/js/tamagotchi/texts.js über addStrings() mit.
+Object.assign(STRINGS.de, { 'nav.tamagotchi': 'Dino-Tamagotchi' });
+Object.assign(STRINGS.en, { 'nav.tamagotchi': 'Dino Tamagotchi' });
+Object.assign(STRINGS.fr, { 'nav.tamagotchi': 'Dino-Tamagotchi' });
+Object.assign(STRINGS.es, { 'nav.tamagotchi': 'Dino-Tamagotchi' });
+
+/** Erweiterungsmodule bringen eigene Texte mit, ohne diese Datei aufzublähen. */
+export function addStrings(dict) {
+  for (const [lang, entries] of Object.entries(dict)) if (STRINGS[lang]) Object.assign(STRINGS[lang], entries);
+}
+
 let current = localStorage.getItem('ath_lang') || (navigator.language || 'de').slice(0, 2);
 if (!STRINGS[current]) current = 'de';
 

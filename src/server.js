@@ -27,6 +27,7 @@ import { buildServerMapRouter } from './routes/servers.routes.js';
 import { buildTaskRouter } from './routes/tasks.routes.js';
 import { buildInventoryRouter } from './routes/inventory.routes.js';
 import { buildVoiceRouter } from './routes/voice.routes.js';
+import { buildPetRouter } from './routes/pets.routes.js';
 import { cleanupExpiredSignals, cleanupStaleParticipants } from './services/voiceService.js';
 import { resolveVoiceIceConfig } from './services/turnService.js';
 
@@ -184,6 +185,7 @@ export async function createApp(dbPath, options = {}) {
     buildInventoryRouter(db),
     buildVoiceRouter(db),
     buildCommunityRouter(db),
+    buildPetRouter(db),
     buildUploadsRouter(db),
   ];
   for (const sub of subRouters) router.routes.push(...sub.routes);

@@ -387,3 +387,11 @@ CREATE TABLE IF NOT EXISTS tribe_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_tribe_id ON tribe_messages(tribe_id, id);
 CREATE INDEX IF NOT EXISTS idx_messages_rate ON tribe_messages(tribe_id, author_id, created_at);
+-- Dino-Tamagotchi: genau ein Spielstand pro Konto (JSON). Die Revision verhindert,
+-- dass ein veralteter Browser-Tab den neueren Stand eines anderen Geräts überschreibt.
+CREATE TABLE IF NOT EXISTS pets (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  state TEXT NOT NULL CHECK (length(state) <= 65536),
+  revision INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL
+);

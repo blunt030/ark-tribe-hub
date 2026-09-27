@@ -159,3 +159,26 @@ test('rechtliche Seiten sind vor und nach der Anmeldung erreichbar', async () =>
   assert.doesNotMatch(index, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
   assert.doesNotMatch(server, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
 });
+
+test('Dino-Tamagotchi ist in Menü, Router, Startseite und App-Hülle eingebunden', async () => {
+  const [app, index, sw, dashboard, css, view] = await Promise.all([
+    read('public/js/app.js'),
+    read('public/index.html'),
+    read('public/sw.js'),
+    read('public/js/views/dashboard.js'),
+    read('public/css/tamagotchi.css'),
+    read('public/js/views/tamagotchi.js'),
+  ]);
+  assert.match(app, /path: '\/tamagotchi', icon: 'egg-crack', label: t\('nav\.tamagotchi'\), badge: \(\) => petCalls\(\)/);
+  assert.match(app, /re: \/\^\\\/tamagotchi\(\?:\\\/\(dossier\|hall\|tribe\)\)\?\$\//);
+  assert.match(app, /import\('\.\/views\/tamagotchi\.js'\)/);
+  assert.match(app, /resetPet\(\)/);
+  assert.match(index, /\/css\/tamagotchi\.css/);
+  assert.match(sw, /'\/css\/tamagotchi\.css'/);
+  assert.match(sw, /'\/js\/tamagotchi\/store\.js'/);
+  assert.match(sw, /'\/js\/tamagotchi\/engine\.js'/);
+  assert.match(dashboard, /import\('\.\.\/tamagotchi\/widget\.js'\)/);
+  assert.match(view, /x\.key !== 'tribe' \|\| user\.tribeId/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css, /\.tama-screen\.is-retro \.tama-lcd \{ filter: url\(#tama-lcd-filter\); \}/);
+});
