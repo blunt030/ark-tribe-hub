@@ -1,4 +1,4 @@
-import { el, clear, spinner, toast } from './ui.js';
+import { el, clear, spinner, toast, installPasswordToggles } from './ui.js';
 import { t, getLang, setLang, LANGS } from './i18n.js';
 import { api, setCsrf, ApiError } from './api.js';
 import { renderAuth, renderPending } from './views/auth.js';
@@ -502,6 +502,8 @@ async function loadUser() {
 }
 
 async function boot() {
+  // Link aus "Passwort vergessen" immer auf der Anmeldeseite öffnen.
+  if (new URLSearchParams(location.search).has('reset')) { showAuth(); return; }
   try {
     // Die Session lebt im HttpOnly-Cookie und übersteht einen Reload; das
     // CSRF-Token kommt hier zurück, damit Aktionen sofort wieder funktionieren.
@@ -513,6 +515,7 @@ async function boot() {
 }
 
 window.addEventListener('hashchange', route);
+installPasswordToggles();
 boot();
 
 // Alle zwei Minuten den Mitteilungszähler nachziehen, solange der Tab sichtbar ist.

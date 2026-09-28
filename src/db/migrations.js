@@ -37,7 +37,42 @@ const MIGRATIONS = [
   // Discord-Webhooks je Tribe (verschluesselt), getrennt fuer Breeder und Crafter.
   { table: 'tribes', column: 'discord_breeder_webhook', sql: 'ALTER TABLE tribes ADD COLUMN discord_breeder_webhook TEXT' },
   { table: 'tribes', column: 'discord_crafter_webhook', sql: 'ALTER TABLE tribes ADD COLUMN discord_crafter_webhook TEXT' },
+  // "Passwort vergessen": nur der Hash des Links wird gespeichert.
+  { table: 'users', column: 'password_reset_token', sql: 'ALTER TABLE users ADD COLUMN password_reset_token TEXT' },
+  { table: 'users', column: 'password_reset_expires', sql: 'ALTER TABLE users ADD COLUMN password_reset_expires TEXT' },
 ];
+
+/**
+ * Kontakt-E-Mail des Plattform-Developers "Blunt" (vom Betreiber vorgegeben),
+ * damit "Passwort vergessen" fuer dieses Konto funktioniert. Laeuft genau
+ * EINMAL: der Audit-Eintrag dient als Marker, spaetere Aenderungen im Profil
+ * werden also nie wieder ueberschrieben.
+ */
+export const DEVELOPER_CONTACT = { username: 'blunt', email: 'support.arktribehub@gmail.com' };
+
+export async function assignDeveloperContactEmail(db, contact = DEVELOPER_CONTACT) {
+  const done = await db.get("SELECT id FROM audit_logs WHERE action = 'developer_contact_email_set' LIMIT 1");
+  if (done) return false;
+  const dev = await db.get(
+    `SELECT u.id, u.email FROM users u
+     WHERE u.tribe_id IS NULL AND lower(u.username) = ?
+       AND EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+                   WHERE ur.user_id = u.id AND r.key = 'developer')`,
+    [contact.username]
+  );
+  if (!dev) return false;
+  const taken = await db.get('SELECT id FROM users WHERE lower(email) = ? AND id <> ?', [contact.email, dev.id]);
+  if (taken) {
+    console.error('[MIGRATION] Developer-E-Mail nicht gesetzt: Adresse gehoert bereits einem anderen Konto');
+    return false;
+  }
+  await db.transaction(async (tx) => {
+    await tx.run('UPDATE users SET email = ?, email_verified = 0, email_verify_token = NULL WHERE id = ?', [contact.email, dev.id]);
+    await tx.run("INSERT INTO audit_logs (actor_id, action, target_type, target_id) VALUES (?, 'developer_contact_email_set', 'user', ?)", [dev.id, dev.id]);
+  });
+  console.log(`[MIGRATION] Developer-Konto ${dev.id}: Kontakt-E-Mail gesetzt`);
+  return true;
+}
 
 function isAlreadyExistsError(err) {
   const msg = (err && err.message || '').toLowerCase();
@@ -59,6 +94,7 @@ export async function runMigrations(db) {
   await migrateEmailTokens(db);
   await migrateVaults(db);
   await splitBreederCrafter(db);
+  await assignDeveloperContactEmail(db);
 }
 
 /**

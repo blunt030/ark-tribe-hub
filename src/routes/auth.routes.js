@@ -4,6 +4,7 @@ import { readJsonBody, sendJson, serializeCookie, clearCookie, badRequest } from
 import { requireString, requirePassword, requireEmail } from '../lib/validate.js';
 import { register, login, logout, csrfTokenFor, verifyEmail, completeMfaLogin, resendMfaEmail } from '../services/authService.js';
 import { requireAuth, requireCsrf, SESSION_COOKIE } from '../middleware/auth.js';
+import { requestPasswordReset, resetPassword } from '../services/passwordResetService.js';
 import { config } from '../config.js';
 
 function publicUser(user) {
@@ -71,6 +72,20 @@ export function buildAuthRouter(db, { authRateLimit }) {
       user: publicUser(result.user),
       csrfToken: result.csrfToken,
     });
+  });
+
+  // "Passwort vergessen": Antwort ist immer identisch (keine Konto-Aufzaehlung).
+  router.post('/api/auth/password/forgot', authRateLimit, async (req, res) => {
+    const body = await readJsonBody(req);
+    if (typeof body.identifier !== 'string' || !body.identifier.trim()) throw badRequest('Benutzername oder E-Mail fehlt');
+    const tribeSlug = typeof body.tribeSlug === 'string' ? body.tribeSlug.slice(0, 50) : null;
+    await requestPasswordReset(db, { identifier: body.identifier.slice(0, 254), tribeSlug });
+    sendJson(res, 200, { ok: true, message: 'Falls ein passendes Konto mit E-Mail-Adresse existiert, haben wir einen Link zum Zurücksetzen geschickt.' });
+  });
+
+  router.post('/api/auth/password/reset', authRateLimit, async (req, res) => {
+    const body = await readJsonBody(req);
+    sendJson(res, 200, await resetPassword(db, { token: body.token, password: body.password }));
   });
 
   router.post('/api/auth/login/2fa/resend', authRateLimit, async (req, res) => {

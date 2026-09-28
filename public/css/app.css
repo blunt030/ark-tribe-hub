@@ -412,6 +412,17 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus { border-color: var(--blue); outline: none; }
 textarea { resize: vertical; min-height: 74px; }
+/* Passwort anzeigen (Augen-Knopf, siehe ui.js enhancePasswordInput) */
+.pw-wrap { position: relative; display: block; width: 100%; }
+.pw-wrap > input { padding-right: 44px; }
+.pw-toggle {
+  position: absolute; top: 50%; right: 4px; transform: translateY(-50%);
+  width: 36px; height: 36px; display: grid; place-items: center;
+  background: none; border: 0; border-radius: var(--radius-sm);
+  color: var(--faint); cursor: pointer; padding: 0;
+}
+.pw-toggle:hover, .pw-toggle.on { color: var(--text); }
+.pw-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .hint { font-size: .78rem; color: var(--faint); }
 
 .qty { display: flex; align-items: center; gap: 0; }

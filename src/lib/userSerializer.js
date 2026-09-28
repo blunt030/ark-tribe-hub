@@ -40,6 +40,8 @@ export const GEHEIME_FELDER = [
   'totp_last_counter',
   'mfa_email_code_hash',
   'mfa_email_code_expires',
+  'password_reset_token',
+  'password_reset_expires',
 ];
 
 function auswaehlen(user, felder) {

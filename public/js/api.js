@@ -81,6 +81,8 @@ export const api = {
   // Auth
   register: (b) => call('POST', '/api/auth/register', b),
   login: (b) => call('POST', '/api/auth/login', b),
+  forgotPassword: (b) => call('POST', '/api/auth/password/forgot', b),
+  resetPassword: (b) => call('POST', '/api/auth/password/reset', b),
   loginMfa: (b) => call('POST', '/api/auth/login/2fa', b),
   twoFactor: () => call('GET', '/api/users/me/2fa'),
   twoFactorSetup: (currentPassword) => call('POST', '/api/users/me/2fa/setup', { currentPassword }),

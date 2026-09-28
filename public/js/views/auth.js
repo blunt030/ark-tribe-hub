@@ -7,12 +7,29 @@ export function renderAuth(root, { onSignedIn }) {
   let message = null;
   let messageKind = 'err';
 
+  // Link aus der "Passwort vergessen"-Mail: /?reset=<token>. Token sofort aus
+  // der Adresszeile entfernen, damit er nicht im Verlauf/Screenshot landet.
+  let resetToken = null;
+  try {
+    const params = new URLSearchParams(location.search);
+    resetToken = params.get('reset');
+    if (resetToken) {
+      mode = 'reset';
+      params.delete('reset');
+      const rest = params.toString();
+      history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
+    }
+  } catch { /* ohne History-API einfach normal weiter */ }
+
   function draw() {
     clear(root);
 
     const notice = message ? el('div.notice.' + messageKind, { text: message }) : null;
 
-    const form = mode === 'login' ? loginForm() : registerForm();
+    const form = mode === 'login' ? loginForm()
+      : mode === 'forgot' ? forgotForm()
+      : mode === 'reset' ? resetForm()
+      : registerForm();
 
     root.append(
       el('div.auth-wrap', {},
@@ -61,7 +78,7 @@ export function renderAuth(root, { onSignedIn }) {
   }
 
   function loginForm() {
-    const tribe = el('input', { type: 'text', autocomplete: 'organization', id: 'f-tribe', placeholder: 'oao' });
+    const tribe = el('input', { type: 'text', autocomplete: 'organization', id: 'f-tribe', placeholder: t('auth.tribe_placeholder') });
     const identifier = el('input', { type: 'text', autocomplete: 'username', required: true, id: 'f-id' });
     const password = el('input', { type: 'password', autocomplete: 'current-password', required: true, id: 'f-pw' });
     const submit = el('button.btn.primary.block', { type: 'submit', text: t('auth.login') });
@@ -93,9 +110,68 @@ export function renderAuth(root, { onSignedIn }) {
       ),
       el('div.field', {}, el('label', { for: 'f-id', text: t('auth.identifier') }), identifier),
       el('div.field', {}, el('label', { for: 'f-pw', text: t('auth.password') }), password),
-      submit
+      submit,
+      el('button.btn.ghost.block.auth-forgot', { type: 'button', style: 'margin-top:8px', text: t('auth.forgot'), onclick: () => { mode = 'forgot'; message = null; draw(); } })
     );
     setTimeout(() => identifier.focus(), 30);
+    return form;
+  }
+
+  // Schritt 1: Link anfordern (gleiche Felder wie beim Login).
+  function forgotForm() {
+    const tribe = el('input', { type: 'text', autocomplete: 'organization', id: 'fp-tribe', placeholder: t('auth.tribe_placeholder') });
+    const identifier = el('input', { type: 'text', autocomplete: 'username', required: true, id: 'fp-id' });
+    const submit = el('button.btn.primary.block', { type: 'submit', text: t('auth.forgot_send') });
+    const form = el('form', {
+      onsubmit: async (e) => {
+        e.preventDefault();
+        submit.disabled = true;
+        try {
+          await api.forgotPassword({ tribeSlug: tribe.value.trim().toLowerCase() || undefined, identifier: identifier.value.trim() });
+          mode = 'login'; message = t('auth.forgot_sent'); messageKind = 'ok';
+        } catch (err) {
+          message = err instanceof ApiError ? err.message : t('common.error'); messageKind = 'err';
+        }
+        draw();
+      },
+    },
+      el('p', { style: 'margin:0 0 12px;color:var(--muted)', text: t('auth.forgot_intro') }),
+      el('div.field', {}, el('label', { for: 'fp-tribe', text: t('auth.tribe_slug') }), tribe, el('span.hint', { text: t('auth.tribe_login_hint') })),
+      el('div.field', {}, el('label', { for: 'fp-id', text: t('auth.identifier') }), identifier),
+      submit,
+      el('button.btn.ghost.block', { type: 'button', style: 'margin-top:8px', text: t('common.back'), onclick: () => { mode = 'login'; message = null; draw(); } })
+    );
+    setTimeout(() => identifier.focus(), 30);
+    return form;
+  }
+
+  // Schritt 2: neues Passwort über den Link aus der Mail setzen.
+  function resetForm() {
+    const pw = el('input', { type: 'password', required: true, minlength: '10', id: 'rp-pw', autocomplete: 'new-password' });
+    const pw2 = el('input', { type: 'password', required: true, minlength: '10', id: 'rp-pw2', autocomplete: 'new-password' });
+    const submit = el('button.btn.primary.block', { type: 'submit', text: t('auth.reset_save') });
+    const form = el('form', {
+      onsubmit: async (e) => {
+        e.preventDefault();
+        if (pw.value !== pw2.value) { message = t('auth.reset_mismatch'); messageKind = 'err'; draw(); return; }
+        submit.disabled = true;
+        try {
+          await api.resetPassword({ token: resetToken, password: pw.value });
+          resetToken = null; mode = 'login'; message = t('auth.reset_done'); messageKind = 'ok';
+        } catch (err) {
+          message = err instanceof ApiError ? err.message : t('common.error'); messageKind = 'err';
+          submit.disabled = false;
+        }
+        draw();
+      },
+    },
+      el('p', { style: 'margin:0 0 12px;color:var(--muted)', text: t('auth.reset_intro') }),
+      el('div.field', {}, el('label', { for: 'rp-pw', text: t('auth.reset_new') }), pw, el('span.hint', { text: t('auth.password_hint') })),
+      el('div.field', {}, el('label', { for: 'rp-pw2', text: t('auth.reset_repeat') }), pw2),
+      submit,
+      el('button.btn.ghost.block', { type: 'button', style: 'margin-top:8px', text: t('common.back'), onclick: () => { resetToken = null; mode = 'login'; message = null; draw(); } })
+    );
+    setTimeout(() => pw.focus(), 30);
     return form;
   }
 
@@ -138,7 +214,7 @@ export function renderAuth(root, { onSignedIn }) {
   }
 
   function registerForm() {
-    const tribe = el('input', { type: 'text', required: true, id: 'r-tribe', placeholder: 'oao', autocomplete: 'organization' });
+    const tribe = el('input', { type: 'text', required: true, id: 'r-tribe', placeholder: t('auth.tribe_placeholder'), autocomplete: 'organization' });
     const username = el('input', { type: 'text', required: true, id: 'r-user', autocomplete: 'username' });
     const email = el('input', { type: 'email', required: true, id: 'r-mail', autocomplete: 'email' });
     const password = el('input', { type: 'password', required: true, minlength: '10', id: 'r-pw', autocomplete: 'new-password' });

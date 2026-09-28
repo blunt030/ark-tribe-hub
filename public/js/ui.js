@@ -25,6 +25,43 @@ export function el(spec, props = {}, ...children) {
 
 export function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
+/**
+ * "Passwort anzeigen": jedes Passwortfeld der App bekommt automatisch einen
+ * Augen-Knopf. Zeigt nur, was gerade eingetippt wurde - gespeicherte
+ * Passwoerter liegen nur als Hash vor und sind nie wieder lesbar.
+ */
+export function enhancePasswordInput(input) {
+  if (!(input instanceof HTMLInputElement) || input.dataset.pwToggle || input.type !== 'password' || !input.parentNode || input.classList.contains('pin-input')) return;
+  input.dataset.pwToggle = '1';
+  const wrap = document.createElement('span');
+  wrap.className = 'pw-wrap';
+  input.parentNode.insertBefore(wrap, input);
+  wrap.append(input);
+  const btn = el('button.pw-toggle', { type: 'button', 'aria-label': t('auth.pw_show'), title: t('auth.pw_show'), 'aria-pressed': 'false' });
+  btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  btn.addEventListener('click', () => {
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    const label = t(show ? 'auth.pw_hide' : 'auth.pw_show');
+    btn.setAttribute('aria-label', label); btn.title = label;
+    btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+    btn.classList.toggle('on', show);
+    input.focus();
+  });
+  wrap.append(btn);
+}
+
+export function installPasswordToggles(root = document.body) {
+  root.querySelectorAll('input[type="password"]').forEach(enhancePasswordInput);
+  new MutationObserver((records) => {
+    for (const r of records) for (const n of r.addedNodes) {
+      if (n.nodeType !== 1) continue;
+      if (n.matches?.('input[type="password"]')) enhancePasswordInput(n);
+      n.querySelectorAll?.('input[type="password"]').forEach(enhancePasswordInput);
+    }
+  }).observe(root, { childList: true, subtree: true });
+}
+
 const MAX_TOASTS = 3;
 
 export function toast(message, kind = 'ok') {

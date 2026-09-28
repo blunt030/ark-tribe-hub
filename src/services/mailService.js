@@ -167,6 +167,19 @@ export async function sendVerificationEmail({ to, username, verifyUrl }) {
   });
 }
 
+export async function sendPasswordResetEmail({ to, username, resetUrl }) {
+  return sendMail({
+    to,
+    subject: 'ARK Tribe Hub – Passwort zurücksetzen',
+    text:
+      `Hallo ${username},\n\n` +
+      `für dein Konto wurde ein neues Passwort angefordert. Öffne diesen Link, um es festzulegen:\n\n` +
+      `${resetUrl}\n\n` +
+      `Der Link ist 30 Minuten gültig und kann nur einmal verwendet werden.\n` +
+      `Wenn du das nicht angefordert hast, kannst du diese E-Mail ignorieren – dein Passwort bleibt unverändert.`,
+  });
+}
+
 export async function sendLoginCode({ to, username, code }) {
   return sendMail({
     to,

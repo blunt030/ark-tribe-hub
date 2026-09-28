@@ -1463,6 +1463,55 @@ Object.assign(STRINGS.en, { 'nav.tamagotchi': 'Dino Tamagotchi', 'nav.tamagotchi
 Object.assign(STRINGS.fr, { 'nav.tamagotchi': 'Dino-Tamagotchi', 'nav.tamagotchi_admin': 'Gestion Tamagotchi' });
 Object.assign(STRINGS.es, { 'nav.tamagotchi': 'Dino-Tamagotchi', 'nav.tamagotchi_admin': 'Gestión Tamagotchi' });
 
+/* --- Passwort vergessen, Passwort anzeigen, neutrales Tribe-Beispiel ---- */
+const PW_RESET = {
+  de: {
+    'auth.tribe_placeholder': 'z. B. ABC',
+    'auth.tribe_login_hint': 'Das Kürzel deines Tribes (Groß-/Kleinschreibung egal). Developer lassen dieses Feld leer.',
+    'auth.forgot': 'Passwort vergessen?', 'auth.forgot_send': 'Link senden',
+    'auth.forgot_intro': 'Gib dein Konto an. Wir schicken dir einen Link an die hinterlegte E-Mail-Adresse.',
+    'auth.forgot_sent': 'Falls ein passendes Konto mit E-Mail-Adresse existiert, ist der Link unterwegs. Er ist 30 Minuten gültig – schau auch im Spam-Ordner nach.',
+    'auth.reset_intro': 'Lege jetzt ein neues Passwort fest.', 'auth.reset_new': 'Neues Passwort', 'auth.reset_repeat': 'Neues Passwort wiederholen',
+    'auth.reset_save': 'Passwort speichern', 'auth.reset_mismatch': 'Die beiden Passwörter stimmen nicht überein.',
+    'auth.reset_done': 'Passwort geändert. Du kannst dich jetzt anmelden.',
+    'auth.pw_show': 'Passwort anzeigen', 'auth.pw_hide': 'Passwort verbergen',
+  },
+  en: {
+    'auth.tribe_placeholder': 'e.g. ABC',
+    'auth.tribe_login_hint': 'Your tribe\'s short code (not case-sensitive). Developers leave this blank.',
+    'auth.forgot': 'Forgot password?', 'auth.forgot_send': 'Send link',
+    'auth.forgot_intro': 'Enter your account. We\'ll send a link to the email address on file.',
+    'auth.forgot_sent': 'If a matching account with an email address exists, the link is on its way. It is valid for 30 minutes – check your spam folder too.',
+    'auth.reset_intro': 'Choose a new password.', 'auth.reset_new': 'New password', 'auth.reset_repeat': 'Repeat new password',
+    'auth.reset_save': 'Save password', 'auth.reset_mismatch': 'The two passwords do not match.',
+    'auth.reset_done': 'Password changed. You can sign in now.',
+    'auth.pw_show': 'Show password', 'auth.pw_hide': 'Hide password',
+  },
+  fr: {
+    'auth.tribe_placeholder': 'p. ex. ABC',
+    'auth.tribe_login_hint': 'Le code court de votre tribu (majuscules indifférentes). Les développeurs laissent ce champ vide.',
+    'auth.forgot': 'Mot de passe oublié ?', 'auth.forgot_send': 'Envoyer le lien',
+    'auth.forgot_intro': 'Indiquez votre compte. Nous enverrons un lien à l\'adresse e-mail enregistrée.',
+    'auth.forgot_sent': 'Si un compte correspondant avec e-mail existe, le lien est en route. Il est valable 30 minutes – vérifiez aussi les spams.',
+    'auth.reset_intro': 'Choisissez un nouveau mot de passe.', 'auth.reset_new': 'Nouveau mot de passe', 'auth.reset_repeat': 'Répéter le mot de passe',
+    'auth.reset_save': 'Enregistrer', 'auth.reset_mismatch': 'Les deux mots de passe ne correspondent pas.',
+    'auth.reset_done': 'Mot de passe modifié. Vous pouvez vous connecter.',
+    'auth.pw_show': 'Afficher le mot de passe', 'auth.pw_hide': 'Masquer le mot de passe',
+  },
+  es: {
+    'auth.tribe_placeholder': 'p. ej. ABC',
+    'auth.tribe_login_hint': 'El código corto de tu tribu (sin distinguir mayúsculas). Los desarrolladores dejan este campo vacío.',
+    'auth.forgot': '¿Olvidaste la contraseña?', 'auth.forgot_send': 'Enviar enlace',
+    'auth.forgot_intro': 'Indica tu cuenta. Enviaremos un enlace al correo registrado.',
+    'auth.forgot_sent': 'Si existe una cuenta con correo, el enlace va en camino. Es válido 30 minutos – revisa también el spam.',
+    'auth.reset_intro': 'Elige una contraseña nueva.', 'auth.reset_new': 'Contraseña nueva', 'auth.reset_repeat': 'Repetir contraseña',
+    'auth.reset_save': 'Guardar contraseña', 'auth.reset_mismatch': 'Las contraseñas no coinciden.',
+    'auth.reset_done': 'Contraseña cambiada. Ya puedes iniciar sesión.',
+    'auth.pw_show': 'Mostrar contraseña', 'auth.pw_hide': 'Ocultar contraseña',
+  },
+};
+for (const [code, values] of Object.entries(PW_RESET)) Object.assign(STRINGS[code], values);
+
 /** Erweiterungsmodule bringen eigene Texte mit, ohne diese Datei aufzublähen. */
 export function addStrings(dict) {
   for (const [lang, entries] of Object.entries(dict)) if (STRINGS[lang]) Object.assign(STRINGS[lang], entries);
