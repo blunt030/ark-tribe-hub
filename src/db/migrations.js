@@ -46,12 +46,12 @@ const MIGRATIONS = [
  * Kontakt-E-Mail des Plattform-Developers "Blunt" (vom Betreiber vorgegeben),
  * damit "Passwort vergessen" fuer dieses Konto funktioniert. Laeuft genau
  * EINMAL: der Audit-Eintrag dient als Marker, spaetere Aenderungen im Profil
- * werden also nie wieder ueberschrieben.
+ * werden also nie wieder ueberschrieben. v2: korrigierte Adresse (v1 war falsch).
  */
-export const DEVELOPER_CONTACT = { username: 'blunt', email: 'support.arktribehub@gmail.com' };
+export const DEVELOPER_CONTACT = { username: 'blunt', email: 'support.arkhub@gmail.com' };
 
 export async function assignDeveloperContactEmail(db, contact = DEVELOPER_CONTACT) {
-  const done = await db.get("SELECT id FROM audit_logs WHERE action = 'developer_contact_email_set' LIMIT 1");
+  const done = await db.get("SELECT id FROM audit_logs WHERE action = 'developer_contact_email_set_v2' LIMIT 1");
   if (done) return false;
   const dev = await db.get(
     `SELECT u.id, u.email FROM users u
@@ -68,7 +68,7 @@ export async function assignDeveloperContactEmail(db, contact = DEVELOPER_CONTAC
   }
   await db.transaction(async (tx) => {
     await tx.run('UPDATE users SET email = ?, email_verified = 0, email_verify_token = NULL WHERE id = ?', [contact.email, dev.id]);
-    await tx.run("INSERT INTO audit_logs (actor_id, action, target_type, target_id) VALUES (?, 'developer_contact_email_set', 'user', ?)", [dev.id, dev.id]);
+    await tx.run("INSERT INTO audit_logs (actor_id, action, target_type, target_id) VALUES (?, 'developer_contact_email_set_v2', 'user', ?)", [dev.id, dev.id]);
   });
   console.log(`[MIGRATION] Developer-Konto ${dev.id}: Kontakt-E-Mail gesetzt`);
   return true;

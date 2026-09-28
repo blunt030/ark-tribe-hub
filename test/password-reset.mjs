@@ -94,7 +94,7 @@ test('Developer: Reset ohne Tribe, gesperrte Konten bekommen keine Mail', async 
 
 test('Developer-Kontaktadresse wird genau einmal gesetzt', async t => {
   const { db } = await setup(t);
-  const contact = { username: 'blunt', email: 'support.arktribehub@gmail.com' };
+  const contact = { username: 'blunt', email: 'support.arkhub@gmail.com' };
   assert.equal(await assignDeveloperContactEmail(db, contact), true);
   const dev = await db.get("SELECT email FROM users WHERE username='Blunt' AND tribe_id IS NULL");
   assert.equal(dev.email, contact.email);
