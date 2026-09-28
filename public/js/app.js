@@ -116,7 +116,7 @@ function buildShell() {
         title: t('nav.dashboard'),
         'aria-label': t('nav.dashboard'),
         onclick: () => go('/'),
-      }, el('img', { src: '/assets/command-brand-v3.webp', alt: 'ARK Tribe Hub', width: '132', height: '132' })),
+      }, el('img', { src: '/assets/logo.png', alt: 'ARK Tribe Hub', width: '132', height: '132' })),
       el('button.sidebar-toggle', {
         title: t('nav.collapse'),
         'aria-label': t('nav.collapse'),
@@ -168,7 +168,7 @@ function buildShell() {
       title: t('nav.dashboard'),
       'aria-label': t('nav.dashboard'),
       onclick: () => go('/'),
-    }, el('img', { src: '/assets/command-brand-v3.webp', alt: '' }), el('span', { text: 'ARK TRIBE HUB' })),
+    }, el('img', { src: '/assets/logo.png', alt: '' }), el('span', { text: 'ARK TRIBE HUB' })),
     el('button.tb-btn', {
       'aria-label': t('nav.notifications'),
       onclick: () => go('/notifications'),
